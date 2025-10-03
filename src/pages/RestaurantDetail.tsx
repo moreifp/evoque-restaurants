@@ -4,9 +4,13 @@ import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Star, Calendar, Users, FileText, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, Plus, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { MediaUpload } from "@/components/MediaUpload";
+import { ReceiptUpload } from "@/components/ReceiptUpload";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -16,6 +20,8 @@ export default function RestaurantDetail() {
   const [photos, setPhotos] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -48,6 +54,7 @@ export default function RestaurantDetail() {
     }
 
     setEntry(data);
+    setNotes(data.notes || "");
     setLoading(false);
   };
 
@@ -69,6 +76,56 @@ export default function RestaurantDetail() {
       .maybeSingle();
 
     if (data) setReceipt(data);
+  };
+
+  const handleMediaUpload = async (urls: string[]) => {
+    for (const url of urls) {
+      const { error } = await supabase
+        .from("restaurant_photos")
+        .insert({
+          entry_id: id,
+          photo_url: url,
+        });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save photo",
+          variant: "destructive",
+        });
+      }
+    }
+
+    toast({
+      title: "Success",
+      description: "Photos uploaded successfully",
+    });
+    
+    fetchPhotos();
+  };
+
+  const handleSaveNotes = async () => {
+    const { error } = await supabase
+      .from("restaurant_entries")
+      .update({ notes })
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save notes",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "Notes saved successfully",
+    });
+    
+    setEditingNotes(false);
+    fetchEntry();
   };
 
   if (loading) {
@@ -149,15 +206,52 @@ export default function RestaurantDetail() {
                 </div>
               )}
 
-              {entry.notes && (
-                <div className="flex items-start space-x-3">
-                  <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
+              <div className="flex items-start space-x-3">
+                <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
                     <p className="font-medium">Notes</p>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{entry.notes}</p>
+                    {!editingNotes && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingNotes(true)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
+                  {editingNotes ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add your notes here..."
+                        rows={4}
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveNotes}>
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingNotes(false);
+                            setNotes(entry.notes || "");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {entry.notes || "No notes yet. Click edit to add notes."}
+                    </p>
+                  )}
                 </div>
-              )}
+              </div>
 
               {entry.voice_transcription && (
                 <div className="flex items-start space-x-3">
@@ -172,15 +266,31 @@ export default function RestaurantDetail() {
           </Card>
 
           {/* Photos */}
-          {photos.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <ImageIcon className="h-5 w-5" />
                   Photos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Photos
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Upload Photos</DialogTitle>
+                    </DialogHeader>
+                    <MediaUpload onMediaUpload={handleMediaUpload} />
+                  </DialogContent>
+                </Dialog>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {photos.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {photos.map((photo) => (
                     <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
@@ -195,35 +305,72 @@ export default function RestaurantDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-muted-foreground text-center py-8">
+                  No photos yet. Click "Add Photos" to upload photos.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Receipt */}
-          {receipt && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Receipt</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {receipt.photo_url && (
-                  <img
-                    src={receipt.photo_url}
-                    alt="Receipt"
-                    className="w-full max-w-md rounded-lg"
-                  />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Receipt</span>
+                {!receipt && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Receipt
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Upload Receipt</DialogTitle>
+                      </DialogHeader>
+                      <ReceiptUpload
+                        entryId={id}
+                        onReceiptProcessed={() => {
+                          fetchReceipt();
+                          toast({
+                            title: "Success",
+                            description: "Receipt processed successfully",
+                          });
+                        }}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 )}
-                {receipt.total && (
-                  <div>
-                    <p className="font-medium">Total</p>
-                    <p className="text-2xl font-bold">
-                      {receipt.currency} {receipt.total}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {receipt ? (
+                <>
+                  {receipt.photo_url && (
+                    <img
+                      src={receipt.photo_url}
+                      alt="Receipt"
+                      className="w-full max-w-md rounded-lg"
+                    />
+                  )}
+                  {receipt.total && (
+                    <div>
+                      <p className="font-medium">Total</p>
+                      <p className="text-2xl font-bold">
+                        {receipt.currency} {receipt.total}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">
+                  No receipt yet. Click "Add Receipt" to upload and process a receipt.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
