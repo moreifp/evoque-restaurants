@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import evoqueLogo from "@/assets/evoque-logo.svg";
 
 export const Navigation = () => {
   const location = useLocation();
@@ -37,7 +38,7 @@ export const Navigation = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-olive-teal" />
+            <img src={evoqueLogo} alt="Evoque" className="w-8 h-8" />
             <span className="text-xl font-semibold text-foreground">
               Evoque by Fausto
             </span>

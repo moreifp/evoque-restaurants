@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import evoqueLogo from "@/assets/evoque-logo.svg";
 
 export const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -73,7 +74,7 @@ export const Auth = () => {
       <Card className="w-full max-w-md shadow-large">
         <CardHeader className="space-y-1">
           <div className="flex items-center space-x-2 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-gradient-olive-teal" />
+            <img src={evoqueLogo} alt="Evoque" className="w-10 h-10" />
             <CardTitle className="text-2xl">Evoque by Fausto</CardTitle>
           </div>
           <CardDescription>
