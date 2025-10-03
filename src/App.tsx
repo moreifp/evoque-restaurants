@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Auth } from "./components/Auth";
 import Home from "./pages/Home";
 import DiningList from "./pages/DiningList";
+import RestaurantDetail from "./pages/RestaurantDetail";
 import AddRestaurant from "./pages/AddRestaurant";
 import Albums from "./pages/Albums";
 import CreateAlbum from "./pages/CreateAlbum";
@@ -62,6 +63,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/dining" element={<DiningList />} />
+            <Route path="/dining/:id" element={<RestaurantDetail />} />
             <Route path="/dining/add" element={<AddRestaurant />} />
             <Route path="/albums" element={<Albums />} />
             <Route path="/albums/create" element={<CreateAlbum />} />
