@@ -1,21 +1,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Image as ImageIcon, Video } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Video, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { extractGPSFromImage, reverseGeocode, PhotoLocation } from "@/utils/exifExtractor";
 
 interface MediaUploadProps {
   onMediaUpload: (urls: string[]) => void;
+  onLocationExtracted?: (location: { lat: number; lng: number; address: string }) => void;
+  extractLocation?: boolean;
 }
 
-export const MediaUpload = ({ onMediaUpload }: MediaUploadProps) => {
+export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocation = false }: MediaUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [extractingLocation, setExtractingLocation] = useState(false);
   const { toast } = useToast();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     
     // Validate file types
@@ -31,6 +35,40 @@ export const MediaUpload = ({ onMediaUpload }: MediaUploadProps) => {
         description: "Only images and videos are allowed",
         variant: "destructive",
       });
+    }
+
+    // Extract GPS from first image if location extraction is enabled
+    if (extractLocation && onLocationExtracted && validFiles.length > 0) {
+      setExtractingLocation(true);
+      const firstImageFile = validFiles.find(f => f.type.startsWith('image/'));
+      
+      if (firstImageFile) {
+        const locationData = await extractGPSFromImage(firstImageFile);
+        
+        if (locationData) {
+          const address = await reverseGeocode(locationData.latitude, locationData.longitude);
+          
+          if (address) {
+            onLocationExtracted({
+              lat: locationData.latitude,
+              lng: locationData.longitude,
+              address: address
+            });
+            
+            toast({
+              title: "Location extracted!",
+              description: "Photo location has been automatically detected",
+            });
+          }
+        } else {
+          toast({
+            title: "No location data",
+            description: "This photo doesn't contain GPS coordinates",
+            variant: "destructive",
+          });
+        }
+      }
+      setExtractingLocation(false);
     }
 
     // Create previews
@@ -108,9 +146,19 @@ export const MediaUpload = ({ onMediaUpload }: MediaUploadProps) => {
             variant="outline"
             onClick={() => document.getElementById('media-upload')?.click()}
             className="flex-1"
+            disabled={extractingLocation}
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Select Photos/Videos
+            {extractingLocation ? (
+              <>
+                <MapPin className="h-4 w-4 mr-2 animate-pulse" />
+                Extracting Location...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Select Photos/Videos
+              </>
+            )}
           </Button>
           <input
             id="media-upload"

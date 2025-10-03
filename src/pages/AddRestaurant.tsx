@@ -235,10 +235,21 @@ export default function AddRestaurant() {
                   <div className="space-y-2">
                     <Label className="text-base font-semibold">Restaurant Photos</Label>
                     <p className="text-sm text-muted-foreground">
-                      Upload photos of the restaurant, food, and ambience
+                      Upload photos of the restaurant, food, and ambience. GPS location will be extracted automatically!
                     </p>
                   </div>
-                  <MediaUpload onMediaUpload={setMediaUrls} />
+                  <MediaUpload 
+                    onMediaUpload={setMediaUrls} 
+                    extractLocation={true}
+                    onLocationExtracted={(location) => {
+                      setFormData({
+                        ...formData,
+                        location_address: location.address,
+                        location_lat: location.lat,
+                        location_lng: location.lng,
+                      });
+                    }}
+                  />
                 </div>
 
                 {/* Menu Photos Upload */}
