@@ -42,6 +42,7 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
 
   const handleCreateAlbum = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event from bubbling to parent form
     setCreating(true);
 
     try {
@@ -100,7 +101,12 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" size="icon">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="icon"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>
