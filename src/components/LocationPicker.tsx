@@ -21,7 +21,13 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
   const [map, setMap] = useState<any>(null);
   const [marker, setMarker] = useState<any>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const onSelectRef = useRef(onLocationSelect);
   const { toast } = useToast();
+
+  // Keep latest callback without re-initializing map
+  useEffect(() => {
+    onSelectRef.current = onLocationSelect;
+  }, [onLocationSelect]);
 
   // Initialize map
   useEffect(() => {
@@ -45,7 +51,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
       geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
         if (status === "OK" && results[0]) {
           const place = results[0];
-          onLocationSelect({
+          onSelectRef.current({
             name: place.name || place.formatted_address.split(",")[0],
             address: place.formatted_address,
             lat,
@@ -66,7 +72,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
         }
       });
     });
-  }, [onLocationSelect]);
+  }, []);
 
   // Setup autocomplete
   useEffect(() => {
@@ -87,7 +93,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
 
-        onLocationSelect({
+        onSelectRef.current({
           name: place.name,
           address: place.formatted_address || "",
           lat,
@@ -108,7 +114,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
         }
       }
     });
-  }, [map, onLocationSelect]);
+  }, [map]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
