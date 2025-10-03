@@ -13,12 +13,14 @@ import { cn } from "@/lib/utils";
 import { LocationPicker } from "@/components/LocationPicker";
 import { MediaUpload } from "@/components/MediaUpload";
 import { ReceiptUpload } from "@/components/ReceiptUpload";
+import { AlbumSelector } from "@/components/AlbumSelector";
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -67,9 +69,23 @@ export default function AddRestaurant() {
         if (photoError) throw photoError;
       }
 
+      // Add to album if selected
+      if (selectedAlbumId && selectedAlbumId !== "none" && entry) {
+        const { error: albumError } = await supabase
+          .from("album_entries")
+          .insert({
+            album_id: selectedAlbumId,
+            entry_id: entry.id,
+          });
+
+        if (albumError) throw albumError;
+      }
+
       toast({
         title: "Restaurant added!",
-        description: "Your memory has been saved",
+        description: selectedAlbumId && selectedAlbumId !== "none" 
+          ? "Your memory has been saved and added to the album"
+          : "Your memory has been saved",
       });
 
       navigate("/dining");
@@ -160,6 +176,12 @@ export default function AddRestaurant() {
 
                 {/* Receipt Upload */}
                 <ReceiptUpload />
+
+                {/* Album Selection */}
+                <AlbumSelector
+                  selectedAlbumId={selectedAlbumId}
+                  onAlbumSelect={setSelectedAlbumId}
+                />
 
                 {/* Rating */}
                 <div className="space-y-2">
