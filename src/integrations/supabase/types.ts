@@ -131,6 +131,94 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_type: string
+          line_total: number | null
+          name: string
+          quantity: number | null
+          receipt_id: string
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_type: string
+          line_total?: number | null
+          name: string
+          quantity?: number | null
+          receipt_id: string
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_type?: string
+          line_total?: number | null
+          name?: string
+          quantity?: number | null
+          receipt_id?: string
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipts: {
+        Row: {
+          created_at: string | null
+          currency: string | null
+          entry_id: string
+          id: string
+          ocr_raw_text: string | null
+          photo_url: string
+          service_fee: number | null
+          subtotal: number | null
+          tax: number | null
+          total: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string | null
+          entry_id: string
+          id?: string
+          ocr_raw_text?: string | null
+          photo_url: string
+          service_fee?: number | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string | null
+          entry_id?: string
+          id?: string
+          ocr_raw_text?: string | null
+          photo_url?: string
+          service_fee?: number | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_entries: {
         Row: {
           companions: string | null
