@@ -11,16 +11,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { LocationPicker } from "@/components/LocationPicker";
+import { MediaUpload } from "@/components/MediaUpload";
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
     visit_date: "",
     location_address: "",
+    location_lat: null as number | null,
+    location_lng: null as number | null,
     rating: 0,
     companions: "",
     notes: "",
@@ -34,13 +38,33 @@ export default function AddRestaurant() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase.from("restaurant_entries").insert({
-        ...formData,
-        user_id: user.id,
-        rating: formData.rating || null,
-      });
+      // Create restaurant entry
+      const { data: entry, error: entryError } = await supabase
+        .from("restaurant_entries")
+        .insert({
+          ...formData,
+          user_id: user.id,
+          rating: formData.rating || null,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (entryError) throw entryError;
+
+      // Save media files
+      if (mediaUrls.length > 0 && entry) {
+        const photoInserts = mediaUrls.map(url => ({
+          entry_id: entry.id,
+          photo_url: url,
+          type: url.includes('video') ? 'video' : 'restaurant_photo',
+        }));
+
+        const { error: photoError } = await supabase
+          .from("restaurant_photos")
+          .insert(photoInserts);
+
+        if (photoError) throw photoError;
+      }
 
       toast({
         title: "Restaurant added!",
@@ -124,9 +148,14 @@ export default function AddRestaurant() {
                       ...formData,
                       restaurant_name: location.name,
                       location_address: location.address,
+                      location_lat: location.lat,
+                      location_lng: location.lng,
                     });
                   }}
                 />
+
+                {/* Media Upload */}
+                <MediaUpload onMediaUpload={setMediaUrls} />
 
                 {/* Rating */}
                 <div className="space-y-2">
