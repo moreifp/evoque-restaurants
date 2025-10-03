@@ -21,6 +21,9 @@ export default function AddRestaurant() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [menuUrls, setMenuUrls] = useState<string[]>([]);
+  const [wineUrls, setWineUrls] = useState<string[]>([]);
+  const [friendsUrls, setFriendsUrls] = useState<string[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -56,17 +59,34 @@ export default function AddRestaurant() {
 
       if (entryError) throw entryError;
 
-      // Save media files
-      if (mediaUrls.length > 0 && entry) {
-        const photoInserts = mediaUrls.map(url => ({
+      // Save all photo types
+      const allPhotos = [
+        ...mediaUrls.map(url => ({
           entry_id: entry.id,
           photo_url: url,
           type: url.includes('video') ? 'video' : 'restaurant_photo',
-        }));
+        })),
+        ...menuUrls.map(url => ({
+          entry_id: entry.id,
+          photo_url: url,
+          type: 'menu',
+        })),
+        ...wineUrls.map(url => ({
+          entry_id: entry.id,
+          photo_url: url,
+          type: 'wine',
+        })),
+        ...friendsUrls.map(url => ({
+          entry_id: entry.id,
+          photo_url: url,
+          type: 'friends',
+        })),
+      ];
 
+      if (allPhotos.length > 0 && entry) {
         const { error: photoError } = await supabase
           .from("restaurant_photos")
-          .insert(photoInserts);
+          .insert(allPhotos);
 
         if (photoError) throw photoError;
       }
@@ -210,8 +230,49 @@ export default function AddRestaurant() {
                   }}
                 />
 
-                {/* Media Upload */}
-                <MediaUpload onMediaUpload={setMediaUrls} />
+                {/* Restaurant Photos Upload */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Restaurant Photos</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Upload photos of the restaurant, food, and ambience
+                    </p>
+                  </div>
+                  <MediaUpload onMediaUpload={setMediaUrls} />
+                </div>
+
+                {/* Menu Photos Upload */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Menu Photos</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Upload photos of the restaurant menu
+                    </p>
+                  </div>
+                  <MediaUpload onMediaUpload={setMenuUrls} />
+                </div>
+
+                {/* Wine Photos Upload */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Wine Photos</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Upload photos of the wine or drinks you ordered
+                    </p>
+                  </div>
+                  <MediaUpload onMediaUpload={setWineUrls} />
+                </div>
+
+                {/* Friends Photos Upload */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Friends & People Photos</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Upload photos of friends and people you were with
+                    </p>
+                  </div>
+                  <MediaUpload onMediaUpload={setFriendsUrls} />
+                </div>
 
                 {/* Receipt Upload */}
                 <ReceiptUpload />
