@@ -14,6 +14,7 @@ import { LocationPicker } from "@/components/LocationPicker";
 import { MediaUpload } from "@/components/MediaUpload";
 import { ReceiptUpload } from "@/components/ReceiptUpload";
 import { AlbumSelector } from "@/components/AlbumSelector";
+import { TagInput } from "@/components/TagInput";
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export default function AddRestaurant() {
   const [loading, setLoading] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -79,6 +81,43 @@ export default function AddRestaurant() {
           });
 
         if (albumError) throw albumError;
+      }
+
+      // Process tags
+      if (selectedTags.length > 0 && entry) {
+        for (const tagLabel of selectedTags) {
+          // Check if tag exists, create if not
+          let { data: existingTag } = await supabase
+            .from("tags")
+            .select("id")
+            .eq("label", tagLabel)
+            .single();
+
+          let tagId: string;
+
+          if (!existingTag) {
+            const { data: newTag, error: tagError } = await supabase
+              .from("tags")
+              .insert({ label: tagLabel })
+              .select("id")
+              .single();
+
+            if (tagError) throw tagError;
+            tagId = newTag.id;
+          } else {
+            tagId = existingTag.id;
+          }
+
+          // Create entry_tag relationship
+          const { error: entryTagError } = await supabase
+            .from("entry_tags")
+            .insert({
+              entry_id: entry.id,
+              tag_id: tagId,
+            });
+
+          if (entryTagError) throw entryTagError;
+        }
       }
 
       toast({
@@ -181,6 +220,12 @@ export default function AddRestaurant() {
                 <AlbumSelector
                   selectedAlbumId={selectedAlbumId}
                   onAlbumSelect={setSelectedAlbumId}
+                />
+
+                {/* Tags */}
+                <TagInput
+                  selectedTags={selectedTags}
+                  onTagsChange={setSelectedTags}
                 />
 
                 {/* Rating */}
