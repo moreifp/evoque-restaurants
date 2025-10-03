@@ -130,6 +130,19 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
           map.setCenter({ lat, lng });
           map.setZoom(15);
 
+          // Add or update marker at current location
+          if (marker) {
+            marker.setPosition({ lat, lng });
+          } else {
+            const google = (window as any).google;
+            const newMarker = new google.maps.Marker({
+              position: { lat, lng },
+              map,
+              title: "Your Location",
+            });
+            setMarker(newMarker);
+          }
+
           // Show nearby restaurants
           const service = new (window as any).google.maps.places.PlacesService(map);
           service.nearbySearch(
@@ -141,7 +154,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
             () => {
               toast({
                 title: "Location found",
-                description: "Showing restaurants near you",
+                description: "Showing restaurants near you. Click on the map to select one.",
               });
             }
           );

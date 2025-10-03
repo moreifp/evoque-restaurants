@@ -70,9 +70,12 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
 
     setProcessing(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       // Upload to storage first
       const fileExt = file.name.split(".").pop();
-      const fileName = `receipt-${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}/receipt-${Date.now()}.${fileExt}`;
 
       const { error: uploadError, data } = await supabase.storage
         .from("restaurant-photos")
@@ -85,6 +88,11 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
         .getPublicUrl(fileName);
 
       // Process with AI
+      toast({
+        title: "Processing receipt...",
+        description: "This may take a few seconds",
+      });
+
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
         "process-receipt",
         {
@@ -92,10 +100,13 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
         }
       );
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        console.error("Function error:", functionError);
+        throw new Error(`Processing error: ${functionError.message}`);
+      }
 
-      if (!functionData.success) {
-        throw new Error(functionData.error || "Failed to process receipt");
+      if (!functionData?.success) {
+        throw new Error(functionData?.error || "Failed to process receipt");
       }
 
       const extractedData = functionData.data;
@@ -140,9 +151,17 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
       onReceiptProcessed?.(extractedData);
     } catch (error: any) {
       console.error("Error processing receipt:", error);
+      
+      let errorMessage = error.message;
+      if (error.message?.includes("429")) {
+        errorMessage = "Rate limit reached. Please wait a moment and try again.";
+      } else if (error.message?.includes("402")) {
+        errorMessage = "AI credits exhausted. Please add credits to your Lovable workspace.";
+      }
+      
       toast({
         title: "Processing failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
