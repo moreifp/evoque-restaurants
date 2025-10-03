@@ -22,7 +22,7 @@ export default function AddRestaurant() {
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
-    visit_date: "",
+    visit_date: new Date().toISOString().split('T')[0], // Today's date as default
     location_address: "",
     location_lat: null as number | null,
     location_lng: null as number | null,
