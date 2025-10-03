@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, BookImage, Search, UtensilsCrossed } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import evoqueIcon from "@/assets/evoque-icon.png";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -47,6 +48,14 @@ export default function Home() {
       <Navigation />
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+        {/* Branding Header */}
+        <div className="flex items-center justify-center gap-3 mb-8 animate-fade-in">
+          <img src={evoqueIcon} alt="Evoque" className="w-10 h-10 md:w-12 md:h-12" />
+          <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
+            Evoque by Fausto
+          </h2>
+        </div>
+
         {/* Hero Section */}
         <div className="text-center mb-12 animate-fade-in">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
