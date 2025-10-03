@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, UtensilsCrossed, BookImage, User, LogOut } from "lucide-react";
+import { Home, UtensilsCrossed, BookImage, User, LogOut, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ export const Navigation = () => {
     { path: "/", icon: Home, label: "Home" },
     { path: "/dining", icon: UtensilsCrossed, label: "DiningOut" },
     { path: "/albums", icon: BookImage, label: "Albums" },
+    { path: "/following", icon: Users, label: "Social" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
 
