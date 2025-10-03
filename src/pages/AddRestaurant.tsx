@@ -10,6 +10,7 @@ import { Star, ArrowLeft, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { LocationPicker } from "@/components/LocationPicker";
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
@@ -116,19 +117,16 @@ export default function AddRestaurant() {
                   />
                 </div>
 
-                {/* Location */}
-                <div className="space-y-2">
-                  <Label htmlFor="location_address">Location</Label>
-                  <Input
-                    id="location_address"
-                    type="text"
-                    placeholder="Via Roma 123, Florence, Italy"
-                    value={formData.location_address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location_address: e.target.value })
-                    }
-                  />
-                </div>
+                {/* Location with Google Places */}
+                <LocationPicker
+                  onLocationSelect={(location) => {
+                    setFormData({
+                      ...formData,
+                      restaurant_name: location.name,
+                      location_address: location.address,
+                    });
+                  }}
+                />
 
                 {/* Rating */}
                 <div className="space-y-2">
