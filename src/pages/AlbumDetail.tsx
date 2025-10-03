@@ -1,0 +1,298 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Navigation } from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, MapPin, Calendar, Star, Upload } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function AlbumDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [album, setAlbum] = useState<any>(null);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      fetchAlbumData();
+    }
+  }, [id]);
+
+  const fetchAlbumData = async () => {
+    try {
+      // Fetch album details
+      const { data: albumData, error: albumError } = await supabase
+        .from("albums")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (albumError) throw albumError;
+      setAlbum(albumData);
+
+      // Fetch entries in this album
+      const { data: albumEntries, error: entriesError } = await supabase
+        .from("album_entries")
+        .select(`
+          entry_id,
+          restaurant_entries (
+            id,
+            restaurant_name,
+            visit_date,
+            location_address,
+            rating,
+            notes,
+            restaurant_photos (
+              photo_url,
+              type
+            )
+          )
+        `)
+        .eq("album_id", id);
+
+      if (entriesError) throw entriesError;
+
+      const formattedEntries = albumEntries
+        .map((ae: any) => ae.restaurant_entries)
+        .filter(Boolean);
+      
+      setEntries(formattedEntries);
+    } catch (error: any) {
+      toast({
+        title: "Error loading album",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}/${id}/cover.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("restaurant-photos")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("restaurant-photos")
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from("albums")
+        .update({ cover_image_url: publicUrl })
+        .eq("id", id);
+
+      if (updateError) throw updateError;
+
+      setAlbum({ ...album, cover_image_url: publicUrl });
+      toast({
+        title: "Cover photo updated!",
+        description: "Your album cover has been updated",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle">
+        <Navigation />
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+          <p className="text-center text-muted-foreground">Loading album...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!album) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle">
+        <Navigation />
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+          <p className="text-center text-muted-foreground">Album not found</p>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
+      <Navigation />
+      
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+        {/* Header */}
+        <div className="flex items-center space-x-4 mb-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/albums")}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold">{album.title}</h1>
+            {album.description && (
+              <p className="text-muted-foreground mt-1">{album.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Cover Image */}
+        <Card className="mb-8">
+          <CardContent className="p-0">
+            {album.cover_image_url ? (
+              <div className="relative aspect-video w-full">
+                <img
+                  src={album.cover_image_url}
+                  alt="Album cover"
+                  className="w-full h-full object-cover rounded-t-lg"
+                />
+                <div className="absolute bottom-4 right-4">
+                  <Label htmlFor="cover-upload" className="cursor-pointer">
+                    <Button type="button" size="sm" asChild>
+                      <span>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Change Cover
+                      </span>
+                    </Button>
+                  </Label>
+                  <Input
+                    id="cover-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCoverImageUpload}
+                    disabled={uploading}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="aspect-video bg-gradient-olive-teal flex flex-col items-center justify-center p-8">
+                <Label htmlFor="cover-upload" className="cursor-pointer text-center">
+                  <div className="flex flex-col items-center space-y-2">
+                    <Upload className="h-12 w-12 text-white/80" />
+                    <p className="text-white font-medium">Upload Cover Photo</p>
+                    <p className="text-white/70 text-sm">Click to select an image</p>
+                  </div>
+                </Label>
+                <Input
+                  id="cover-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleCoverImageUpload}
+                  disabled={uploading}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Restaurant Entries */}
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">
+            Restaurants ({entries.length})
+          </h2>
+        </div>
+
+        {entries.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {entries.map((entry) => {
+              const coverPhoto = entry.restaurant_photos?.find(
+                (p: any) => p.type === "restaurant_photo"
+              )?.photo_url;
+
+              return (
+                <Card
+                  key={entry.id}
+                  className="group hover:shadow-large transition-all cursor-pointer overflow-hidden"
+                  onClick={() => navigate(`/dining/${entry.id}`)}
+                >
+                  {coverPhoto ? (
+                    <div className="aspect-video bg-muted">
+                      <img
+                        src={coverPhoto}
+                        alt={entry.restaurant_name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-gradient-olive-teal" />
+                  )}
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-lg group-hover:text-accent transition-colors mb-2">
+                      {entry.restaurant_name}
+                    </h3>
+                    
+                    {entry.location_address && (
+                      <div className="flex items-start space-x-2 text-sm text-muted-foreground mb-2">
+                        <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-1">{entry.location_address}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2 text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(entry.visit_date).toLocaleDateString()}</span>
+                      </div>
+                      
+                      {entry.rating && (
+                        <div className="flex items-center space-x-1">
+                          <Star className="h-4 w-4 text-accent fill-accent" />
+                          <span className="font-medium">{entry.rating}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {entry.notes && (
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                        {entry.notes}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-12 text-center">
+            <p className="text-muted-foreground mb-4">
+              No restaurants in this album yet
+            </p>
+            <Button onClick={() => navigate("/dining/add")}>
+              Add Restaurant
+            </Button>
+          </Card>
+        )}
+      </main>
+    </div>
+  );
+}

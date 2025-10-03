@@ -11,6 +11,7 @@ import DiningList from "./pages/DiningList";
 import AddRestaurant from "./pages/AddRestaurant";
 import Albums from "./pages/Albums";
 import CreateAlbum from "./pages/CreateAlbum";
+import AlbumDetail from "./pages/AlbumDetail";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -62,6 +63,7 @@ const App = () => {
             <Route path="/dining/add" element={<AddRestaurant />} />
             <Route path="/albums" element={<Albums />} />
             <Route path="/albums/create" element={<CreateAlbum />} />
+            <Route path="/albums/:id" element={<AlbumDetail />} />
             <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
