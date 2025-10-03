@@ -21,6 +21,7 @@ interface ReceiptData {
   service_fee?: number;
   total: number;
   currency: string;
+  photo_url?: string;
 }
 
 interface ReceiptUploadProps {
@@ -148,7 +149,8 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
         description: `Extracted ${extractedData.items.length} items from your receipt`,
       });
 
-      onReceiptProcessed?.(extractedData);
+      // Pass receipt data with photo URL to callback
+      onReceiptProcessed?.({ ...extractedData, photo_url: publicUrl });
     } catch (error: any) {
       console.error("Error processing receipt:", error);
       

@@ -26,6 +26,7 @@ export default function AddRestaurant() {
   const [friendsUrls, setFriendsUrls] = useState<string[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -58,6 +59,43 @@ export default function AddRestaurant() {
         .single();
 
       if (entryError) throw entryError;
+
+      // Save receipt if processed
+      if (receiptData && entry) {
+        const { data: receipt, error: receiptError } = await supabase
+          .from("receipts")
+          .insert({
+            entry_id: entry.id,
+            photo_url: receiptData.photo_url,
+            subtotal: receiptData.subtotal,
+            tax: receiptData.tax,
+            service_fee: receiptData.service_fee,
+            total: receiptData.total,
+            currency: receiptData.currency,
+          })
+          .select()
+          .single();
+
+        if (receiptError) throw receiptError;
+
+        // Save receipt items
+        if (receiptData.items && receiptData.items.length > 0) {
+          const itemsToInsert = receiptData.items.map((item: any) => ({
+            receipt_id: receipt.id,
+            item_type: item.item_type,
+            name: item.name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from("receipt_items")
+            .insert(itemsToInsert);
+
+          if (itemsError) throw itemsError;
+        }
+      }
 
       // Save all photo types
       const allPhotos = [
@@ -286,7 +324,12 @@ export default function AddRestaurant() {
                 </div>
 
                 {/* Receipt Upload */}
-                <ReceiptUpload />
+                <ReceiptUpload 
+                  onReceiptProcessed={(data) => {
+                    // Store receipt data to save after restaurant is created
+                    setReceiptData(data);
+                  }}
+                />
 
                 {/* Album Selection */}
                 <AlbumSelector
