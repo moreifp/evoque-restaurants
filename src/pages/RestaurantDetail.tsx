@@ -11,6 +11,7 @@ import { MediaUpload } from "@/components/MediaUpload";
 import { ReceiptUpload } from "@/components/ReceiptUpload";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ReceiptItemsList } from "@/components/ReceiptItemsList";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -317,7 +318,7 @@ export default function RestaurantDetail() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Receipt</span>
+                <span>Receipt Details</span>
                 {!receipt && (
                   <Dialog>
                     <DialogTrigger asChild>
@@ -345,25 +346,89 @@ export default function RestaurantDetail() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {receipt ? (
-                <>
+                <div className="grid md:grid-cols-[200px,1fr] gap-6">
+                  {/* Receipt Image Thumbnail */}
                   {receipt.photo_url && (
-                    <img
-                      src={receipt.photo_url}
-                      alt="Receipt"
-                      className="w-full max-w-md rounded-lg"
-                    />
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <div className="cursor-pointer group">
+                          <div className="aspect-square w-full max-w-[200px] rounded-lg overflow-hidden border-2 border-border hover:border-primary transition-colors">
+                            <img
+                              src={receipt.photo_url}
+                              alt="Receipt"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground text-center mt-2">
+                            Click to view full size
+                          </p>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl">
+                        <DialogHeader>
+                          <DialogTitle>Receipt Image</DialogTitle>
+                        </DialogHeader>
+                        <div className="max-h-[70vh] overflow-auto">
+                          <img
+                            src={receipt.photo_url}
+                            alt="Receipt full size"
+                            className="w-full rounded-lg"
+                          />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   )}
-                  {receipt.total && (
-                    <div>
-                      <p className="font-medium">Total</p>
-                      <p className="text-2xl font-bold">
-                        {receipt.currency} {receipt.total}
-                      </p>
+
+                  {/* Receipt Details */}
+                  <div className="space-y-6">
+                    {/* Items List */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-lg">Items Ordered</h3>
+                      
+                      {/* Fetch and display items here - we need to query receipt_items */}
+                      <ReceiptItemsList receiptId={receipt.id} />
                     </div>
-                  )}
-                </>
+
+                    {/* Totals Summary */}
+                    <div className="border-t pt-4 space-y-2">
+                      {receipt.subtotal && (
+                        <div className="flex justify-between text-base">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="font-medium">
+                            {receipt.currency} {Number(receipt.subtotal).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {receipt.tax && (
+                        <div className="flex justify-between text-base">
+                          <span className="text-muted-foreground">Tax</span>
+                          <span className="font-medium">
+                            {receipt.currency} {Number(receipt.tax).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {receipt.service_fee && (
+                        <div className="flex justify-between text-base">
+                          <span className="text-muted-foreground">Service Fee</span>
+                          <span className="font-medium">
+                            {receipt.currency} {Number(receipt.service_fee).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-xl font-bold pt-2 border-t">
+                        <span>Total</span>
+                        <span className="text-primary">
+                          {receipt.currency} {Number(receipt.total).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <p className="text-muted-foreground text-center py-8">
                   No receipt yet. Click "Add Receipt" to upload and process a receipt.
