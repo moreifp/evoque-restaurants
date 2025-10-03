@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { LocationPicker } from "@/components/LocationPicker";
 import { MediaUpload } from "@/components/MediaUpload";
+import { ReceiptUpload } from "@/components/ReceiptUpload";
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
@@ -156,6 +157,9 @@ export default function AddRestaurant() {
 
                 {/* Media Upload */}
                 <MediaUpload onMediaUpload={setMediaUrls} />
+
+                {/* Receipt Upload */}
+                <ReceiptUpload />
 
                 {/* Rating */}
                 <div className="space-y-2">
