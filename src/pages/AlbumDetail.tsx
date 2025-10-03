@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, MapPin, Calendar, Star, Upload, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Star, Upload, Trash2, Share2, Lock, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function AlbumDetail() {
   const { id } = useParams();
@@ -29,6 +38,7 @@ export default function AlbumDetail() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -38,6 +48,8 @@ export default function AlbumDetail() {
 
   const fetchAlbumData = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       // Fetch album details
       const { data: albumData, error: albumError } = await supabase
         .from("albums")
@@ -47,6 +59,9 @@ export default function AlbumDetail() {
 
       if (albumError) throw albumError;
       setAlbum(albumData);
+      
+      // Check if current user is the owner
+      setIsOwner(user?.id === albumData.user_id);
 
       // Fetch entries in this album
       const { data: albumEntries, error: entriesError } = await supabase
@@ -110,6 +125,40 @@ export default function AlbumDetail() {
       });
       setDeleting(false);
     }
+  };
+
+  const handleVisibilityToggle = async (isPublic: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("albums")
+        .update({ visibility: isPublic ? "public" : "private" })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setAlbum({ ...album, visibility: isPublic ? "public" : "private" });
+      toast({
+        title: "Privacy updated",
+        description: isPublic
+          ? "Album is now public and can be shared"
+          : "Album is now private",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShare = () => {
+    const shareUrl = `${window.location.origin}/albums/${id}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast({
+      title: "Link copied!",
+      description: "Share this link with your friends",
+    });
   };
 
   const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,45 +235,107 @@ export default function AlbumDetail() {
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
         {/* Header */}
-        <div className="flex items-center space-x-4 mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/albums")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold">{album.title}</h1>
-            {album.description && (
-              <p className="text-muted-foreground mt-1">{album.description}</p>
-            )}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/albums")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold">{album.title}</h1>
+                {album.visibility === "public" ? (
+                  <Globe className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <Lock className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              {album.description && (
+                <p className="text-muted-foreground mt-1">{album.description}</p>
+              )}
+            </div>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="icon">
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Album?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete the album "{album.title}". The restaurants will not be deleted, only removed from this album. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteAlbum}
-                  disabled={deleting}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleting ? "Deleting..." : "Delete Album"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Share Album</DialogTitle>
+                    <DialogDescription>
+                      Control who can view this album and share it with friends
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="visibility">Make album public</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Anyone with the link can view this album
+                        </p>
+                      </div>
+                      <Switch
+                        id="visibility"
+                        checked={album.visibility === "public"}
+                        onCheckedChange={handleVisibilityToggle}
+                      />
+                    </div>
+                    
+                    {album.visibility === "public" && (
+                      <div className="space-y-2">
+                        <Label>Share Link</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            readOnly
+                            value={`${window.location.origin}/albums/${id}`}
+                            className="flex-1"
+                          />
+                          <Button onClick={handleShare}>
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="icon">
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Album?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the album "{album.title}". The restaurants will not be deleted, only removed from this album. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAlbum}
+                      disabled={deleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleting ? "Deleting..." : "Delete Album"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
         </div>
 
         {/* Cover Image */}
