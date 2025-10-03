@@ -15,6 +15,21 @@ import { MediaUpload } from "@/components/MediaUpload";
 import { ReceiptUpload } from "@/components/ReceiptUpload";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
+import { z } from "zod";
+
+const restaurantSchema = z.object({
+  restaurant_name: z.string()
+    .min(1, 'Restaurant name is required')
+    .max(200, 'Restaurant name is too long')
+    .regex(/^[a-zA-Z0-9\s\-'&.]+$/, 'Restaurant name contains invalid characters'),
+  visit_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
+  location_address: z.string().max(500, 'Address is too long').optional().or(z.literal('')),
+  location_lat: z.number().min(-90).max(90).nullable().optional(),
+  location_lng: z.number().min(-180).max(180).nullable().optional(),
+  rating: z.number().int().min(0).max(5).nullable().optional(),
+  companions: z.string().max(200, 'Companions field is too long').optional().or(z.literal('')),
+  notes: z.string().max(5000, 'Notes are too long').optional().or(z.literal('')),
+});
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
@@ -46,6 +61,23 @@ export default function AddRestaurant() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Validate form data
+      const validation = restaurantSchema.safeParse({
+        ...formData,
+        rating: formData.rating || null,
+      });
+
+      if (!validation.success) {
+        const errors = validation.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('. ');
+        toast({
+          title: "Validation Error",
+          description: errors,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       // Create restaurant entry
       const { data: entry, error: entryError } = await supabase
