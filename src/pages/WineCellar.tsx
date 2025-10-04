@@ -100,7 +100,7 @@ export default function WineCellar() {
                 <p className="text-muted-foreground mb-4">
                   Start adding wine photos to your restaurant experiences
                 </p>
-                <Link to="/add-restaurant" className="text-primary hover:underline">
+                <Link to="/dining/add" className="text-primary hover:underline">
                   Add Restaurant Experience
                 </Link>
               </CardContent>
