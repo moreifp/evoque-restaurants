@@ -32,7 +32,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a wine expert. Analyze wine bottle labels and extract key information. Respond in JSON format with: name, producer, region, vintage, grape_variety, type (red/white/rose/sparkling), country, and any notable characteristics or awards.'
+            content: 'You are a professional sommelier and wine expert. Analyze wine bottle labels carefully and extract information. You MUST respond with ONLY a valid JSON object (no markdown, no code blocks, no extra text). The JSON must have these fields: name (string, the wine name - NEVER use "Unknown"), producer (string), region (string), vintage (string or number), grape_variety (string), type (string: red/white/rose/sparkling), country (string), characteristics (string). If you cannot read the label clearly, make your best educated guess based on the visible details rather than saying "Unknown".'
           },
           {
             role: 'user',
@@ -61,20 +61,36 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    let content = data.choices?.[0]?.message?.content;
 
-    console.log('AI response:', content);
+    console.log('AI raw response:', content);
 
-    // Try to parse as JSON, or return as text if not JSON
+    // Clean up the response - remove markdown code blocks if present
+    if (content) {
+      content = content.trim();
+      // Remove ```json and ``` markers
+      content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+    }
+
+    console.log('AI cleaned response:', content);
+
+    // Try to parse as JSON
     let wineInfo;
     try {
       wineInfo = JSON.parse(content);
-    } catch {
-      // If not JSON, create a structured response from text
+      
+      // Validate that we got useful data
+      if (!wineInfo.name || wineInfo.name === 'Unknown' || wineInfo.name.toLowerCase() === 'unknown') {
+        console.warn('AI returned Unknown wine name');
+      }
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
+      // If not JSON, create a structured response
       wineInfo = {
-        name: 'Unknown',
+        name: 'Wine Label',
         description: content,
-        extracted: false
+        extracted: false,
+        error: 'Could not parse wine information'
       };
     }
 

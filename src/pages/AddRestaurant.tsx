@@ -38,7 +38,7 @@ export default function AddRestaurant() {
   const [loading, setLoading] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [menuUrls, setMenuUrls] = useState<string[]>([]);
-  const [wineData, setWineData] = useState<Array<{ url: string; caption: string; wineInfo?: any }>>([]);
+  const [wineData, setWineData] = useState<Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>>([]);
   const [friendsUrls, setFriendsUrls] = useState<string[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -147,6 +147,7 @@ export default function AddRestaurant() {
           photo_url: wine.url,
           type: 'wine',
           caption: wine.caption,
+          rating: wine.rating || null,
         })),
         ...friendsUrls.map(url => ({
           entry_id: entry.id,

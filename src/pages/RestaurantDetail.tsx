@@ -309,7 +309,47 @@ export default function RestaurantDetail() {
             </CardContent>
           </Card>
 
-          {/* Photos */}
+          {/* Wine Section */}
+          {photos.filter(p => p.type === 'wine').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Wines
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {photos.filter(p => p.type === 'wine').map((photo) => (
+                    <div key={photo.id} className="space-y-3">
+                      <div className="aspect-[3/4] rounded-lg overflow-hidden">
+                        <img
+                          src={photo.photo_url}
+                          alt="Wine"
+                          className="w-full h-full object-cover hover:scale-105 transition-transform"
+                        />
+                      </div>
+                      {photo.rating > 0 && (
+                        <div className="flex items-center space-x-1">
+                          {Array.from({ length: photo.rating }).map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-accent fill-accent" />
+                          ))}
+                        </div>
+                      )}
+                      {photo.caption && (
+                        <div>
+                          <p className="text-sm font-medium mb-1">Tasting Notes:</p>
+                          <p className="text-sm text-muted-foreground">{photo.caption}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Other Photos */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -334,17 +374,19 @@ export default function RestaurantDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {photos.length > 0 ? (
+              {photos.filter(p => p.type !== 'wine').length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.map((photo) => (
-                    <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                      <img
-                        src={photo.photo_url}
-                        alt={photo.caption || "Restaurant photo"}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform"
-                      />
+                  {photos.filter(p => p.type !== 'wine').map((photo) => (
+                    <div key={photo.id} className="space-y-2">
+                      <div className="aspect-square rounded-lg overflow-hidden">
+                        <img
+                          src={photo.photo_url}
+                          alt={photo.caption || "Restaurant photo"}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform"
+                        />
+                      </div>
                       {photo.caption && (
-                        <p className="text-sm text-muted-foreground mt-2">{photo.caption}</p>
+                        <p className="text-sm text-muted-foreground">{photo.caption}</p>
                       )}
                     </div>
                   ))}

@@ -10,6 +10,7 @@ interface WineEntry {
   id: string;
   photo_url: string;
   caption: string;
+  rating: number;
   created_at: string;
   entry: {
     id: string;
@@ -40,6 +41,7 @@ export default function WineCellar() {
           id,
           photo_url,
           caption,
+          rating,
           created_at,
           entry:restaurant_entries!inner (
             id,
@@ -123,6 +125,14 @@ export default function WineCellar() {
                   </Link>
                   
                   <CardContent className="p-4 space-y-3">
+                    {wine.rating > 0 && (
+                      <div className="flex items-center space-x-1 mb-2">
+                        {Array.from({ length: wine.rating }).map((_, i) => (
+                          <Star key={i} className="h-4 w-4 text-accent fill-accent" />
+                        ))}
+                      </div>
+                    )}
+                    
                     {wine.caption && (
                       <div className="space-y-1">
                         <p className="text-sm font-medium">My Notes:</p>

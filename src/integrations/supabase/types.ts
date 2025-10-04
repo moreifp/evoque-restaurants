@@ -277,6 +277,7 @@ export type Database = {
           entry_id: string
           id: string
           photo_url: string
+          rating: number | null
           type: string | null
         }
         Insert: {
@@ -285,6 +286,7 @@ export type Database = {
           entry_id: string
           id?: string
           photo_url: string
+          rating?: number | null
           type?: string | null
         }
         Update: {
@@ -293,6 +295,7 @@ export type Database = {
           entry_id?: string
           id?: string
           photo_url?: string
+          rating?: number | null
           type?: string | null
         }
         Relationships: [
