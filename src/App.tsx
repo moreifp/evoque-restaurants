@@ -15,6 +15,7 @@ import CreateAlbum from "./pages/CreateAlbum";
 import AlbumDetail from "./pages/AlbumDetail";
 import Following from "./pages/Following";
 import UserPublicAlbums from "./pages/UserPublicAlbums";
+import WineCellar from "./pages/WineCellar";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -70,6 +71,7 @@ const App = () => {
             <Route path="/albums/:id" element={<AlbumDetail />} />
             <Route path="/following" element={<Following />} />
             <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
+            <Route path="/wine-cellar" element={<WineCellar />} />
             <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

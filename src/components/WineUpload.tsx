@@ -1,0 +1,283 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, X, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface WineData {
+  url: string;
+  caption: string;
+  wineInfo?: any;
+}
+
+interface WineUploadProps {
+  onWineUpload: (wines: WineData[]) => void;
+}
+
+export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [captions, setCaptions] = useState<string[]>([]);
+  const [wineInfos, setWineInfos] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [analyzingIndex, setAnalyzingIndex] = useState<number | null>(null);
+  const { toast } = useToast();
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    
+    const validFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+
+    if (validFiles.length !== selectedFiles.length) {
+      toast({
+        title: "Invalid files",
+        description: "Only images are allowed for wine photos",
+        variant: "destructive",
+      });
+    }
+
+    // Create previews
+    const newPreviews: string[] = [];
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newPreviews.push(reader.result as string);
+        if (newPreviews.length === validFiles.length) {
+          setPreviews([...previews, ...newPreviews]);
+          setCaptions([...captions, ...Array(validFiles.length).fill('')]);
+          setWineInfos([...wineInfos, ...Array(validFiles.length).fill(null)]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setFiles([...files, ...validFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+    setPreviews(previews.filter((_, i) => i !== index));
+    setCaptions(captions.filter((_, i) => i !== index));
+    setWineInfos(wineInfos.filter((_, i) => i !== index));
+  };
+
+  const updateCaption = (index: number, value: string) => {
+    const newCaptions = [...captions];
+    newCaptions[index] = value;
+    setCaptions(newCaptions);
+  };
+
+  const analyzeWineLabel = async (index: number) => {
+    setAnalyzingIndex(index);
+    try {
+      const file = files[index];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Upload file temporarily to get a URL
+      const fileExt = file.name.split('.').pop();
+      const fileName = `temp_${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('restaurant-photos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('restaurant-photos')
+        .getPublicUrl(filePath);
+
+      // Call AI analysis
+      const { data, error } = await supabase.functions.invoke('analyze-wine-label', {
+        body: { imageUrl: publicUrl }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.wineInfo) {
+        const newWineInfos = [...wineInfos];
+        newWineInfos[index] = data.wineInfo;
+        setWineInfos(newWineInfos);
+
+        // Auto-fill caption with wine info
+        if (data.wineInfo.name && data.wineInfo.name !== 'Unknown') {
+          const autoCaption = [
+            data.wineInfo.name,
+            data.wineInfo.producer,
+            data.wineInfo.vintage,
+            data.wineInfo.region
+          ].filter(Boolean).join(' - ');
+          
+          updateCaption(index, autoCaption);
+        }
+
+        toast({
+          title: "Wine recognized!",
+          description: data.wineInfo.name || "Wine information extracted",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Analysis failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzingIndex(null);
+    }
+  };
+
+  const uploadFiles = async () => {
+    if (files.length === 0) return;
+
+    setUploading(true);
+    const wineData: WineData[] = [];
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `wine_${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('restaurant-photos')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('restaurant-photos')
+          .getPublicUrl(filePath);
+
+        wineData.push({
+          url: publicUrl,
+          caption: captions[i],
+          wineInfo: wineInfos[i]
+        });
+      }
+
+      onWineUpload(wineData);
+      setFiles([]);
+      setPreviews([]);
+      setCaptions([]);
+      setWineInfos([]);
+      
+      toast({
+        title: "Upload successful",
+        description: `${wineData.length} wine photo(s) uploaded`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Wine Photos</Label>
+        <div className="flex items-center space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => document.getElementById('wine-upload')?.click()}
+            className="flex-1"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Select Wine Photos
+          </Button>
+          <input
+            id="wine-upload"
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          {files.length > 0 && (
+            <Button
+              type="button"
+              onClick={uploadFiles}
+              disabled={uploading}
+            >
+              {uploading ? "Uploading..." : `Upload ${files.length}`}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Preview Grid */}
+      {previews.length > 0 && (
+        <div className="space-y-4">
+          {previews.map((preview, index) => (
+            <div key={index} className="border border-border rounded-lg p-4 space-y-3">
+              <div className="flex items-start space-x-4">
+                <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-border flex-shrink-0">
+                  <img
+                    src={preview}
+                    alt={`Wine ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeFile(index)}
+                    className="absolute top-2 right-2 p-1 bg-background/80 backdrop-blur rounded-full hover:bg-background transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                <div className="flex-1 space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => analyzeWineLabel(index)}
+                    disabled={analyzingIndex === index}
+                    className="w-full"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {analyzingIndex === index ? "Analyzing..." : "Recognize Wine"}
+                  </Button>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor={`caption-${index}`}>Your Notes</Label>
+                    <Textarea
+                      id={`caption-${index}`}
+                      placeholder="What did you think of this wine? Taste, aroma, pairing..."
+                      value={captions[index]}
+                      onChange={(e) => updateCaption(index, e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+
+                  {wineInfos[index] && (
+                    <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                      <p className="font-semibold mb-1">Recognized:</p>
+                      <p>{wineInfos[index].name || 'Unknown'}</p>
+                      {wineInfos[index].producer && <p>{wineInfos[index].producer}</p>}
+                      {wineInfos[index].region && <p>{wineInfos[index].region}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

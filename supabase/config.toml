@@ -2,3 +2,9 @@ project_id = "ljrtilsqwzebnbizmvis"
 
 [functions.process-receipt]
 verify_jwt = true
+
+[functions.generate-album-cover]
+verify_jwt = true
+
+[functions.analyze-wine-label]
+verify_jwt = true

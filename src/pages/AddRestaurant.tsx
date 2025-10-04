@@ -15,6 +15,7 @@ import { MediaUpload } from "@/components/MediaUpload";
 import { ReceiptUpload } from "@/components/ReceiptUpload";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
+import { WineUpload } from "@/components/WineUpload";
 import { z } from "zod";
 
 const restaurantSchema = z.object({
@@ -37,7 +38,7 @@ export default function AddRestaurant() {
   const [loading, setLoading] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [menuUrls, setMenuUrls] = useState<string[]>([]);
-  const [wineUrls, setWineUrls] = useState<string[]>([]);
+  const [wineData, setWineData] = useState<Array<{ url: string; caption: string; wineInfo?: any }>>([]);
   const [friendsUrls, setFriendsUrls] = useState<string[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -141,10 +142,11 @@ export default function AddRestaurant() {
           photo_url: url,
           type: 'menu',
         })),
-        ...wineUrls.map(url => ({
+        ...wineData.map(wine => ({
           entry_id: entry.id,
-          photo_url: url,
+          photo_url: wine.url,
           type: 'wine',
+          caption: wine.caption,
         })),
         ...friendsUrls.map(url => ({
           entry_id: entry.id,
@@ -338,10 +340,10 @@ export default function AddRestaurant() {
                   <div className="space-y-2">
                     <Label className="text-base font-semibold">Wine Photos</Label>
                     <p className="text-sm text-muted-foreground">
-                      Upload photos of the wine or drinks you ordered
+                      Upload photos of wine bottles. AI will recognize the label!
                     </p>
                   </div>
-                  <MediaUpload onMediaUpload={setWineUrls} />
+                  <WineUpload onWineUpload={setWineData} />
                 </div>
 
                 {/* Friends Photos Upload */}
