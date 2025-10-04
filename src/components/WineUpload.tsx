@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, X, Sparkles } from "lucide-react";
+import { Upload, X, Sparkles, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface WineData {
   url: string;
   caption: string;
+  rating?: number;
   wineInfo?: any;
 }
 
@@ -20,6 +22,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [captions, setCaptions] = useState<string[]>([]);
+  const [ratings, setRatings] = useState<number[]>([]);
   const [wineInfos, setWineInfos] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [analyzingIndex, setAnalyzingIndex] = useState<number | null>(null);
@@ -47,6 +50,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
         if (newPreviews.length === validFiles.length) {
           setPreviews([...previews, ...newPreviews]);
           setCaptions([...captions, ...Array(validFiles.length).fill('')]);
+          setRatings([...ratings, ...Array(validFiles.length).fill(0)]);
           setWineInfos([...wineInfos, ...Array(validFiles.length).fill(null)]);
         }
       };
@@ -60,6 +64,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
     setFiles(files.filter((_, i) => i !== index));
     setPreviews(previews.filter((_, i) => i !== index));
     setCaptions(captions.filter((_, i) => i !== index));
+    setRatings(ratings.filter((_, i) => i !== index));
     setWineInfos(wineInfos.filter((_, i) => i !== index));
   };
 
@@ -67,6 +72,12 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
     const newCaptions = [...captions];
     newCaptions[index] = value;
     setCaptions(newCaptions);
+  };
+
+  const updateRating = (index: number, rating: number) => {
+    const newRatings = [...ratings];
+    newRatings[index] = rating;
+    setRatings(newRatings);
   };
 
   const analyzeWineLabel = async (index: number) => {
@@ -160,6 +171,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
         wineData.push({
           url: publicUrl,
           caption: captions[i],
+          rating: ratings[i] || undefined,
           wineInfo: wineInfos[i]
         });
       }
@@ -254,10 +266,33 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
                   </Button>
                   
                   <div className="space-y-2">
-                    <Label htmlFor={`caption-${index}`}>Your Notes</Label>
+                    <Label>Wine Rating</Label>
+                    <div className="flex items-center space-x-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => updateRating(index, star)}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            className={cn(
+                              "h-6 w-6 transition-colors",
+                              star <= ratings[index]
+                                ? "text-accent fill-accent"
+                                : "text-muted-foreground"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`caption-${index}`}>Your Tasting Notes</Label>
                     <Textarea
                       id={`caption-${index}`}
-                      placeholder="What did you think of this wine? Taste, aroma, pairing..."
+                      placeholder="What did you think of this wine? Taste, aroma, pairing, food match..."
                       value={captions[index]}
                       onChange={(e) => updateCaption(index, e.target.value)}
                       rows={3}
