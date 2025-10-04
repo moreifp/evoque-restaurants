@@ -4,7 +4,7 @@ import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, Plus, Edit, Trash2, FolderPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MediaUpload } from "@/components/MediaUpload";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ReceiptItemsList } from "@/components/ReceiptItemsList";
+import { AlbumSelector } from "@/components/AlbumSelector";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -24,14 +25,35 @@ export default function RestaurantDetail() {
   const [loading, setLoading] = useState(true);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState("");
+  const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
+  const [currentAlbums, setCurrentAlbums] = useState<any[]>([]);
 
   useEffect(() => {
     if (id) {
       fetchEntry();
       fetchPhotos();
       fetchReceipt();
+      fetchCurrentAlbums();
     }
   }, [id]);
+
+  const fetchCurrentAlbums = async () => {
+    const { data } = await supabase
+      .from("album_entries")
+      .select(`
+        album_id,
+        albums!inner (
+          id,
+          title
+        )
+      `)
+      .eq("entry_id", id);
+
+    if (data) {
+      setCurrentAlbums(data.map((d: any) => d.albums));
+    }
+  };
 
   const fetchEntry = async () => {
     const { data, error } = await supabase
@@ -130,6 +152,58 @@ export default function RestaurantDetail() {
     fetchEntry();
   };
 
+  const handleAddToAlbum = async () => {
+    if (!selectedAlbumId || selectedAlbumId === "none") {
+      toast({
+        title: "Error",
+        description: "Please select an album",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if already in album
+    const { data: existing } = await supabase
+      .from("album_entries")
+      .select("*")
+      .eq("album_id", selectedAlbumId)
+      .eq("entry_id", id)
+      .maybeSingle();
+
+    if (existing) {
+      toast({
+        title: "Info",
+        description: "Restaurant is already in this album",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("album_entries")
+      .insert({
+        album_id: selectedAlbumId,
+        entry_id: id,
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add to album",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "Restaurant added to album",
+    });
+
+    setAlbumDialogOpen(false);
+    setSelectedAlbumId(undefined);
+    fetchCurrentAlbums();
+  };
+
   const handleDelete = async () => {
     const { error } = await supabase
       .from("restaurant_entries")
@@ -192,6 +266,35 @@ export default function RestaurantDetail() {
                 </div>
               )}
             </div>
+            <Dialog open={albumDialogOpen} onOpenChange={setAlbumDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <FolderPlus className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add to Album</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <AlbumSelector
+                    selectedAlbumId={selectedAlbumId}
+                    onAlbumSelect={setSelectedAlbumId}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setAlbumDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddToAlbum}>
+                      Add to Album
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="icon">
@@ -212,6 +315,29 @@ export default function RestaurantDetail() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
+
+          {/* Current Albums */}
+          {currentAlbums.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Albums</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {currentAlbums.map((album: any) => (
+                    <Badge 
+                      key={album.id} 
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-accent"
+                      onClick={() => navigate(`/albums/${album.id}`)}
+                    >
+                      {album.title}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Main Info Card */}
           <Card>

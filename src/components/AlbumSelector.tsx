@@ -85,7 +85,7 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
     <div className="space-y-2">
       <Label>Add to Album (Optional)</Label>
       <div className="flex gap-2">
-        <Select value={selectedAlbumId} onValueChange={onAlbumSelect}>
+        <Select value={selectedAlbumId || "none"} onValueChange={(value) => onAlbumSelect(value === "none" ? undefined : value)}>
           <SelectTrigger className="flex-1">
             <SelectValue placeholder={loading ? "Loading albums..." : "Select an album"} />
           </SelectTrigger>

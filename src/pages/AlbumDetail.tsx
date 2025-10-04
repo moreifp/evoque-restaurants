@@ -161,6 +161,30 @@ export default function AlbumDetail() {
     });
   };
 
+  const handleRemoveFromAlbum = async (entryId: string) => {
+    const { error } = await supabase
+      .from("album_entries")
+      .delete()
+      .eq("album_id", id)
+      .eq("entry_id", entryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove from album",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "Restaurant removed from album",
+    });
+
+    fetchAlbumData();
+  };
+
   const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -406,52 +430,88 @@ export default function AlbumDetail() {
               return (
                 <Card
                   key={entry.id}
-                  className="group hover:shadow-large transition-all cursor-pointer overflow-hidden"
-                  onClick={() => navigate(`/dining/${entry.id}`)}
+                  className="group hover:shadow-large transition-all overflow-hidden"
                 >
-                  {coverPhoto ? (
-                    <div className="aspect-video bg-muted">
-                      <img
-                        src={coverPhoto}
-                        alt={entry.restaurant_name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    </div>
-                  ) : (
-                    <div className="aspect-video bg-gradient-olive-teal" />
-                  )}
-                  <CardContent className="p-6">
-                    <h3 className="font-semibold text-lg group-hover:text-accent transition-colors mb-2">
-                      {entry.restaurant_name}
-                    </h3>
-                    
-                    {entry.location_address && (
-                      <div className="flex items-start space-x-2 text-sm text-muted-foreground mb-2">
-                        <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span className="line-clamp-1">{entry.location_address}</span>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/dining/${entry.id}`)}
+                  >
+                    {coverPhoto ? (
+                      <div className="aspect-video bg-muted">
+                        <img
+                          src={coverPhoto}
+                          alt={entry.restaurant_name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
                       </div>
+                    ) : (
+                      <div className="aspect-video bg-gradient-olive-teal" />
                     )}
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(entry.visit_date).toLocaleDateString()}</span>
-                      </div>
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold text-lg group-hover:text-accent transition-colors mb-2">
+                        {entry.restaurant_name}
+                      </h3>
                       
-                      {entry.rating && (
-                        <div className="flex items-center space-x-1">
-                          <Star className="h-4 w-4 text-accent fill-accent" />
-                          <span className="font-medium">{entry.rating}</span>
+                      {entry.location_address && (
+                        <div className="flex items-start space-x-2 text-sm text-muted-foreground mb-2">
+                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <span className="line-clamp-1">{entry.location_address}</span>
                         </div>
                       )}
-                    </div>
 
-                    {entry.notes && (
-                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                        {entry.notes}
-                      </p>
-                    )}
-                  </CardContent>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>{new Date(entry.visit_date).toLocaleDateString()}</span>
+                        </div>
+                        
+                        {entry.rating && (
+                          <div className="flex items-center space-x-1">
+                            <Star className="h-4 w-4 text-accent fill-accent" />
+                            <span className="font-medium">{entry.rating}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {entry.notes && (
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                          {entry.notes}
+                        </p>
+                      )}
+                    </CardContent>
+                  </div>
+                  
+                  {isOwner && (
+                    <CardContent className="p-4 pt-0">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove from Album
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove from Album</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Remove this restaurant from the album? The restaurant entry will still exist in your diary.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRemoveFromAlbum(entry.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  )}
                 </Card>
               );
             })}
