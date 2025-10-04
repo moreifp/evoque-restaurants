@@ -8,33 +8,59 @@ export interface PhotoLocation {
 
 export const extractGPSFromImage = async (file: File): Promise<PhotoLocation | null> => {
   try {
-    // Parse EXIF data from the image
-    const exifData = await exifr.parse(file, {
-      gps: true,
-      pick: ['latitude', 'longitude', 'DateTimeOriginal']
+    console.log('Attempting to extract GPS from:', {
+      name: file.name,
+      type: file.type,
+      size: file.size
     });
 
+    // Parse EXIF data from the image with comprehensive options
+    const exifData = await exifr.parse(file, {
+      gps: true,
+      tiff: true,
+      exif: true,
+      translateKeys: true,
+      translateValues: true,
+      reviveValues: true,
+      sanitize: true,
+      mergeOutput: true
+    });
+
+    console.log('Full EXIF data extracted:', exifData);
+
     if (!exifData) {
-      console.log('No EXIF data found in image');
+      console.warn('⚠️ No EXIF data found in image. This can happen if:');
+      console.warn('  - The photo was edited/compressed');
+      console.warn('  - Location services were disabled when photo was taken');
+      console.warn('  - The browser stripped EXIF data for privacy');
       return null;
     }
 
-    const { latitude, longitude, DateTimeOriginal } = exifData;
+    const { latitude, longitude, GPSLatitude, GPSLongitude, DateTimeOriginal } = exifData;
 
-    if (!latitude || !longitude) {
-      console.log('No GPS coordinates found in EXIF data');
+    // Try both parsed coordinates and raw GPS data
+    const lat = latitude || GPSLatitude;
+    const lng = longitude || GPSLongitude;
+
+    if (!lat || !lng) {
+      console.warn('⚠️ GPS coordinates not found in EXIF data');
+      console.log('Available EXIF keys:', Object.keys(exifData));
       return null;
     }
 
-    console.log('Extracted GPS coordinates:', { latitude, longitude });
+    console.log('✅ Successfully extracted GPS coordinates:', { lat, lng });
 
     return {
-      latitude,
-      longitude,
+      latitude: lat,
+      longitude: lng,
       timestamp: DateTimeOriginal || undefined
     };
   } catch (error) {
-    console.error('Error extracting GPS data:', error);
+    console.error('❌ Error extracting GPS data:', error);
+    console.error('This might be due to:');
+    console.error('  - Unsupported image format');
+    console.error('  - Corrupted EXIF data');
+    console.error('  - Browser limitations');
     return null;
   }
 };
