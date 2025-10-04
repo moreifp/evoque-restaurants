@@ -114,7 +114,7 @@ export default function WineCellar() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {wines.map((wine) => (
                 <Card key={wine.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <Link to={`/restaurant/${wine.entry.id}`}>
+                  <Link to={`/dining/${wine.entry.id}`}>
                     <div className="aspect-[3/4] overflow-hidden">
                       <img
                         src={wine.photo_url}
@@ -144,7 +144,7 @@ export default function WineCellar() {
                     
                     <div className="pt-3 border-t space-y-2 text-sm">
                       <Link 
-                        to={`/restaurant/${wine.entry.id}`}
+                        to={`/dining/${wine.entry.id}`}
                         className="font-semibold hover:text-primary transition-colors flex items-center space-x-2"
                       >
                         <Wine className="h-4 w-4" />
