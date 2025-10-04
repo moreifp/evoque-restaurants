@@ -99,10 +99,13 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
     const uploadedUrls: string[] = [];
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       for (const file of files) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const filePath = `${user.id}/${fileName}`;
 
         const { error: uploadError, data } = await supabase.storage
           .from('restaurant-photos')
