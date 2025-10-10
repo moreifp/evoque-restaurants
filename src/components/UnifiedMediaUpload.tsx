@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles } from "lucide-react";
+import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { extractGPSFromImage } from "@/utils/exifExtractor";
+import { cn } from "@/lib/utils";
 
 interface UploadedFile {
   file: File;
@@ -34,6 +38,36 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
   const [processingWine, setProcessingWine] = useState<string | null>(null);
   const [processingReceipt, setProcessingReceipt] = useState(false);
   const { toast } = useToast();
+
+  // Update parent whenever files change
+  const updateParent = () => {
+    const currentData = {
+      place: [] as string[],
+      menu: [] as string[],
+      wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
+      friends: [] as string[],
+      receipt: null as any,
+    };
+
+    files.forEach(fileData => {
+      if (fileData.url) {
+        if (fileData.category === 'wine') {
+          currentData.wine.push({
+            url: fileData.url,
+            caption: fileData.caption || '',
+            rating: fileData.rating,
+            wineInfo: fileData.wineInfo,
+          });
+        } else if (fileData.category === 'receipt') {
+          currentData.receipt = fileData.receiptData;
+        } else if (fileData.category === 'place' || fileData.category === 'menu' || fileData.category === 'friends') {
+          currentData[fileData.category].push(fileData.url);
+        }
+      }
+    });
+
+    onUploadsChange(currentData);
+  };
 
   const categoryConfig = {
     place: { icon: Landmark, label: "Place", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
@@ -96,11 +130,15 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       if (functionError) throw functionError;
 
-      setFiles(prev => prev.map(f => 
-        f.preview === fileData.preview 
-          ? { ...f, receiptData: { ...functionData, photo_url: publicUrl }, url: publicUrl }
-          : f
-      ));
+      setFiles(prev => {
+        const updated = prev.map(f => 
+          f.preview === fileData.preview 
+            ? { ...f, receiptData: { ...functionData, photo_url: publicUrl }, url: publicUrl }
+            : f
+        );
+        setTimeout(updateParent, 0);
+        return updated;
+      });
 
       toast({
         title: "Receipt processed!",
@@ -141,11 +179,15 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       if (functionError) throw functionError;
 
-      setFiles(prev => prev.map(f => 
-        f.preview === fileData.preview 
-          ? { ...f, wineInfo, caption: wineInfo ? `${wineInfo.name || ''} ${wineInfo.vintage || ''}`.trim() : '', url: publicUrl }
-          : f
-      ));
+      setFiles(prev => {
+        const updated = prev.map(f => 
+          f.preview === fileData.preview 
+            ? { ...f, wineInfo, caption: wineInfo ? `${wineInfo.name || ''} ${wineInfo.vintage || ''}`.trim() : '', url: publicUrl }
+            : f
+        );
+        setTimeout(updateParent, 0);
+        return updated;
+      });
 
       toast({
         title: "Wine recognized!",
@@ -168,15 +210,23 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
   };
 
   const updateWineRating = (preview: string, rating: number) => {
-    setFiles(prev => prev.map(f => 
-      f.preview === preview ? { ...f, rating } : f
-    ));
+    setFiles(prev => {
+      const updated = prev.map(f => 
+        f.preview === preview ? { ...f, rating } : f
+      );
+      setTimeout(updateParent, 0);
+      return updated;
+    });
   };
 
   const updateWineCaption = (preview: string, caption: string) => {
-    setFiles(prev => prev.map(f => 
-      f.preview === preview ? { ...f, caption } : f
-    ));
+    setFiles(prev => {
+      const updated = prev.map(f => 
+        f.preview === preview ? { ...f, caption } : f
+      );
+      setTimeout(updateParent, 0);
+      return updated;
+    });
   };
 
   const autoUploadFiles = async (newFiles: UploadedFile[]) => {
@@ -198,38 +248,16 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
           .getPublicUrl(fileName);
 
         // Update file with URL
-        setFiles(prev => prev.map(f => 
-          f.preview === fileData.preview ? { ...f, url: publicUrl } : f
-        ));
+        setFiles(prev => {
+          const updated = prev.map(f => 
+            f.preview === fileData.preview ? { ...f, url: publicUrl } : f
+          );
+          return updated;
+        });
       }
 
       // Notify parent with all uploaded data
-      const currentData = {
-        place: [] as string[],
-        menu: [] as string[],
-        wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
-        friends: [] as string[],
-        receipt: null as any,
-      };
-
-      files.concat(newFiles).forEach(fileData => {
-        if (fileData.url) {
-          if (fileData.category === 'wine') {
-            currentData.wine.push({
-              url: fileData.url,
-              caption: fileData.caption || '',
-              rating: fileData.rating,
-              wineInfo: fileData.wineInfo,
-            });
-          } else if (fileData.category === 'receipt') {
-            currentData.receipt = fileData.receiptData;
-          } else if (fileData.category === 'place' || fileData.category === 'menu' || fileData.category === 'friends') {
-            currentData[fileData.category].push(fileData.url);
-          }
-        }
-      });
-
-      onUploadsChange(currentData);
+      updateParent();
       
       toast({
         title: "Files uploaded!",
@@ -291,13 +319,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         </div>
       </div>
 
-      {/* Uploaded Files Grid */}
-      {files.length > 0 && (
+      {/* Regular Uploaded Files Grid (Place, Menu, Friends) */}
+      {files.filter(f => !['wine', 'receipt'].includes(f.category)).length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Uploaded Files ({files.length})</h3>
+          <h3 className="text-lg font-semibold">Photos ({files.filter(f => !['wine', 'receipt'].includes(f.category)).length})</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {files.map((file) => (
+            {files.filter(f => !['wine', 'receipt'].includes(f.category)).map((file) => (
               <div key={file.preview} className="relative group">
                 <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                   {file.file.type.startsWith('video/') ? (
@@ -319,39 +347,212 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
                 >
                   <X className="h-4 w-4" />
                 </Button>
-
-                {/* Wine AI button */}
-                {file.category === 'wine' && !file.wineInfo && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="absolute bottom-2 left-2 right-2"
-                    onClick={() => analyzeWineLabel(file)}
-                    disabled={processingWine === file.preview}
-                  >
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {processingWine === file.preview ? "Analyzing..." : "Recognize"}
-                  </Button>
-                )}
-
-                {/* Wine info display */}
-                {file.category === 'wine' && file.wineInfo && (
-                  <div className="mt-2 text-xs space-y-1">
-                    <p className="font-semibold">{file.wineInfo.name}</p>
-                    {file.wineInfo.vintage && <p className="text-muted-foreground">{file.wineInfo.vintage}</p>}
-                  </div>
-                )}
-
-                {/* Receipt processing status */}
-                {file.category === 'receipt' && processingReceipt && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
-                    <p className="text-sm font-medium">Processing...</p>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Wine Section */}
+      {files.filter(f => f.category === 'wine').length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wine className="h-5 w-5" />
+              Wine Collection ({files.filter(f => f.category === 'wine').length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {files.filter(f => f.category === 'wine').map((file, index) => (
+              <div key={file.preview}>
+                {index > 0 && <Separator className="my-6" />}
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    {/* Wine Image */}
+                    <div className="relative group w-32 h-32 flex-shrink-0">
+                      <div className="w-full h-full rounded-lg overflow-hidden bg-muted">
+                        <img src={file.preview} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeFile(file.preview)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Wine Details */}
+                    <div className="flex-1 space-y-3">
+                      {!file.wineInfo ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => analyzeWineLabel(file)}
+                          disabled={processingWine === file.preview}
+                          className="w-full"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          {processingWine === file.preview ? "Analyzing Wine..." : "Recognize Wine Label"}
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="text-sm space-y-1">
+                            {file.wineInfo.name && (
+                              <p className="font-semibold text-base">{file.wineInfo.name}</p>
+                            )}
+                            {file.wineInfo.vintage && (
+                              <p className="text-muted-foreground">Vintage: {file.wineInfo.vintage}</p>
+                            )}
+                            {file.wineInfo.region && (
+                              <p className="text-muted-foreground">Region: {file.wineInfo.region}</p>
+                            )}
+                            {file.wineInfo.type && (
+                              <p className="text-muted-foreground">Type: {file.wineInfo.type}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Wine Rating */}
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Rating</p>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => updateWineRating(file.preview, star)}
+                              className="transition-transform hover:scale-110"
+                            >
+                              <Star
+                                className={cn(
+                                  "h-6 w-6 transition-colors",
+                                  star <= (file.rating || 0)
+                                    ? "text-accent fill-accent"
+                                    : "text-muted-foreground"
+                                )}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tasting Notes */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tasting Notes</label>
+                    <Textarea
+                      placeholder="Share your thoughts about this wine..."
+                      value={file.caption || ''}
+                      onChange={(e) => updateWineCaption(file.preview, e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Receipt Section */}
+      {files.filter(f => f.category === 'receipt').length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Receipt Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {files.filter(f => f.category === 'receipt').map((file) => (
+              <div key={file.preview} className="space-y-4">
+                {/* Receipt Image */}
+                <div className="relative group w-full max-w-sm mx-auto">
+                  <div className="aspect-[3/4] rounded-lg overflow-hidden bg-muted">
+                    <img src={file.preview} alt="Receipt" className="w-full h-full object-contain" />
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeFile(file.preview)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  
+                  {processingReceipt && (
+                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
+                      <div className="text-center space-y-2">
+                        <Sparkles className="h-8 w-8 mx-auto animate-pulse" />
+                        <p className="text-sm font-medium">Processing receipt...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Processed Receipt Data */}
+                {file.receiptData && (
+                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                    <h4 className="font-semibold text-lg">Extracted Information</h4>
+                    
+                    {file.receiptData.items && file.receiptData.items.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Items</p>
+                        <div className="space-y-1">
+                          {file.receiptData.items.map((item: any, idx: number) => (
+                            <div key={idx} className="flex justify-between text-sm">
+                              <span>
+                                {item.name} 
+                                {item.quantity > 1 && ` (×${item.quantity})`}
+                              </span>
+                              <span className="font-medium">
+                                {file.receiptData.currency || '$'}{item.line_total?.toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Totals */}
+                    <div className="space-y-2">
+                      {file.receiptData.subtotal && (
+                        <div className="flex justify-between text-sm">
+                          <span>Subtotal</span>
+                          <span>{file.receiptData.currency || '$'}{file.receiptData.subtotal.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {file.receiptData.tax && (
+                        <div className="flex justify-between text-sm">
+                          <span>Tax</span>
+                          <span>{file.receiptData.currency || '$'}{file.receiptData.tax.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {file.receiptData.service_fee && (
+                        <div className="flex justify-between text-sm">
+                          <span>Service Fee</span>
+                          <span>{file.receiptData.currency || '$'}{file.receiptData.service_fee.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {file.receiptData.total && (
+                        <div className="flex justify-between text-base font-semibold pt-2 border-t">
+                          <span>Total</span>
+                          <span>{file.receiptData.currency || '$'}{file.receiptData.total.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
