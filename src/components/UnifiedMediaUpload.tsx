@@ -319,43 +319,9 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         </div>
       </div>
 
-      {/* Regular Uploaded Files Grid (Place, Menu, Friends) */}
-      {files.filter(f => !['wine', 'receipt'].includes(f.category)).length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Photos ({files.filter(f => !['wine', 'receipt'].includes(f.category)).length})</h3>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {files.filter(f => !['wine', 'receipt'].includes(f.category)).map((file) => (
-              <div key={file.preview} className="relative group">
-                <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                  {file.file.type.startsWith('video/') ? (
-                    <video src={file.preview} className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={file.preview} alt="" className="w-full h-full object-cover" />
-                  )}
-                </div>
-                
-                <Badge className="absolute top-2 left-2 capitalize">
-                  {file.category}
-                </Badge>
-                
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => removeFile(file.preview)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Wine Section */}
-      {files.filter(f => f.category === 'wine').length > 0 && (
-        <Card>
+      {/* Wine Section - Must come first to show rating/notes */}
+      {files.some(f => f.category === 'wine') && (
+        <Card className="border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wine className="h-5 w-5" />
@@ -394,7 +360,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
                           className="w-full"
                         >
                           <Sparkles className="h-4 w-4 mr-2" />
-                          {processingWine === file.preview ? "Analyzing Wine..." : "Recognize Wine Label"}
+                          {processingWine === file.preview ? "Analyzing..." : "Recognize Wine"}
                         </Button>
                       ) : (
                         <div className="space-y-2">
@@ -459,8 +425,8 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       )}
 
       {/* Receipt Section */}
-      {files.filter(f => f.category === 'receipt').length > 0 && (
-        <Card>
+      {files.some(f => f.category === 'receipt') && (
+        <Card className="border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
@@ -553,6 +519,40 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {/* Regular Uploaded Files Grid (Place, Menu, Friends) */}
+      {files.filter(f => !['wine', 'receipt'].includes(f.category)).length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Other Photos ({files.filter(f => !['wine', 'receipt'].includes(f.category)).length})</h3>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {files.filter(f => !['wine', 'receipt'].includes(f.category)).map((file) => (
+              <div key={file.preview} className="relative group">
+                <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                  {file.file.type.startsWith('video/') ? (
+                    <video src={file.preview} className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={file.preview} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                
+                <Badge className="absolute top-2 left-2 capitalize">
+                  {file.category}
+                </Badge>
+                
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removeFile(file.preview)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
