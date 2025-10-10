@@ -80,13 +80,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       const fileName = `receipts/${user.id}/${Date.now()}_${fileData.file.name}`;
       const { error: uploadError, data } = await supabase.storage
-        .from("restaurant_media")
+        .from("restaurant-photos")
         .upload(fileName, fileData.file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from("restaurant_media")
+        .from("restaurant-photos")
         .getPublicUrl(fileName);
 
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
@@ -125,13 +125,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       const fileName = `wines/${user.id}/${Date.now()}_${fileData.file.name}`;
       const { error: uploadError } = await supabase.storage
-        .from("restaurant_media")
+        .from("restaurant-photos")
         .upload(fileName, fileData.file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from("restaurant_media")
+        .from("restaurant-photos")
         .getPublicUrl(fileName);
 
       const { data: wineInfo, error: functionError } = await supabase.functions.invoke(
@@ -188,13 +188,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       for (const fileData of newFiles) {
         const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileData.file.name}`;
         const { error: uploadError } = await supabase.storage
-          .from("restaurant_media")
+          .from("restaurant-photos")
           .upload(fileName, fileData.file);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from("restaurant_media")
+          .from("restaurant-photos")
           .getPublicUrl(fileName);
 
         // Update file with URL
