@@ -52,28 +52,6 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     input.onchange = async (e) => {
       const selectedFiles = Array.from((e.target as HTMLInputElement).files || []);
       
-      // Extract location from first place photo
-      if (category === 'place' && selectedFiles.length > 0 && onLocationExtracted) {
-        const location = await extractGPSFromImage(selectedFiles[0]);
-        if (location) {
-          try {
-            const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
-            );
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              onLocationExtracted({
-                lat: location.latitude,
-                lng: location.longitude,
-                address: data.results[0].formatted_address,
-              });
-            }
-          } catch (error) {
-            console.error("Error geocoding:", error);
-          }
-        }
-      }
-      
       const newFiles: UploadedFile[] = selectedFiles.map(file => ({
         file,
         preview: URL.createObjectURL(file),
