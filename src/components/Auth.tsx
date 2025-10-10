@@ -74,6 +74,7 @@ export const Auth = () => {
             data: {
               display_name: displayName,
             },
+            emailRedirectTo: `${window.location.origin}/`,
           },
         });
 
@@ -110,7 +111,10 @@ export const Auth = () => {
         description: "An error occurred. Please try again.",
         variant: "destructive",
       });
-      console.error("Auth error:", error);
+      // Only log errors in development
+      if (import.meta.env.DEV) {
+        console.error("Auth error:", error);
+      }
     } finally {
       setLoading(false);
     }

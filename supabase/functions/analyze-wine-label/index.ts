@@ -13,6 +13,39 @@ serve(async (req) => {
 
   try {
     const { imageUrl } = await req.json();
+    
+    // Validate imageUrl input
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid imageUrl parameter' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate URL format and scheme
+    let url: URL;
+    try {
+      url = new URL(imageUrl);
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Only HTTP/HTTPS URLs allowed' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      // Restrict to Supabase storage for security
+      if (!url.hostname.includes('supabase.co')) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'URL must be from trusted storage' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid URL format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {

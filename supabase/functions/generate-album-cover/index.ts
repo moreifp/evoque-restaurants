@@ -12,6 +12,23 @@ serve(async (req) => {
 
   try {
     const { title, description } = await req.json();
+    
+    // Validate title input
+    if (!title || typeof title !== 'string' || title.length > 200) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid title (required, max 200 characters)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate description input
+    if (description && (typeof description !== 'string' || description.length > 1000)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid description (max 1000 characters)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
