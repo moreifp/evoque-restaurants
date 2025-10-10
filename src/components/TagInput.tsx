@@ -80,7 +80,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="tags">Tags</Label>
+      <Label htmlFor="tags" className="text-lg">Tags</Label>
       <div className="space-y-3">
         {/* Selected Tags */}
         {selectedTags.length > 0 && (
@@ -89,7 +89,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
               <Badge
                 key={tag}
                 variant="secondary"
-                className="pl-3 pr-1 py-1 text-sm"
+                className="pl-3 pr-1 py-1.5 text-base"
               >
                 {tag}
                 <button
@@ -113,6 +113,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            className="text-lg h-12"
           />
           
           {/* Suggestions Dropdown */}
@@ -123,7 +124,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
                   key={suggestion}
                   type="button"
                   onClick={() => addTag(suggestion)}
-                  className="w-full px-4 py-2 text-left hover:bg-accent hover:text-accent-foreground transition-colors text-sm"
+                  className="w-full px-4 py-3 text-left hover:bg-accent hover:text-accent-foreground transition-colors text-base"
                 >
                   {suggestion}
                 </button>
@@ -132,7 +133,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Press Enter to add a tag, or select from suggestions
         </p>
       </div>

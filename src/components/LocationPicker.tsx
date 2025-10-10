@@ -181,7 +181,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="location">Restaurant Location</Label>
+        <Label htmlFor="location" className="text-lg">Restaurant Location</Label>
         <div className="flex space-x-2">
           <Input
             ref={inputRef}
@@ -190,23 +190,23 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
             placeholder="Search for a restaurant..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            className="flex-1"
+            className="flex-1 text-lg h-12"
           />
           <Button
             type="button"
             variant="outline"
-            size="icon"
+            className="h-12 w-12"
             onClick={getCurrentLocation}
             disabled={loadingLocation}
           >
             {loadingLocation ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <MapPin className="h-4 w-4" />
+              <MapPin className="h-5 w-5" />
             )}
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Click the location button to find restaurants near you, or search by name
         </p>
       </div>

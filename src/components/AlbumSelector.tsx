@@ -83,13 +83,13 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
 
   return (
     <div className="space-y-2">
-      <Label>Add to Album (Optional)</Label>
+      <Label className="text-lg">Add to Album (Optional)</Label>
       <div className="flex gap-2">
         <Select value={selectedAlbumId || "none"} onValueChange={(value) => onAlbumSelect(value === "none" ? undefined : value)}>
-          <SelectTrigger className="flex-1">
+          <SelectTrigger className="flex-1 h-12 text-lg">
             <SelectValue placeholder={loading ? "Loading albums..." : "Select an album"} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="text-lg">
             <SelectItem value="none">No album</SelectItem>
             {albums.map((album) => (
               <SelectItem key={album.id} value={album.id}>
@@ -104,10 +104,10 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
             <Button 
               type="button" 
               variant="outline" 
-              size="icon"
+              className="h-12 w-12"
               onClick={(e) => e.stopPropagation()}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -116,7 +116,7 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
             </DialogHeader>
             <form onSubmit={handleCreateAlbum} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="album-title">Album Title *</Label>
+                <Label htmlFor="album-title" className="text-lg">Album Title *</Label>
                 <Input
                   id="album-title"
                   placeholder="Summer in Tuscany"
@@ -124,11 +124,12 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
                   onChange={(e) =>
                     setNewAlbum({ ...newAlbum, title: e.target.value })
                   }
+                  className="text-lg h-12"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="album-description">Description</Label>
+                <Label htmlFor="album-description" className="text-lg">Description</Label>
                 <Textarea
                   id="album-description"
                   placeholder="A collection of memorable dining experiences..."
@@ -137,6 +138,7 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
                   onChange={(e) =>
                     setNewAlbum({ ...newAlbum, description: e.target.value })
                   }
+                  className="text-lg min-h-[100px]"
                 />
               </div>
               <div className="flex justify-end gap-2">

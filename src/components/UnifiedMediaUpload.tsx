@@ -267,8 +267,8 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     <div className="space-y-6">
       {/* Title */}
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-[#0d1a2d]">Add your photos</h2>
-        <p className="text-muted-foreground">Tap a button then upload</p>
+        <h2 className="text-3xl font-bold text-[#0d1a2d]">Add your photos</h2>
+        <p className="text-lg text-muted-foreground">Tap a button then upload</p>
       </div>
 
       {/* Category Buttons Grid */}
