@@ -66,10 +66,15 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
       });
 
       // Add to list and select it
-      setAlbums([data, ...albums]);
-      onAlbumSelect(data.id);
+      const newAlbums = [data, ...albums];
+      setAlbums(newAlbums);
       setDialogOpen(false);
       setNewAlbum({ title: "", description: "" });
+      
+      // Ensure the new album is selected by calling onAlbumSelect after state update
+      setTimeout(() => {
+        onAlbumSelect(data.id);
+      }, 0);
     } catch (error: any) {
       toast({
         title: "Error",

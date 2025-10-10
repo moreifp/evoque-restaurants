@@ -84,7 +84,10 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       
       // Auto-process receipt if it's a receipt upload
       if (category === 'receipt' && newFiles.length > 0) {
-        processReceipt(newFiles[0]);
+        await processReceipt(newFiles[0]);
+      } else {
+        // Auto-upload files for other categories
+        await autoUploadFiles(newFiles);
       }
     };
     
@@ -198,36 +201,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     ));
   };
 
-  const uploadAllFiles = async () => {
+  const autoUploadFiles = async (newFiles: UploadedFile[]) => {
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const uploadedData = {
-        place: [] as string[],
-        menu: [] as string[],
-        wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
-        friends: [] as string[],
-        receipt: null as any,
-      };
-
-      for (const fileData of files) {
-        // Skip if already uploaded (wine/receipt)
-        if (fileData.url) {
-          if (fileData.category === 'wine') {
-            uploadedData.wine.push({
-              url: fileData.url,
-              caption: fileData.caption || '',
-              rating: fileData.rating,
-              wineInfo: fileData.wineInfo,
-            });
-          } else if (fileData.category === 'receipt') {
-            uploadedData.receipt = fileData.receiptData;
-          }
-          continue;
-        }
-
+      for (const fileData of newFiles) {
         const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileData.file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("restaurant_media")
@@ -239,19 +219,44 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
           .from("restaurant_media")
           .getPublicUrl(fileName);
 
-        if (fileData.category === 'place' || fileData.category === 'menu' || fileData.category === 'friends') {
-          uploadedData[fileData.category].push(publicUrl);
-        }
+        // Update file with URL
+        setFiles(prev => prev.map(f => 
+          f.preview === fileData.preview ? { ...f, url: publicUrl } : f
+        ));
       }
 
-      onUploadsChange(uploadedData);
+      // Notify parent with all uploaded data
+      const currentData = {
+        place: [] as string[],
+        menu: [] as string[],
+        wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
+        friends: [] as string[],
+        receipt: null as any,
+      };
+
+      files.concat(newFiles).forEach(fileData => {
+        if (fileData.url) {
+          if (fileData.category === 'wine') {
+            currentData.wine.push({
+              url: fileData.url,
+              caption: fileData.caption || '',
+              rating: fileData.rating,
+              wineInfo: fileData.wineInfo,
+            });
+          } else if (fileData.category === 'receipt') {
+            currentData.receipt = fileData.receiptData;
+          } else if (fileData.category === 'place' || fileData.category === 'menu' || fileData.category === 'friends') {
+            currentData[fileData.category].push(fileData.url);
+          }
+        }
+      });
+
+      onUploadsChange(currentData);
       
       toast({
-        title: "Upload complete!",
-        description: `${files.length} file(s) uploaded successfully`,
+        title: "Files uploaded!",
+        description: `${newFiles.length} file(s) uploaded successfully`,
       });
-      
-      setFiles([]);
     } catch (error: any) {
       toast({
         title: "Upload failed",
@@ -311,16 +316,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       {/* Uploaded Files Grid */}
       {files.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Uploaded Files ({files.length})</h3>
-            <Button
-              onClick={uploadAllFiles}
-              disabled={uploading}
-              size="sm"
-            >
-              {uploading ? "Uploading..." : "Upload All"}
-            </Button>
-          </div>
+          <h3 className="text-lg font-semibold">Uploaded Files ({files.length})</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {files.map((file) => (
