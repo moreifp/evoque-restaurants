@@ -11,11 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { LocationPicker } from "@/components/LocationPicker";
-import { MediaUpload } from "@/components/MediaUpload";
-import { ReceiptUpload } from "@/components/ReceiptUpload";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
-import { WineUpload } from "@/components/WineUpload";
+import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { z } from "zod";
 
 const restaurantSchema = z.object({
@@ -36,13 +34,21 @@ export default function AddRestaurant() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
-  const [menuUrls, setMenuUrls] = useState<string[]>([]);
-  const [wineData, setWineData] = useState<Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>>([]);
-  const [friendsUrls, setFriendsUrls] = useState<string[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [receiptData, setReceiptData] = useState<any>(null);
+  const [uploadData, setUploadData] = useState<{
+    place: string[];
+    menu: string[];
+    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    friends: string[];
+    receipt: any | null;
+  }>({
+    place: [],
+    menu: [],
+    wine: [],
+    friends: [],
+    receipt: null,
+  });
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -94,17 +100,17 @@ export default function AddRestaurant() {
       if (entryError) throw entryError;
 
       // Save receipt if processed
-      if (receiptData && entry) {
+      if (uploadData.receipt && entry) {
         const { data: receipt, error: receiptError } = await supabase
           .from("receipts")
           .insert({
             entry_id: entry.id,
-            photo_url: receiptData.photo_url,
-            subtotal: receiptData.subtotal,
-            tax: receiptData.tax,
-            service_fee: receiptData.service_fee,
-            total: receiptData.total,
-            currency: receiptData.currency,
+            photo_url: uploadData.receipt.photo_url,
+            subtotal: uploadData.receipt.subtotal,
+            tax: uploadData.receipt.tax,
+            service_fee: uploadData.receipt.service_fee,
+            total: uploadData.receipt.total,
+            currency: uploadData.receipt.currency,
           })
           .select()
           .single();
@@ -112,8 +118,8 @@ export default function AddRestaurant() {
         if (receiptError) throw receiptError;
 
         // Save receipt items
-        if (receiptData.items && receiptData.items.length > 0) {
-          const itemsToInsert = receiptData.items.map((item: any) => ({
+        if (uploadData.receipt.items && uploadData.receipt.items.length > 0) {
+          const itemsToInsert = uploadData.receipt.items.map((item: any) => ({
             receipt_id: receipt.id,
             item_type: item.item_type,
             name: item.name,
@@ -132,24 +138,24 @@ export default function AddRestaurant() {
 
       // Save all photo types
       const allPhotos = [
-        ...mediaUrls.map(url => ({
+        ...uploadData.place.map(url => ({
           entry_id: entry.id,
           photo_url: url,
           type: url.includes('video') ? 'video' : 'restaurant_photo',
         })),
-        ...menuUrls.map(url => ({
+        ...uploadData.menu.map(url => ({
           entry_id: entry.id,
           photo_url: url,
           type: 'menu',
         })),
-        ...wineData.map(wine => ({
+        ...uploadData.wine.map(wine => ({
           entry_id: entry.id,
           photo_url: wine.url,
           type: 'wine',
           caption: wine.caption,
           rating: wine.rating || null,
         })),
-        ...friendsUrls.map(url => ({
+        ...uploadData.friends.map(url => ({
           entry_id: entry.id,
           photo_url: url,
           type: 'friends',
@@ -303,66 +309,16 @@ export default function AddRestaurant() {
                   }}
                 />
 
-                {/* Restaurant Photos Upload */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold">Restaurant Photos</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Upload photos of the restaurant, food, and ambience. GPS location will be extracted automatically!
-                    </p>
-                  </div>
-                  <MediaUpload 
-                    onMediaUpload={setMediaUrls} 
-                    extractLocation={true}
-                    onLocationExtracted={(location) => {
-                      setFormData({
-                        ...formData,
-                        location_address: location.address,
-                        location_lat: location.lat,
-                        location_lng: location.lng,
-                      });
-                    }}
-                  />
-                </div>
-
-                {/* Menu Photos Upload */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold">Menu Photos</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Upload photos of the restaurant menu
-                    </p>
-                  </div>
-                  <MediaUpload onMediaUpload={setMenuUrls} />
-                </div>
-
-                {/* Wine Photos Upload */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold">Wine Photos</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Upload photos of wine bottles. AI will recognize the label!
-                    </p>
-                  </div>
-                  <WineUpload onWineUpload={setWineData} />
-                </div>
-
-                {/* Friends Photos Upload */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold">Friends & People Photos</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Upload photos of friends and people you were with
-                    </p>
-                  </div>
-                  <MediaUpload onMediaUpload={setFriendsUrls} />
-                </div>
-
-                {/* Receipt Upload */}
-                <ReceiptUpload 
-                  onReceiptProcessed={(data) => {
-                    // Store receipt data to save after restaurant is created
-                    setReceiptData(data);
+                {/* Unified Media Upload */}
+                <UnifiedMediaUpload
+                  onUploadsChange={setUploadData}
+                  onLocationExtracted={(location) => {
+                    setFormData({
+                      ...formData,
+                      location_address: location.address,
+                      location_lat: location.lat,
+                      location_lng: location.lng,
+                    });
                   }}
                 />
 
