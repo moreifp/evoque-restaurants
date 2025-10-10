@@ -267,36 +267,7 @@ export default function AddRestaurant() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Restaurant Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="restaurant_name">Restaurant Name *</Label>
-                  <Input
-                    id="restaurant_name"
-                    type="text"
-                    placeholder="La Piazza"
-                    value={formData.restaurant_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, restaurant_name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                {/* Visit Date */}
-                <div className="space-y-2">
-                  <Label htmlFor="visit_date">Visit Date *</Label>
-                  <Input
-                    id="visit_date"
-                    type="date"
-                    value={formData.visit_date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, visit_date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                {/* Location with Google Places */}
+                {/* Location with Google Places - FIRST */}
                 <LocationPicker
                   onLocationSelect={(location) => {
                     setFormData({
@@ -308,6 +279,37 @@ export default function AddRestaurant() {
                     });
                   }}
                 />
+
+                {/* Restaurant Name - SECOND */}
+                <div className="space-y-2">
+                  <Label htmlFor="restaurant_name" className="text-lg">Restaurant Name *</Label>
+                  <Input
+                    id="restaurant_name"
+                    type="text"
+                    placeholder="La Piazza"
+                    value={formData.restaurant_name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, restaurant_name: e.target.value })
+                    }
+                    className="text-lg h-12"
+                    required
+                  />
+                </div>
+
+                {/* Visit Date - THIRD */}
+                <div className="space-y-2">
+                  <Label htmlFor="visit_date" className="text-lg">Visit Date *</Label>
+                  <Input
+                    id="visit_date"
+                    type="date"
+                    value={formData.visit_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, visit_date: e.target.value })
+                    }
+                    className="text-lg h-12"
+                    required
+                  />
+                </div>
 
                 {/* Unified Media Upload */}
                 <UnifiedMediaUpload
@@ -336,8 +338,8 @@ export default function AddRestaurant() {
 
                 {/* Rating */}
                 <div className="space-y-2">
-                  <Label>Rating</Label>
-                  <div className="flex items-center space-x-2">
+                  <Label className="text-lg">Rating</Label>
+                  <div className="flex items-center space-x-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
@@ -347,7 +349,7 @@ export default function AddRestaurant() {
                       >
                         <Star
                           className={cn(
-                            "h-8 w-8 transition-colors",
+                            "h-10 w-10 transition-colors",
                             star <= formData.rating
                               ? "text-accent fill-accent"
                               : "text-muted-foreground"
@@ -360,7 +362,7 @@ export default function AddRestaurant() {
 
                 {/* Companions */}
                 <div className="space-y-2">
-                  <Label htmlFor="companions">Who were you with?</Label>
+                  <Label htmlFor="companions" className="text-lg">Who were you with?</Label>
                   <Input
                     id="companions"
                     type="text"
@@ -369,12 +371,13 @@ export default function AddRestaurant() {
                     onChange={(e) =>
                       setFormData({ ...formData, companions: e.target.value })
                     }
+                    className="text-lg h-12"
                   />
                 </div>
 
                 {/* Notes */}
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label htmlFor="notes" className="text-lg">Notes</Label>
                   <Textarea
                     id="notes"
                     placeholder="Share your thoughts, favorite dishes, ambience..."
@@ -383,6 +386,7 @@ export default function AddRestaurant() {
                     onChange={(e) =>
                       setFormData({ ...formData, notes: e.target.value })
                     }
+                    className="text-lg min-h-[120px]"
                   />
                 </div>
 
@@ -391,15 +395,16 @@ export default function AddRestaurant() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="flex-1"
+                    className="flex-1 h-12 text-lg"
                   >
-                    <Save className="h-4 w-4 mr-2" />
+                    <Save className="h-5 w-5 mr-2" />
                     {loading ? "Saving..." : "Save Restaurant"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => navigate(-1)}
+                    className="h-12 text-lg"
                   >
                     Cancel
                   </Button>
