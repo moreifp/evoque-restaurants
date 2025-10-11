@@ -113,7 +113,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       if (!user) throw new Error("Not authenticated");
 
       const fileName = `receipts/${user.id}/${Date.now()}_${fileData.file.name}`;
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("restaurant-photos")
         .upload(fileName, fileData.file);
 
@@ -123,17 +123,19 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         .from("restaurant-photos")
         .getPublicUrl(fileName);
 
-      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+      const { data: resp, error: functionError } = await supabase.functions.invoke(
         "process-receipt",
         { body: { imageUrl: publicUrl } }
       );
 
       if (functionError) throw functionError;
 
+      const extracted = resp?.data ?? resp; // normalize shape from edge function
+
       setFiles(prev => {
         const updated = prev.map(f => 
           f.preview === fileData.preview 
-            ? { ...f, receiptData: { ...functionData, photo_url: publicUrl }, url: publicUrl }
+            ? { ...f, receiptData: { ...extracted, photo_url: publicUrl }, url: publicUrl }
             : f
         );
         setTimeout(updateParent, 0);
@@ -172,17 +174,24 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         .from("restaurant-photos")
         .getPublicUrl(fileName);
 
-      const { data: wineInfo, error: functionError } = await supabase.functions.invoke(
+      const { data: resp, error: functionError } = await supabase.functions.invoke(
         "analyze-wine-label",
         { body: { imageUrl: publicUrl } }
       );
 
       if (functionError) throw functionError;
 
+      const extractedWineInfo = resp?.wineInfo ?? null; // normalize shape
+
       setFiles(prev => {
         const updated = prev.map(f => 
           f.preview === fileData.preview 
-            ? { ...f, wineInfo, caption: wineInfo ? `${wineInfo.name || ''} ${wineInfo.vintage || ''}`.trim() : '', url: publicUrl }
+            ? { 
+                ...f, 
+                wineInfo: extractedWineInfo,
+                caption: extractedWineInfo ? `${extractedWineInfo.name || ''} ${extractedWineInfo.vintage || ''}`.trim() : '', 
+                url: publicUrl 
+              }
             : f
         );
         setTimeout(updateParent, 0);
@@ -191,7 +200,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       toast({
         title: "Wine recognized!",
-        description: wineInfo?.name || "Wine information extracted",
+        description: extractedWineInfo?.name || "Wine information extracted",
       });
     } catch (error: any) {
       toast({
@@ -365,17 +374,17 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
                       ) : (
                         <div className="space-y-2">
                           <div className="text-sm space-y-1">
-                            {file.wineInfo.name && (
-                              <p className="font-semibold text-base">{file.wineInfo.name}</p>
+                            {(file.wineInfo?.name ?? file.wineInfo?.wineInfo?.name) && (
+                              <p className="font-semibold text-base">{file.wineInfo?.name ?? file.wineInfo?.wineInfo?.name}</p>
                             )}
-                            {file.wineInfo.vintage && (
-                              <p className="text-muted-foreground">Vintage: {file.wineInfo.vintage}</p>
+                            {(file.wineInfo?.vintage ?? file.wineInfo?.wineInfo?.vintage) && (
+                              <p className="text-muted-foreground">Vintage: {file.wineInfo?.vintage ?? file.wineInfo?.wineInfo?.vintage}</p>
                             )}
-                            {file.wineInfo.region && (
-                              <p className="text-muted-foreground">Region: {file.wineInfo.region}</p>
+                            {(file.wineInfo?.region ?? file.wineInfo?.wineInfo?.region) && (
+                              <p className="text-muted-foreground">Region: {file.wineInfo?.region ?? file.wineInfo?.wineInfo?.region}</p>
                             )}
-                            {file.wineInfo.type && (
-                              <p className="text-muted-foreground">Type: {file.wineInfo.type}</p>
+                            {(file.wineInfo?.type ?? file.wineInfo?.wineInfo?.type) && (
+                              <p className="text-muted-foreground">Type: {file.wineInfo?.type ?? file.wineInfo?.wineInfo?.type}</p>
                             )}
                           </div>
                         </div>
@@ -465,24 +474,24 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
                   <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                     <h4 className="font-semibold text-lg">Extracted Information</h4>
                     
-                    {file.receiptData.items && file.receiptData.items.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Items</p>
-                        <div className="space-y-1">
-                          {file.receiptData.items.map((item: any, idx: number) => (
-                            <div key={idx} className="flex justify-between text-sm">
-                              <span>
-                                {item.name} 
-                                {item.quantity > 1 && ` (×${item.quantity})`}
-                              </span>
-                              <span className="font-medium">
-                                {file.receiptData.currency || '$'}{item.line_total?.toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
+                      {(file.receiptData?.items || file.receiptData?.data?.items)?.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">Items</p>
+                          <div className="space-y-1">
+                            {(file.receiptData.items || file.receiptData.data?.items).map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span>
+                                  {item.name} 
+                                  {item.quantity > 1 && ` (×${item.quantity})`}
+                                </span>
+                                <span className="font-medium">
+                                  {(file.receiptData.currency || file.receiptData.data?.currency || '$')}{item.line_total?.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     <Separator />
 
