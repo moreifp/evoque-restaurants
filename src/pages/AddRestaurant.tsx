@@ -18,9 +18,9 @@ import { z } from "zod";
 
 const restaurantSchema = z.object({
   restaurant_name: z.string()
+    .trim()
     .min(1, 'Restaurant name is required')
-    .max(200, 'Restaurant name is too long')
-    .regex(/^[a-zA-Z0-9\s\-'&.]+$/, 'Restaurant name contains invalid characters'),
+    .max(200, 'Restaurant name is too long'),
   visit_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
   location_address: z.string().max(500, 'Address is too long').optional().or(z.literal('')),
   location_lat: z.number().min(-90).max(90).nullable().optional(),
