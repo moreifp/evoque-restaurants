@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, ArrowLeft, Save } from "lucide-react";
+import { Star, ArrowLeft, Save, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,8 @@ import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { z } from "zod";
+
+const AUTOSAVE_KEY = "restaurant-draft-autosave";
 
 const restaurantSchema = z.object({
   restaurant_name: z.string()
@@ -36,6 +38,9 @@ export default function AddRestaurant() {
   const [loading, setLoading] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  
   const [uploadData, setUploadData] = useState<{
     place: string[];
     menu: string[];
@@ -52,7 +57,7 @@ export default function AddRestaurant() {
 
   const [formData, setFormData] = useState({
     restaurant_name: "",
-    visit_date: new Date().toISOString().split('T')[0], // Today's date as default
+    visit_date: new Date().toISOString().split('T')[0],
     location_address: "",
     location_lat: null as number | null,
     location_lng: null as number | null,
@@ -60,6 +65,48 @@ export default function AddRestaurant() {
     companions: "",
     notes: "",
   });
+
+  // Load autosaved data on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(AUTOSAVE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFormData(parsed.formData);
+        setSelectedAlbumId(parsed.selectedAlbumId);
+        setSelectedTags(parsed.selectedTags || []);
+        toast({
+          title: "Draft restored",
+          description: "Your previous work has been restored",
+        });
+      } catch (e) {
+        console.error("Failed to restore autosave:", e);
+      }
+    }
+  }, []);
+
+  // Autosave to localStorage (debounced)
+  useEffect(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = {
+        formData,
+        selectedAlbumId,
+        selectedTags,
+      };
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(dataToSave));
+      setLastSaved(new Date());
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, selectedAlbumId, selectedTags]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,6 +266,9 @@ export default function AddRestaurant() {
         }
       }
 
+      // Clear autosave after successful submit
+      localStorage.removeItem(AUTOSAVE_KEY);
+      
       toast({
         title: "Restaurant added!",
         description: selectedAlbumId && selectedAlbumId !== "none" 
@@ -249,15 +299,23 @@ export default function AddRestaurant() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="flex items-center space-x-4 mb-8">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-3xl font-bold">Add Restaurant Experience</h1>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-3xl font-bold">Add Restaurant Experience</h1>
+            </div>
+            {lastSaved && (
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4" />
+                <span>Autosaved</span>
+              </div>
+            )}
           </div>
 
           {/* Form */}
