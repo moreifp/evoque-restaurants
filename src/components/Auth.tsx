@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import evoqueLogo from "@/assets/evoque-logo.svg";
 import { z } from "zod";
 
@@ -32,7 +33,21 @@ export const Auth = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const { toast } = useToast();
+
+  // Validate password in real-time for sign up
+  const validatePassword = (pwd: string) => {
+    if (!isSignUp) return;
+    
+    const errors: string[] = [];
+    if (pwd.length > 0 && pwd.length < 8) errors.push("At least 8 characters");
+    if (pwd.length > 0 && !/[A-Z]/.test(pwd)) errors.push("One uppercase letter");
+    if (pwd.length > 0 && !/[a-z]/.test(pwd)) errors.push("One lowercase letter");
+    if (pwd.length > 0 && !/[0-9]/.test(pwd)) errors.push("One number");
+    
+    setPasswordErrors(errors);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,9 +182,47 @@ export const Auth = () => {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  validatePassword(e.target.value);
+                }}
                 required
               />
+              {isSignUp && (
+                <div className="text-sm space-y-1 mt-2">
+                  <p className="text-muted-foreground font-medium">Password must contain:</p>
+                  <ul className="space-y-1">
+                    <li className={cn(
+                      "flex items-center gap-2",
+                      password.length >= 8 ? "text-green-600" : passwordErrors.includes("At least 8 characters") ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      <span className="text-xs">{password.length >= 8 ? "✓" : "○"}</span>
+                      At least 8 characters
+                    </li>
+                    <li className={cn(
+                      "flex items-center gap-2",
+                      /[A-Z]/.test(password) ? "text-green-600" : passwordErrors.includes("One uppercase letter") ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      <span className="text-xs">{/[A-Z]/.test(password) ? "✓" : "○"}</span>
+                      One uppercase letter
+                    </li>
+                    <li className={cn(
+                      "flex items-center gap-2",
+                      /[a-z]/.test(password) ? "text-green-600" : passwordErrors.includes("One lowercase letter") ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      <span className="text-xs">{/[a-z]/.test(password) ? "✓" : "○"}</span>
+                      One lowercase letter
+                    </li>
+                    <li className={cn(
+                      "flex items-center gap-2",
+                      /[0-9]/.test(password) ? "text-green-600" : passwordErrors.includes("One number") ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      <span className="text-xs">{/[0-9]/.test(password) ? "✓" : "○"}</span>
+                      One number
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
             <Button
               type="submit"
