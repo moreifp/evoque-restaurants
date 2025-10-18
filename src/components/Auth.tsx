@@ -29,6 +29,7 @@ const signInSchema = z.object({
 
 export const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -54,8 +55,32 @@ export const Auth = () => {
     setLoading(true);
 
     try {
-      // Validate inputs
-      if (isSignUp) {
+      if (isForgotPassword) {
+        // Password reset flow
+        const validation = z.string().email('Invalid email address').safeParse(email);
+        if (!validation.success) {
+          toast({
+            title: "Validation Error",
+            description: validation.error.errors[0].message,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/`,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Check your email",
+          description: "We've sent you a password reset link",
+        });
+        setIsForgotPassword(false);
+        setEmail("");
+      } else if (isSignUp) {
         const validation = signUpSchema.safeParse({ email, password, displayName });
         if (!validation.success) {
           const errors = validation.error.errors.map(err => err.message).join('. ');
@@ -67,21 +92,7 @@ export const Auth = () => {
           setLoading(false);
           return;
         }
-      } else {
-        const validation = signInSchema.safeParse({ email, password });
-        if (!validation.success) {
-          const errors = validation.error.errors.map(err => err.message).join('. ');
-          toast({
-            title: "Validation Error",
-            description: errors,
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-      }
 
-      if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -108,6 +119,18 @@ export const Auth = () => {
           });
         }
       } else {
+        const validation = signInSchema.safeParse({ email, password });
+        if (!validation.success) {
+          const errors = validation.error.errors.map(err => err.message).join('. ');
+          toast({
+            title: "Validation Error",
+            description: errors,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -144,14 +167,16 @@ export const Auth = () => {
             <CardTitle className="text-2xl">Evoque by Fausto</CardTitle>
           </div>
           <CardDescription>
-            {isSignUp
+            {isForgotPassword
+              ? "Enter your email to receive a password reset link"
+              : isSignUp
               ? "Create an account to start preserving your culinary memories"
               : "Sign in to access your dining diary"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
+            {isSignUp && !isForgotPassword && (
               <div className="space-y-2">
                 <Label htmlFor="displayName">Display Name</Label>
                 <Input
@@ -175,6 +200,7 @@ export const Auth = () => {
                 required
               />
             </div>
+            {!isForgotPassword && (
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -224,21 +250,38 @@ export const Auth = () => {
                 </div>
               )}
             </div>
+            )}
             <Button
               type="submit"
               className="w-full"
               disabled={loading}
             >
-              {loading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}
+              {loading ? "Loading..." : isForgotPassword ? "Send Reset Link" : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
+          {!isSignUp && !isForgotPassword && (
+            <div className="mt-4 text-center text-sm">
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                className="text-accent hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
           <div className="mt-4 text-center text-sm">
             <button
               type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setIsForgotPassword(false);
+              }}
               className="text-accent hover:underline"
             >
-              {isSignUp
+              {isForgotPassword
+                ? "Back to sign in"
+                : isSignUp
                 ? "Already have an account? Sign in"
                 : "Don't have an account? Sign up"}
             </button>
