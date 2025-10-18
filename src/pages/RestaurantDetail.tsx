@@ -4,7 +4,7 @@ import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, Plus, Edit, Trash2, FolderPlus } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, Plus, Edit, Trash2, FolderPlus, Share2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { MediaUpload } from "@/components/MediaUpload";
@@ -28,6 +28,8 @@ export default function RestaurantDetail() {
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [currentAlbums, setCurrentAlbums] = useState<any[]>([]);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -227,6 +229,45 @@ export default function RestaurantDetail() {
     navigate("/dining");
   };
 
+  const handleShare = async () => {
+    setShareLoading(true);
+    const newIsPublic = !entry.is_public;
+
+    const { error } = await supabase
+      .from("restaurant_entries")
+      .update({ is_public: newIsPublic })
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update sharing settings",
+        variant: "destructive",
+      });
+      setShareLoading(false);
+      return;
+    }
+
+    if (newIsPublic) {
+      const shareUrl = `${window.location.origin}/share/${id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({
+        title: "Link Copied!",
+        description: "Share link copied to clipboard",
+      });
+    } else {
+      toast({
+        title: "Sharing Disabled",
+        description: "This restaurant is now private",
+      });
+    }
+
+    fetchEntry();
+    setShareLoading(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -266,6 +307,14 @@ export default function RestaurantDetail() {
                 </div>
               )}
             </div>
+            <Button
+              variant={entry.is_public ? "default" : "outline"}
+              size="icon"
+              onClick={handleShare}
+              disabled={shareLoading}
+            >
+              {copied ? <Check className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
+            </Button>
             <Dialog open={albumDialogOpen} onOpenChange={setAlbumDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="icon">

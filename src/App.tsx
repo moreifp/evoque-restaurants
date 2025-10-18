@@ -9,6 +9,7 @@ import { Auth } from "./components/Auth";
 import Home from "./pages/Home";
 import DiningList from "./pages/DiningList";
 import RestaurantDetail from "./pages/RestaurantDetail";
+import SharedRestaurant from "./pages/SharedRestaurant";
 import AddRestaurant from "./pages/AddRestaurant";
 import Albums from "./pages/Albums";
 import CreateAlbum from "./pages/CreateAlbum";
@@ -66,6 +67,7 @@ const App = () => {
             <Route path="/dining" element={<DiningList />} />
             <Route path="/dining/:id" element={<RestaurantDetail />} />
             <Route path="/dining/add" element={<AddRestaurant />} />
+            <Route path="/share/:id" element={<SharedRestaurant />} />
             <Route path="/albums" element={<Albums />} />
             <Route path="/albums/create" element={<CreateAlbum />} />
             <Route path="/albums/:id" element={<AlbumDetail />} />
