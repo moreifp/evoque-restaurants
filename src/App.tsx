@@ -41,21 +41,6 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-lg bg-gradient-olive-teal mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Loading Evoque...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return <Auth />;
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -63,20 +48,37 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/dining" element={<DiningList />} />
-            <Route path="/dining/:id" element={<RestaurantDetail />} />
-            <Route path="/dining/add" element={<AddRestaurant />} />
+            {/* Public routes */}
             <Route path="/share/:id" element={<SharedRestaurant />} />
-            <Route path="/albums" element={<Albums />} />
-            <Route path="/albums/create" element={<CreateAlbum />} />
-            <Route path="/albums/:id" element={<AlbumDetail />} />
-            <Route path="/following" element={<Following />} />
-            <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
-            <Route path="/wine-cellar" element={<WineCellar />} />
-            <Route path="/profile" element={<Profile />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+            
+            {/* Protected routes */}
+            {loading ? (
+              <Route path="*" element={
+                <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-lg bg-gradient-olive-teal mx-auto mb-4 animate-pulse" />
+                    <p className="text-muted-foreground">Loading Evoque...</p>
+                  </div>
+                </div>
+              } />
+            ) : !session ? (
+              <Route path="*" element={<Auth />} />
+            ) : (
+              <>
+                <Route path="/" element={<Home />} />
+                <Route path="/dining" element={<DiningList />} />
+                <Route path="/dining/:id" element={<RestaurantDetail />} />
+                <Route path="/dining/add" element={<AddRestaurant />} />
+                <Route path="/albums" element={<Albums />} />
+                <Route path="/albums/create" element={<CreateAlbum />} />
+                <Route path="/albums/:id" element={<AlbumDetail />} />
+                <Route path="/following" element={<Following />} />
+                <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
+                <Route path="/wine-cellar" element={<WineCellar />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="*" element={<NotFound />} />
+              </>
+            )}
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
