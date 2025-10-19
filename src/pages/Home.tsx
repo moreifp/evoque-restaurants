@@ -25,17 +25,14 @@ export default function Home() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(6);
-    
+
     if (data) setRecentEntries(data);
     setLoading(false);
   };
 
   const fetchPopularTags = async () => {
-    const { data } = await supabase
-      .from("tags")
-      .select("*")
-      .limit(10);
-    
+    const { data } = await supabase.from("tags").select("*").limit(10);
+
     if (data) setPopularTags(data);
   };
 
@@ -46,21 +43,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
-      
+
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
         {/* Branding Header */}
         <div className="flex items-center justify-center gap-3 mb-8 animate-fade-in">
           <img src={evoqueIcon} alt="Evoque" className="w-10 h-10 md:w-12 md:h-12" />
-          <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
-            Evoque by Fausto
-          </h2>
+          <h2 className="text-2xl md:text-3xl font-semibold text-foreground">Evoque</h2>
         </div>
 
         {/* Hero Section */}
         <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Keep the taste alive
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Keep the taste alive</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Remember. Share. Discover your culinary journey.
           </p>
@@ -68,7 +61,10 @@ export default function Home() {
 
         {/* Primary Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12 max-w-4xl mx-auto">
-          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/dining/add")}>
+          <Card
+            className="group hover:shadow-large transition-all cursor-pointer"
+            onClick={() => navigate("/dining/add")}
+          >
             <CardContent className="flex items-center space-x-4 p-6">
               <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <Plus className="h-6 w-6 text-accent" />
@@ -80,7 +76,10 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/albums/create")}>
+          <Card
+            className="group hover:shadow-large transition-all cursor-pointer"
+            onClick={() => navigate("/albums/create")}
+          >
             <CardContent className="flex items-center space-x-4 p-6">
               <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <BookImage className="h-6 w-6 text-accent" />
@@ -158,9 +157,7 @@ export default function Home() {
                           {entry.restaurant_name}
                         </h3>
                         {entry.location_address && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {entry.location_address}
-                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">{entry.location_address}</p>
                         )}
                       </div>
                       {entry.rating && (

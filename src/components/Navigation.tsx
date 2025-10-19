@@ -47,9 +47,7 @@ export const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <img src={evoqueLogo} alt="Evoque" className="w-8 h-8" />
-            <span className="text-xl font-semibold text-foreground">
-              Evoque by Fausto
-            </span>
+            <span className="text-xl font-semibold text-foreground">Evoque</span>
           </Link>
 
           {/* Navigation Links - Desktop */}
@@ -59,25 +57,15 @@ export const Navigation = () => {
               const isActive = location.pathname === item.path;
               return (
                 <Link key={item.path} to={item.path}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "flex items-center space-x-2",
-                      isActive && "bg-secondary"
-                    )}
-                  >
+                  <Button variant="ghost" className={cn("flex items-center space-x-2", isActive && "bg-secondary")}>
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Button>
                 </Link>
               );
             })}
-            
-            <Button
-              variant="ghost"
-              className="flex items-center space-x-2"
-              asChild
-            >
+
+            <Button variant="ghost" className="flex items-center space-x-2" asChild>
               <a href="https://evoque.guru/" target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4" />
                 <span>Website</span>
@@ -92,13 +80,23 @@ export const Navigation = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <a href="https://evoque.guru/#page-0" target="_blank" rel="noopener noreferrer" className="flex items-center">
+                  <a
+                    href="https://evoque.guru/#page-0"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center"
+                  >
                     <span>Terms of Use</span>
                     <ExternalLink className="h-3 w-3 ml-2" />
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <a href="https://evoque.guru/#page-0" target="_blank" rel="noopener noreferrer" className="flex items-center">
+                  <a
+                    href="https://evoque.guru/#page-0"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center"
+                  >
                     <span>Privacy Policy</span>
                     <ExternalLink className="h-3 w-3 ml-2" />
                   </a>
@@ -106,23 +104,14 @@ export const Navigation = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              className="ml-2"
-            >
+            <Button variant="ghost" size="icon" onClick={handleSignOut} className="ml-2">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Mobile Navigation */}
           <div className="md:hidden flex items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-            >
+            <Button variant="ghost" size="icon" onClick={handleSignOut}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -136,23 +125,9 @@ export const Navigation = () => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="flex flex-col items-center justify-center flex-1 h-full"
-              >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 mb-1",
-                    isActive ? "text-accent" : "text-muted-foreground"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-xs",
-                    isActive ? "text-accent font-medium" : "text-muted-foreground"
-                  )}
-                >
+              <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center flex-1 h-full">
+                <Icon className={cn("h-5 w-5 mb-1", isActive ? "text-accent" : "text-muted-foreground")} />
+                <span className={cn("text-xs", isActive ? "text-accent font-medium" : "text-muted-foreground")}>
                   {item.label}
                 </span>
               </Link>
