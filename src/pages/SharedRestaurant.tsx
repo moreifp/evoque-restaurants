@@ -11,6 +11,7 @@ export default function SharedRestaurant() {
   const [entry, setEntry] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
+  const [receiptItems, setReceiptItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -57,7 +58,20 @@ export default function SharedRestaurant() {
       .eq("entry_id", id)
       .maybeSingle();
 
-    if (data) setReceipt(data);
+    if (data) {
+      setReceipt(data);
+      fetchReceiptItems(data.id);
+    }
+  };
+
+  const fetchReceiptItems = async (receiptId: string) => {
+    const { data } = await supabase
+      .from("receipt_items")
+      .select("*")
+      .eq("receipt_id", receiptId)
+      .order("created_at", { ascending: true });
+
+    if (data) setReceiptItems(data);
   };
 
   if (loading) {
@@ -246,7 +260,7 @@ export default function SharedRestaurant() {
                 <CardTitle>Receipt Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <ReceiptItemsList receiptId={receipt.id} />
+                <ReceiptItemsList items={receiptItems} />
                 <div className="pt-4 border-t space-y-2">
                   {receipt.subtotal && (
                     <div className="flex justify-between text-sm">
