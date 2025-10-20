@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Utensils, Wine } from "lucide-react";
 
@@ -13,34 +11,10 @@ interface ReceiptItem {
 }
 
 interface ReceiptItemsListProps {
-  receiptId: string;
+  items: ReceiptItem[];
 }
 
-export function ReceiptItemsList({ receiptId }: ReceiptItemsListProps) {
-  const [items, setItems] = useState<ReceiptItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchItems();
-  }, [receiptId]);
-
-  const fetchItems = async () => {
-    const { data, error } = await supabase
-      .from("receipt_items")
-      .select("*")
-      .eq("receipt_id", receiptId)
-      .order("created_at", { ascending: true });
-
-    if (data) {
-      setItems(data as ReceiptItem[]);
-    }
-    setLoading(false);
-  };
-
-  if (loading) {
-    return <p className="text-muted-foreground">Loading items...</p>;
-  }
-
+export function ReceiptItemsList({ items }: ReceiptItemsListProps) {
   if (items.length === 0) {
     return <p className="text-muted-foreground">No items found</p>;
   }
