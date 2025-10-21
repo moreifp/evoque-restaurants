@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Edit, Plus } from "lucide-react";
+import { Edit, Plus, Sparkles, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Recommendation {
   bucket: string;
@@ -49,6 +52,16 @@ export default function PlanDetail() {
   const [plan, setPlan] = useState<any>(null);
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
+  const [editingIntake, setEditingIntake] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [intakeForm, setIntakeForm] = useState({
+    price: "",
+    cuisines: [] as string[],
+    vibe: [] as string[],
+    must_try: [] as string[],
+    constraints: [] as string[],
+    additional_notes: "",
+  });
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -58,7 +71,19 @@ export default function PlanDetail() {
         .select('*')
         .eq('id', id)
         .maybeSingle();
-      if (!error) setPlan(data);
+      if (!error && data) {
+        setPlan(data);
+        // Initialize intake form
+        const intake: any = data.intake_json || {};
+        setIntakeForm({
+          price: intake.price || "",
+          cuisines: intake.cuisines || [],
+          vibe: intake.vibe || [],
+          must_try: intake.must_try || [],
+          constraints: intake.constraints || [],
+          additional_notes: intake.additional_notes || "",
+        });
+      }
       setLoading(false);
     };
     if (id) fetchPlan();
@@ -105,6 +130,65 @@ export default function PlanDetail() {
     navigate(`/add?${params.toString()}`);
   };
 
+  const handleRefineRecommendations = async () => {
+    setRefining(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke('restaurant-planner', {
+        body: {
+          action: 'refine',
+          data: {
+            city: plan.city,
+            intake: intakeForm,
+            existing_recommendations: recs,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      const { error: updateError } = await supabase
+        .from('plans')
+        .update({ 
+          recommendations_json: data.recommendations as any,
+          intake_json: intakeForm as any
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      setPlan({ 
+        ...plan, 
+        recommendations_json: data.recommendations,
+        intake_json: intakeForm 
+      });
+      toast.success("New recommendations generated");
+      setEditingIntake(false);
+    } catch (error: any) {
+      console.error('Error refining recommendations:', error);
+      toast.error(error.message || "Failed to generate new recommendations");
+    } finally {
+      setRefining(false);
+    }
+  };
+
+  const addTag = (field: 'cuisines' | 'vibe' | 'must_try' | 'constraints', value: string) => {
+    if (!value.trim()) return;
+    setIntakeForm(prev => ({
+      ...prev,
+      [field]: [...prev[field], value.trim()]
+    }));
+  };
+
+  const removeTag = (field: 'cuisines' | 'vibe' | 'must_try' | 'constraints', index: number) => {
+    setIntakeForm(prev => ({
+      ...prev,
+      [field]: prev[field].filter((_, i) => i !== index)
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
@@ -129,30 +213,57 @@ export default function PlanDetail() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-1">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Intake Summary</CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => setEditingIntake(true)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <div className="text-sm text-muted-foreground">Price</div>
-                  <div className="font-medium">{plan?.intake_json?.price ?? '-'}</div>
+                  <div className="font-medium">{plan?.intake_json?.price || '-'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Cuisines</div>
                   <div className="flex flex-wrap gap-2">
-                    {(plan?.intake_json?.cuisines ?? []).map((c: string) => (
-                      <Badge key={c} variant="secondary">{c}</Badge>
+                    {(plan?.intake_json?.cuisines ?? []).map((c: string, i: number) => (
+                      <Badge key={i} variant="secondary">{c}</Badge>
                     ))}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Vibe</div>
                   <div className="flex flex-wrap gap-2">
-                    {(plan?.intake_json?.vibe ?? []).map((v: string) => (
-                      <Badge key={v} variant="secondary">{v}</Badge>
+                    {(plan?.intake_json?.vibe ?? []).map((v: string, i: number) => (
+                      <Badge key={i} variant="secondary">{v}</Badge>
                     ))}
                   </div>
                 </div>
+                {(plan?.intake_json?.must_try?.length > 0) && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Must Try</div>
+                    <div className="flex flex-wrap gap-2">
+                      {plan.intake_json.must_try.map((m: string, i: number) => (
+                        <Badge key={i} variant="outline">{m}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(plan?.intake_json?.constraints?.length > 0) && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Constraints</div>
+                    <div className="flex flex-wrap gap-2">
+                      {plan.intake_json.constraints.map((c: string, i: number) => (
+                        <Badge key={i} variant="outline">{c}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -267,6 +378,134 @@ export default function PlanDetail() {
                 Cancel
               </Button>
               <Button onClick={handleSaveSlot}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingIntake} onOpenChange={setEditingIntake}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Search Parameters</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Price Level</Label>
+              <Select value={intakeForm.price} onValueChange={(v) => setIntakeForm({...intakeForm, price: v})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select price level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="€">€ - Budget</SelectItem>
+                  <SelectItem value="€€">€€ - Moderate</SelectItem>
+                  <SelectItem value="€€€">€€€ - Upscale</SelectItem>
+                  <SelectItem value="€€€€">€€€€ - Fine Dining</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Cuisines</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {intakeForm.cuisines.map((c, i) => (
+                  <Badge key={i} variant="secondary">
+                    {c}
+                    <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeTag('cuisines', i)} />
+                  </Badge>
+                ))}
+              </div>
+              <Input 
+                placeholder="Add cuisine (press Enter)" 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    addTag('cuisines', e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <Label>Vibe</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {intakeForm.vibe.map((v, i) => (
+                  <Badge key={i} variant="secondary">
+                    {v}
+                    <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeTag('vibe', i)} />
+                  </Badge>
+                ))}
+              </div>
+              <Input 
+                placeholder="Add vibe (press Enter)" 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    addTag('vibe', e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <Label>Must Try Dishes</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {intakeForm.must_try.map((m, i) => (
+                  <Badge key={i} variant="outline">
+                    {m}
+                    <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeTag('must_try', i)} />
+                  </Badge>
+                ))}
+              </div>
+              <Input 
+                placeholder="Add dish (press Enter)" 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    addTag('must_try', e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <Label>Dietary Constraints</Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {intakeForm.constraints.map((c, i) => (
+                  <Badge key={i} variant="outline">
+                    {c}
+                    <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeTag('constraints', i)} />
+                  </Badge>
+                ))}
+              </div>
+              <Input 
+                placeholder="Add constraint (press Enter)" 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    addTag('constraints', e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <Label>Additional Notes</Label>
+              <Textarea 
+                placeholder="Any other preferences or requirements..."
+                value={intakeForm.additional_notes}
+                onChange={(e) => setIntakeForm({...intakeForm, additional_notes: e.target.value})}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setEditingIntake(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleRefineRecommendations} disabled={refining}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                {refining ? "Generating..." : "Generate New Recommendations"}
+              </Button>
             </div>
           </div>
         </DialogContent>
