@@ -5,6 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Edit, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Recommendation {
   bucket: string;
@@ -32,6 +47,8 @@ export default function PlanDetail() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<any>(null);
+  const [editingSlot, setEditingSlot] = useState<number | null>(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -49,6 +66,44 @@ export default function PlanDetail() {
 
   const recs = (plan?.recommendations_json || []) as Recommendation[];
   const schedule = (plan?.schedule_json || []) as ScheduleItem[];
+
+  const handleEditSlot = (idx: number) => {
+    setEditingSlot(idx);
+    setSelectedRestaurant(schedule[idx].restaurant);
+  };
+
+  const handleSaveSlot = async () => {
+    if (editingSlot === null) return;
+    
+    const updatedSchedule = [...schedule];
+    const selectedRec = recs.find(r => r.name === selectedRestaurant);
+    updatedSchedule[editingSlot] = {
+      ...updatedSchedule[editingSlot],
+      restaurant: selectedRestaurant,
+      reservation_required: selectedRec?.reservation_likely || false,
+    };
+
+    const { error } = await supabase
+      .from('plans')
+      .update({ schedule_json: updatedSchedule as any })
+      .eq('id', id);
+
+    if (error) {
+      toast.error("Failed to update schedule");
+    } else {
+      setPlan({ ...plan, schedule_json: updatedSchedule });
+      toast.success("Schedule updated");
+      setEditingSlot(null);
+    }
+  };
+
+  const handleAddToDiningList = (restaurantName: string, googlePlaceId?: string) => {
+    const params = new URLSearchParams({
+      name: restaurantName,
+      ...(googlePlaceId && { google_place_id: googlePlaceId }),
+    });
+    navigate(`/add?${params.toString()}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -149,18 +204,37 @@ export default function PlanDetail() {
                     <p className="text-muted-foreground">No schedule yet.</p>
                   ) : (
                     <div className="space-y-3">
-                      {schedule.map((s, idx) => (
-                        <div key={idx} className="flex items-start justify-between p-3 border border-border rounded-lg">
-                          <div>
-                            <div className="font-medium">{s.day} • {s.meal}</div>
-                            <div className="text-sm">{s.restaurant}</div>
-                            {s.notes && <div className="text-xs text-muted-foreground mt-1">{s.notes}</div>}
+                      {schedule.map((s, idx) => {
+                        const rec = recs.find(r => r.name === s.restaurant);
+                        return (
+                          <div key={idx} className="flex items-start justify-between p-3 border border-border rounded-lg gap-3">
+                            <div className="flex-1">
+                              <div className="font-medium">{s.day} • {s.meal}</div>
+                              <div className="text-sm">{s.restaurant}</div>
+                              {s.notes && <div className="text-xs text-muted-foreground mt-1">{s.notes}</div>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {s.reservation_required && (
+                                <Badge variant="secondary">Reservation</Badge>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditSlot(idx)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleAddToDiningList(s.restaurant, rec?.google_place_id)}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          {s.reservation_required && (
-                            <Badge className="self-start" variant="secondary">Reservation</Badge>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
@@ -169,6 +243,34 @@ export default function PlanDetail() {
           </div>
         )}
       </main>
+
+      <Dialog open={editingSlot !== null} onOpenChange={() => setEditingSlot(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Restaurant</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a restaurant" />
+              </SelectTrigger>
+              <SelectContent>
+                {recs.map((r, idx) => (
+                  <SelectItem key={idx} value={r.name}>
+                    {r.name} - {r.cuisine} ({r.price})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingSlot(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveSlot}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
