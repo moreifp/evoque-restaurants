@@ -107,6 +107,93 @@ export type Database = {
           },
         ]
       }
+      plan_slots: {
+        Row: {
+          created_at: string
+          date: string
+          google_place_id: string | null
+          has_reservation: boolean
+          id: string
+          meal: string
+          notes: string | null
+          plan_id: string
+          reservation_code: string | null
+          reservation_required: boolean
+          restaurant_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          google_place_id?: string | null
+          has_reservation?: boolean
+          id?: string
+          meal: string
+          notes?: string | null
+          plan_id: string
+          reservation_code?: string | null
+          reservation_required?: boolean
+          restaurant_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          google_place_id?: string | null
+          has_reservation?: boolean
+          id?: string
+          meal?: string
+          notes?: string | null
+          plan_id?: string
+          reservation_code?: string | null
+          reservation_required?: boolean
+          restaurant_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          city: string
+          created_at: string
+          end_date: string | null
+          id: string
+          intake_json: Json | null
+          recommendations_json: Json | null
+          schedule_json: Json | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          intake_json?: Json | null
+          recommendations_json?: Json | null
+          schedule_json?: Json | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          intake_json?: Json | null
+          recommendations_json?: Json | null
+          schedule_json?: Json | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -273,6 +360,39 @@ export type Database = {
           visit_date?: string
           voice_note_url?: string | null
           voice_transcription?: string | null
+        }
+        Relationships: []
+      }
+      restaurant_notes: {
+        Row: {
+          created_at: string
+          google_place_id: string | null
+          id: string
+          rating_user: number | null
+          restaurant_name: string
+          summary_240: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          google_place_id?: string | null
+          id?: string
+          rating_user?: number | null
+          restaurant_name: string
+          summary_240?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          google_place_id?: string | null
+          id?: string
+          rating_user?: number | null
+          restaurant_name?: string
+          summary_240?: string | null
+          tags?: string[] | null
+          updated_at?: string
         }
         Relationships: []
       }

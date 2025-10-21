@@ -18,6 +18,7 @@ import Following from "./pages/Following";
 import UserPublicAlbums from "./pages/UserPublicAlbums";
 import WineCellar from "./pages/WineCellar";
 import Profile from "./pages/Profile";
+import RestaurantPlanner from "./pages/RestaurantPlanner";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,7 @@ const App = () => {
                 <Route path="/following" element={<Following />} />
                 <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
                 <Route path="/wine-cellar" element={<WineCellar />} />
+                <Route path="/planner" element={<RestaurantPlanner />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />
               </>

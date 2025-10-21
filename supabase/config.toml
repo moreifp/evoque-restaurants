@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.generate-restaurant-description]
 verify_jwt = true
+
+[functions.restaurant-planner]
+verify_jwt = true
