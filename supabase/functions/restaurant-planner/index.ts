@@ -63,21 +63,90 @@ serve(async (req) => {
 
     console.log('Calling AI with action:', action);
 
+    // Build request body with structured output for start_planning
+    const requestBody: any = {
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    };
+
+    // For start_planning, use tool calling to enforce JSON structure
+    if (action === 'start_planning') {
+      requestBody.tools = [
+        {
+          type: "function",
+          function: {
+            name: "create_restaurant_plan",
+            description: "Create a restaurant dining plan with recommendations and schedule",
+            parameters: {
+              type: "object",
+              properties: {
+                intake_summary: {
+                  type: "object",
+                  properties: {
+                    cuisines: { type: "array", items: { type: "string" } },
+                    vibe: { type: "array", items: { type: "string" } },
+                    price: { type: "string" },
+                    must_try: { type: "array", items: { type: "string" } },
+                    constraints: { type: "array", items: { type: "string" } },
+                    meals_to_plan: { type: "number" }
+                  }
+                },
+                recommendations: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      bucket: { type: "string" },
+                      name: { type: "string" },
+                      cuisine: { type: "string" },
+                      vibe: { type: "array", items: { type: "string" } },
+                      price: { type: "string" },
+                      highlight: { type: "string" },
+                      why_fit: { type: "string" },
+                      reservation_likely: { type: "boolean" },
+                      google_place_id: { type: "string" },
+                      area_hint: { type: "string" }
+                    }
+                  }
+                },
+                proposed_schedule: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      day: { type: "string" },
+                      meal: { type: "string" },
+                      restaurant: { type: "string" },
+                      reservation_required: { type: "boolean" },
+                      notes: { type: "string" }
+                    }
+                  }
+                },
+                next_actions: {
+                  type: "array",
+                  items: { type: "string" }
+                }
+              },
+              required: ["intake_summary", "recommendations", "proposed_schedule", "next_actions"]
+            }
+          }
+        }
+      ];
+      requestBody.tool_choice = { type: "function", function: { name: "create_restaurant_plan" } };
+    }
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -102,23 +171,36 @@ serve(async (req) => {
     }
 
     const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No response from AI');
-    }
-
-    // Try to extract JSON from response
+    
+    // Handle tool calling response for start_planning
     let result;
-    try {
-      // Remove markdown code blocks if present
-      const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
-                       content.match(/```\n?([\s\S]*?)\n?```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : content;
-      result = JSON.parse(jsonString);
-    } catch (e) {
-      console.error('Failed to parse JSON response:', content);
-      result = { raw_response: content };
+    if (action === 'start_planning' && aiData.choices?.[0]?.message?.tool_calls?.[0]) {
+      const toolCall = aiData.choices[0].message.tool_calls[0];
+      try {
+        result = JSON.parse(toolCall.function.arguments);
+      } catch (e) {
+        console.error('Failed to parse tool call arguments:', toolCall.function.arguments);
+        throw new Error('Failed to parse AI response');
+      }
+    } else {
+      // Handle regular text response for other actions
+      const content = aiData.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('No response from AI');
+      }
+
+      // Try to extract JSON from response
+      try {
+        // Remove markdown code blocks if present
+        const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || 
+                         content.match(/```\n?([\s\S]*?)\n?```/);
+        const jsonString = jsonMatch ? jsonMatch[1] : content;
+        result = JSON.parse(jsonString);
+      } catch (e) {
+        console.error('Failed to parse JSON response:', content);
+        result = { raw_response: content };
+      }
     }
 
     return new Response(
@@ -138,54 +220,43 @@ serve(async (req) => {
 function buildMainPrompt(data: any, userTopRated: any[]) {
   const { city, startDate, endDate, language = 'en-US' } = data;
   
-  return `You are Évoque's trip dining concierge.
+  return `You are Évoque's trip dining concierge. Create a restaurant dining plan for ${city}.
 
 Respond in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : 'English (US)'} language only.
 
-Goal: ask a short, elegant set of questions to plan restaurants for a trip to ${city} and then propose options.
+IMPORTANT: You must return structured data using the create_restaurant_plan function. Do not ask questions or return text - provide a complete plan immediately.
 
-Inputs available:
-- city: ${city}
-- trip dates: ${startDate || 'not provided'} to ${endDate || 'not provided'}
-- user's top-rated restaurants: ${JSON.stringify(userTopRated)}
+Context:
+- City: ${city}
+- Trip dates: ${startDate || 'not provided'} to ${endDate || 'not provided'}
+- User's taste profile from top-rated restaurants: ${JSON.stringify(userTopRated)}
 
-Step 1 — Brief intake (no more than 6 questions total):
-Ask concise questions about:
-1) preferred cuisines or "surprise me"
-2) vibe/occasion (romantic, trendy, classic, view, hidden gem)
-3) price comfort (€, €€, €€€, €€€€)
-4) lunch vs dinner ratio and any "must-try" dishes
-5) constraints (kids-friendly, gluten-free, vegetarian, near specific neighborhood)
-6) how many meals to plan
+Create a comprehensive dining plan with:
 
-Keep it fast: multiple-choice style where possible.
+1. Intake summary - infer preferences from the user's top-rated restaurants:
+   - Popular cuisines from their history
+   - Common vibes (romantic, trendy, classic, view, hidden gem)
+   - Typical price range (€, €€, €€€, €€€€)
+   - Must-try dishes they enjoyed before
+   - Any constraints to consider
+   - Plan for 6-8 meals
 
-Step 2 — Draft plan:
-- Use your knowledge of ${city} restaurants to propose a shortlist (8–12) matching common preferences.
-- Cross-reference user_top_rated to infer "taste profile" and use that as a prior when ranking.
-- For each suggestion, provide: name, cuisine, vibe keywords, price level (€,€€,€€€,€€€€), one-line highlight (≤140 chars), why it fits the user's profile, and "Reservation likely needed: Yes/No".
-- Group into 3 buckets: "Sure bets", "On-trend now", "Wildcards".
+2. Restaurant recommendations (8-12 total):
+   - Use your knowledge of ${city} restaurants
+   - Match the user's inferred taste profile
+   - Provide: name, cuisine, vibe keywords, price level, one-line highlight (≤140 chars), why it fits their profile, reservation likelihood
+   - Group into 3 buckets: "Sure bets" (safe choices), "On-trend now" (popular spots), "Wildcards" (unique finds)
+   - Include google_place_id when possible and area_hint for location
 
-Step 3 — Scheduling canvas:
-- Propose a 5–7 day matrix with lunch/dinner slots.
-- Suggest the best slot for each pick (lunch/dinner) and spacing.
-- Mark each slot with: { restaurant, meal: Lunch|Dinner, date, reservation_required: true/false }.
+3. Proposed schedule:
+   - Create a balanced 5-7 day meal plan with lunch/dinner slots
+   - Use actual dates if provided, otherwise use day labels (D1, D2, etc.)
+   - Space out heavy dinners appropriately
+   - Mark which meals need reservations
+   - Add helpful notes for timing or logistics
 
-Output strictly as JSON following this schema:
-{
-  "intake_summary": { "cuisines": [], "vibe": [], "price": "€|€€|€€€|€€€€", "must_try": [], "constraints": [], "meals_to_plan": 0 },
-  "recommendations": [
-    { "bucket": "Sure bets|On-trend now|Wildcards",
-      "name": "", "cuisine": "", "vibe": [], "price": "€",
-      "highlight": "", "why_fit": "", "reservation_likely": true,
-      "google_place_id": "", "area_hint": "" }
-  ],
-  "proposed_schedule": [
-    { "day": "${startDate || 'D1'}", "meal": "Lunch|Dinner",
-      "restaurant": "", "reservation_required": true, "notes": "" }
-  ],
-  "next_actions": ["Confirm slots", "Request reservations", "Swap options"]
-}`;
+4. Next actions:
+   - Suggest 2-3 helpful next steps (e.g., "Confirm slots", "Request reservations", "Adjust schedule")`;
 }
 
 function buildRefinementPrompt(data: any, userTopRated: any[]) {
