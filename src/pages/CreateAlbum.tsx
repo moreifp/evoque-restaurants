@@ -28,66 +28,17 @@ export default function CreateAlbum() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Generate AI cover image
-      toast({
-        title: "Generating album cover...",
-        description: "Creating a beautiful AI image for your album",
-      });
-
-      const { data: imageData, error: imageError } = await supabase.functions.invoke(
-        'generate-album-cover',
-        {
-          body: {
-            title: formData.title,
-            description: formData.description,
-          },
-        }
-      );
-
-      let coverImageUrl = null;
-
-      if (imageError) {
-        console.error('Error generating cover:', imageError);
-        toast({
-          title: "Cover generation failed",
-          description: "Creating album without cover image. You can add one later.",
-          variant: "destructive",
-        });
-      } else if (imageData?.imageUrl) {
-        // Upload the base64 image to storage
-        const base64Data = imageData.imageUrl.split(',')[1];
-        const blob = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        
-        const fileName = `${user.id}/${crypto.randomUUID()}.png`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('dining_entries')
-          .upload(fileName, blob, {
-            contentType: 'image/png',
-            upsert: false,
-          });
-
-        if (!uploadError && uploadData) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('dining_entries')
-            .getPublicUrl(fileName);
-          coverImageUrl = publicUrl;
-        }
-      }
-
-      // Create album with cover image
+      // Create album without cover image (will use photo collage)
       const { error } = await supabase.from("albums").insert({
         ...formData,
         user_id: user.id,
-        cover_image_url: coverImageUrl,
       });
 
       if (error) throw error;
 
       toast({
         title: "Album created!",
-        description: coverImageUrl 
-          ? "Your album has been created with an AI-generated cover"
-          : "Your album has been created successfully",
+        description: "Your album has been created successfully",
       });
 
       navigate("/albums");

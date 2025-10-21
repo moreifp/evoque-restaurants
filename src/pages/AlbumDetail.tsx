@@ -3,12 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, MapPin, Calendar, Star, Upload, Trash2, Share2, Lock, Globe } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Star, Trash2, Share2, Lock, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,6 @@ export default function AlbumDetail() {
   const [album, setAlbum] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
 
@@ -185,52 +185,6 @@ export default function AlbumDetail() {
     fetchAlbumData();
   };
 
-  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}/${id}/cover.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("restaurant-photos")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("restaurant-photos")
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from("albums")
-        .update({ cover_image_url: publicUrl })
-        .eq("id", id);
-
-      if (updateError) throw updateError;
-
-      setAlbum({ ...album, cover_image_url: publicUrl });
-      toast({
-        title: "Cover photo updated!",
-        description: "Your album cover has been updated",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -362,54 +316,10 @@ export default function AlbumDetail() {
           )}
         </div>
 
-        {/* Cover Image */}
+        {/* Cover Collage */}
         <Card className="mb-8">
           <CardContent className="p-0">
-            {album.cover_image_url ? (
-              <div className="relative aspect-video w-full">
-                <img
-                  src={album.cover_image_url}
-                  alt="Album cover"
-                  className="w-full h-full object-cover rounded-t-lg"
-                />
-                <div className="absolute bottom-4 right-4">
-                  <Label htmlFor="cover-upload" className="cursor-pointer">
-                    <Button type="button" size="sm" asChild>
-                      <span>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Change Cover
-                      </span>
-                    </Button>
-                  </Label>
-                  <Input
-                    id="cover-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleCoverImageUpload}
-                    disabled={uploading}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="aspect-video bg-gradient-olive-teal flex flex-col items-center justify-center p-8">
-                <Label htmlFor="cover-upload" className="cursor-pointer text-center">
-                  <div className="flex flex-col items-center space-y-2">
-                    <Upload className="h-12 w-12 text-white/80" />
-                    <p className="text-white font-medium">Upload Cover Photo</p>
-                    <p className="text-white/70 text-sm">Click to select an image</p>
-                  </div>
-                </Label>
-                <Input
-                  id="cover-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleCoverImageUpload}
-                  disabled={uploading}
-                />
-              </div>
-            )}
+            <AlbumCoverCollage albumId={id!} />
           </CardContent>
         </Card>
 

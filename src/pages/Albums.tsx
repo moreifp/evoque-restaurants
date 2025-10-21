@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, BookImage } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
 
 export default function Albums() {
   const navigate = useNavigate();
@@ -52,19 +53,9 @@ export default function Albums() {
                 className="group hover:shadow-large transition-all cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/albums/${album.id}`)}
               >
-                {album.cover_image_url ? (
-                  <div className="aspect-video bg-muted">
-                    <img
-                      src={album.cover_image_url}
-                      alt={album.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  </div>
-                ) : (
-                  <div className="aspect-video bg-gradient-olive-teal flex items-center justify-center">
-                    <BookImage className="h-12 w-12 text-white/80" />
-                  </div>
-                )}
+                <div className="group-hover:scale-105 transition-transform">
+                  <AlbumCoverCollage albumId={album.id} />
+                </div>
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-lg group-hover:text-accent transition-colors mb-2">
                     {album.title}
