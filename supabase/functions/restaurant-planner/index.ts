@@ -74,17 +74,38 @@ serve(async (req) => {
       ],
     };
 
-    // For start_planning, use tool calling to enforce JSON structure
-    if (action === 'start_planning') {
+    // Use tool calling to enforce JSON structure for start_planning and refine
+    if (action === 'start_planning' || action === 'refine') {
       requestBody.tools = [
         {
           type: "function",
           function: {
-            name: "create_restaurant_plan",
-            description: "Create a restaurant dining plan with recommendations and schedule",
+            name: action === 'start_planning' ? "create_restaurant_plan" : "refine_recommendations",
+            description: action === 'start_planning' 
+              ? "Create a restaurant dining plan with recommendations and schedule"
+              : "Refine restaurant recommendations based on updated preferences",
             parameters: {
               type: "object",
-              properties: {
+              properties: action === 'refine' ? {
+                recommendations: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      bucket: { type: "string" },
+                      name: { type: "string" },
+                      cuisine: { type: "string" },
+                      vibe: { type: "array", items: { type: "string" } },
+                      price: { type: "string" },
+                      highlight: { type: "string" },
+                      why_fit: { type: "string" },
+                      reservation_likely: { type: "boolean" },
+                      google_place_id: { type: "string" },
+                      area_hint: { type: "string" }
+                    }
+                  }
+                }
+              } : {
                 intake_summary: {
                   type: "object",
                   properties: {
@@ -132,12 +153,15 @@ serve(async (req) => {
                   items: { type: "string" }
                 }
               },
-              required: ["intake_summary", "recommendations", "proposed_schedule", "next_actions"]
+              required: action === 'refine' ? ["recommendations"] : ["intake_summary", "recommendations", "proposed_schedule", "next_actions"]
             }
           }
         }
       ];
-      requestBody.tool_choice = { type: "function", function: { name: "create_restaurant_plan" } };
+      requestBody.tool_choice = { 
+        type: "function", 
+        function: { name: action === 'start_planning' ? "create_restaurant_plan" : "refine_recommendations" } 
+      };
     }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -172,9 +196,9 @@ serve(async (req) => {
 
     const aiData = await response.json();
     
-    // Handle tool calling response for start_planning
+    // Handle tool calling response for start_planning and refine
     let result;
-    if (action === 'start_planning' && aiData.choices?.[0]?.message?.tool_calls?.[0]) {
+    if ((action === 'start_planning' || action === 'refine') && aiData.choices?.[0]?.message?.tool_calls?.[0]) {
       const toolCall = aiData.choices[0].message.tool_calls[0];
       try {
         result = JSON.parse(toolCall.function.arguments);
@@ -260,18 +284,33 @@ Create a comprehensive dining plan with:
 }
 
 function buildRefinementPrompt(data: any, userTopRated: any[]) {
-  const { city, intakeJson, language = 'en-US' } = data;
+  const { city, intake, existing_recommendations = [], language = 'en-US' } = data;
   
-  return `Refine the shortlist for ${city} using this intake: ${JSON.stringify(intakeJson)}
-and the user's taste profile: ${JSON.stringify(userTopRated)}.
+  return `You are Évoque's trip dining concierge. Refine restaurant recommendations for ${city}.
 
-Respond in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : 'English (US)'} language.
+Respond in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : 'English (US)'} language only.
 
-Return only JSON with the same schema, but limit recommendations to 8 and ensure at least:
-- 3 "Sure bets"
-- 3 "On-trend now"
-- 2 "Wildcards"
-Prioritize walkable clusters per day when possible. Keep highlights ≤140 chars.`;
+IMPORTANT: You must return structured data using the refine_recommendations function.
+
+Context:
+- City: ${city}
+- Updated intake preferences: ${JSON.stringify(intake)}
+- User's taste profile from top-rated restaurants: ${JSON.stringify(userTopRated)}
+- Current recommendations (for reference): ${JSON.stringify(existing_recommendations)}
+
+Generate NEW restaurant recommendations (8 total) based on the updated intake:
+- Use your knowledge of ${city} restaurants
+- Match the updated preferences: cuisines ${JSON.stringify(intake.cuisines)}, vibe ${JSON.stringify(intake.vibe)}, price ${intake.price}
+- Consider must-try dishes: ${JSON.stringify(intake.must_try)}
+- Respect constraints: ${JSON.stringify(intake.constraints)}
+- Additional notes: ${intake.additional_notes || 'none'}
+- Provide: name, cuisine, vibe keywords, price level, one-line highlight (≤140 chars), why it fits their profile, reservation likelihood
+- Group into 3 buckets:
+  * 3 "Sure bets" (classic, reliable choices)
+  * 3 "On-trend now" (currently popular spots)
+  * 2 "Wildcards" (unique or surprising finds)
+- Include google_place_id when possible and area_hint for location
+- Keep highlights concise (≤140 characters)`;
 }
 
 function buildSchedulingPrompt(data: any) {

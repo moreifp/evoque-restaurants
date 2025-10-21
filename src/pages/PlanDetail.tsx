@@ -156,10 +156,17 @@ export default function PlanDetail() {
 
       if (error) throw error;
 
+      // The edge function returns { result: { recommendations: [...] } }
+      const recommendations = data?.result?.recommendations || data?.recommendations;
+      
+      if (!recommendations || recommendations.length === 0) {
+        throw new Error("No recommendations returned");
+      }
+
       const { error: updateError } = await supabase
         .from('plans')
         .update({ 
-          recommendations_json: data.recommendations as any,
+          recommendations_json: recommendations as any,
           intake_json: intakeForm as any
         })
         .eq('id', id);
@@ -168,7 +175,7 @@ export default function PlanDetail() {
 
       setPlan({ 
         ...plan, 
-        recommendations_json: data.recommendations,
+        recommendations_json: recommendations,
         intake_json: intakeForm 
       });
       toast.success("New recommendations generated");
