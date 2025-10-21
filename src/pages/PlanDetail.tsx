@@ -377,22 +377,21 @@ export default function PlanDetail() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 flex-wrap justify-end">
-                              {s.reservation_required && !s.has_reservation && (
-                                <Badge 
-                                  variant="outline" 
-                                  className="cursor-pointer"
-                                  onClick={() => handleOpenReservation(idx)}
-                                >
-                                  Reservation recommended
-                                </Badge>
-                              )}
-                              {s.has_reservation && (
+                              {s.has_reservation ? (
                                 <Badge 
                                   variant="default"
                                   className="cursor-pointer"
                                   onClick={() => handleOpenReservation(idx)}
                                 >
                                   Reserved ({s.reservation_people})
+                                </Badge>
+                              ) : (
+                                <Badge 
+                                  variant={s.reservation_required ? "outline" : "secondary"}
+                                  className="cursor-pointer"
+                                  onClick={() => handleOpenReservation(idx)}
+                                >
+                                  {s.reservation_required ? "Reservation recommended" : "Add reservation"}
                                 </Badge>
                               )}
                               <Button
