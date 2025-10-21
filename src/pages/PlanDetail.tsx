@@ -43,6 +43,8 @@ interface ScheduleItem {
   restaurant: string;
   reservation_required?: boolean;
   notes?: string;
+  has_reservation?: boolean;
+  reservation_people?: number;
 }
 
 export default function PlanDetail() {
@@ -54,6 +56,11 @@ export default function PlanDetail() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("");
   const [editingIntake, setEditingIntake] = useState(false);
   const [refining, setRefining] = useState(false);
+  const [editingReservation, setEditingReservation] = useState<number | null>(null);
+  const [reservationForm, setReservationForm] = useState({
+    has_reservation: false,
+    reservation_people: 2,
+  });
   const [intakeForm, setIntakeForm] = useState({
     price: "",
     cuisines: [] as string[],
@@ -187,6 +194,39 @@ export default function PlanDetail() {
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index)
     }));
+  };
+
+  const handleOpenReservation = (idx: number) => {
+    const slot = schedule[idx];
+    setReservationForm({
+      has_reservation: slot.has_reservation || false,
+      reservation_people: slot.reservation_people || 2,
+    });
+    setEditingReservation(idx);
+  };
+
+  const handleSaveReservation = async () => {
+    if (editingReservation === null) return;
+    
+    const updatedSchedule = [...schedule];
+    updatedSchedule[editingReservation] = {
+      ...updatedSchedule[editingReservation],
+      has_reservation: reservationForm.has_reservation,
+      reservation_people: reservationForm.has_reservation ? reservationForm.reservation_people : undefined,
+    };
+
+    const { error } = await supabase
+      .from('plans')
+      .update({ schedule_json: updatedSchedule as any })
+      .eq('id', id);
+
+    if (error) {
+      toast.error("Failed to update reservation");
+    } else {
+      setPlan({ ...plan, schedule_json: updatedSchedule });
+      toast.success("Reservation updated");
+      setEditingReservation(null);
+    }
   };
 
   return (
@@ -323,10 +363,30 @@ export default function PlanDetail() {
                               <div className="font-medium">{s.day} • {s.meal}</div>
                               <div className="text-sm">{s.restaurant}</div>
                               {s.notes && <div className="text-xs text-muted-foreground mt-1">{s.notes}</div>}
+                              {s.has_reservation && (
+                                <div className="text-xs text-primary mt-1">
+                                  ✓ Reservation made for {s.reservation_people} {s.reservation_people === 1 ? 'person' : 'people'}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              {s.reservation_required && (
-                                <Badge variant="secondary">Reservation</Badge>
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              {s.reservation_required && !s.has_reservation && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="cursor-pointer"
+                                  onClick={() => handleOpenReservation(idx)}
+                                >
+                                  Reservation recommended
+                                </Badge>
+                              )}
+                              {s.has_reservation && (
+                                <Badge 
+                                  variant="default"
+                                  className="cursor-pointer"
+                                  onClick={() => handleOpenReservation(idx)}
+                                >
+                                  Reserved ({s.reservation_people})
+                                </Badge>
                               )}
                               <Button
                                 size="sm"
@@ -506,6 +566,50 @@ export default function PlanDetail() {
                 <Sparkles className="h-4 w-4 mr-2" />
                 {refining ? "Generating..." : "Generate New Recommendations"}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editingReservation !== null} onOpenChange={() => setEditingReservation(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reservation Status</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="has_reservation"
+                checked={reservationForm.has_reservation}
+                onChange={(e) => setReservationForm({...reservationForm, has_reservation: e.target.checked})}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="has_reservation" className="cursor-pointer">
+                I have made a reservation
+              </Label>
+            </div>
+            
+            {reservationForm.has_reservation && (
+              <div>
+                <Label htmlFor="people">Number of People</Label>
+                <Input
+                  id="people"
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={reservationForm.reservation_people}
+                  onChange={(e) => setReservationForm({...reservationForm, reservation_people: parseInt(e.target.value) || 2})}
+                  className="mt-2"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setEditingReservation(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveReservation}>Save</Button>
             </div>
           </div>
         </DialogContent>
