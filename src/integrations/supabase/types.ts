@@ -223,6 +223,7 @@ export type Database = {
         Row: {
           companions: string | null
           created_at: string | null
+          description: string | null
           id: string
           is_public: boolean | null
           location_address: string | null
@@ -240,6 +241,7 @@ export type Database = {
         Insert: {
           companions?: string | null
           created_at?: string | null
+          description?: string | null
           id?: string
           is_public?: boolean | null
           location_address?: string | null
@@ -257,6 +259,7 @@ export type Database = {
         Update: {
           companions?: string | null
           created_at?: string | null
+          description?: string | null
           id?: string
           is_public?: boolean | null
           location_address?: string | null

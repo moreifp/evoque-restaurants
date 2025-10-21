@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, ArrowLeft, Save, Check } from "lucide-react";
+import { Star, ArrowLeft, Save, Check, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ export default function AddRestaurant() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -64,6 +65,7 @@ export default function AddRestaurant() {
     rating: 0,
     companions: "",
     notes: "",
+    description: "",
   });
 
   // Load autosaved data on mount
@@ -292,6 +294,51 @@ export default function AddRestaurant() {
     setFormData((prev) => ({ ...prev, rating }));
   };
 
+  const generateDescription = async () => {
+    if (!formData.restaurant_name || !formData.location_address) {
+      toast({
+        title: "Missing information",
+        description: "Please enter restaurant name and location first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingDescription(true);
+    try {
+      const language = navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en';
+      
+      const { data, error } = await supabase.functions.invoke('generate-restaurant-description', {
+        body: {
+          restaurantName: formData.restaurant_name,
+          location: formData.location_address,
+          language,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.description) {
+        setFormData(prev => ({ ...prev, description: data.description }));
+        toast({
+          title: language === 'pt' ? "Descrição gerada!" : "Description generated!",
+          description: language === 'pt' 
+            ? "A descrição foi criada com sucesso" 
+            : "The description was successfully created",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating description:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate description. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingDescription(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
@@ -431,6 +478,38 @@ export default function AddRestaurant() {
                     }
                     className="text-lg h-12"
                   />
+                </div>
+
+                {/* AI-Generated Description */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="description" className="text-lg">Restaurant Description</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={generateDescription}
+                      disabled={generatingDescription || !formData.restaurant_name || !formData.location_address}
+                      className="h-8"
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {generatingDescription ? "Generating..." : "Generate with AI"}
+                    </Button>
+                  </div>
+                  <Textarea
+                    id="description"
+                    placeholder="A short, elegant description of the restaurant (max 240 characters)"
+                    rows={3}
+                    maxLength={240}
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.description.length}/240 characters
+                  </p>
                 </div>
 
                 {/* Notes */}
