@@ -33,9 +33,16 @@ export default function DiningList() {
   }, [entries, searchQuery, selectedTags, selectedRating]);
 
   const fetchEntries = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase
       .from("restaurant_entries")
       .select("*")
+      .eq("user_id", user.id)
       .order("visit_date", { ascending: false });
     
     if (data) {
