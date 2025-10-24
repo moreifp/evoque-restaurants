@@ -714,13 +714,29 @@ export default function RestaurantDetail() {
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {placePhotos.map((photo) => (
-                            <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                              <img
-                                src={photo.photo_url}
-                                alt="Place"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
+                            <Dialog key={photo.id}>
+                              <DialogTrigger asChild>
+                                <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Place"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>Place Photo</DialogTitle>
+                                </DialogHeader>
+                                <div className="max-h-[80vh] overflow-auto">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Place full size"
+                                    className="w-full rounded-lg"
+                                  />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           ))}
                         </div>
                       </div>
@@ -735,13 +751,29 @@ export default function RestaurantDetail() {
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {menuPhotos.map((photo) => (
-                            <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                              <img
-                                src={photo.photo_url}
-                                alt="Menu"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
+                            <Dialog key={photo.id}>
+                              <DialogTrigger asChild>
+                                <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Menu"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>Menu</DialogTitle>
+                                </DialogHeader>
+                                <div className="max-h-[80vh] overflow-auto">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Menu full size"
+                                    className="w-full rounded-lg"
+                                  />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           ))}
                         </div>
                       </div>
@@ -757,13 +789,42 @@ export default function RestaurantDetail() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {winePhotos.map((photo) => (
                             <div key={photo.id} className="space-y-3">
-                              <div className="aspect-[3/4] rounded-lg overflow-hidden">
-                                <img
-                                  src={photo.photo_url}
-                                  alt="Wine"
-                                  className="w-full h-full object-cover hover:scale-105 transition-transform"
-                                />
-                              </div>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <div className="aspect-[3/4] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                    <img
+                                      src={photo.photo_url}
+                                      alt="Wine"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Wine</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="max-h-[80vh] overflow-auto">
+                                    <img
+                                      src={photo.photo_url}
+                                      alt="Wine full size"
+                                      className="w-full rounded-lg"
+                                    />
+                                    {photo.rating && photo.rating > 0 && (
+                                      <div className="flex items-center space-x-1 mt-4">
+                                        {Array.from({ length: photo.rating }).map((_, i) => (
+                                          <Star key={i} className="h-5 w-5 text-accent fill-accent" />
+                                        ))}
+                                      </div>
+                                    )}
+                                    {photo.caption && (
+                                      <div className="mt-4">
+                                        <p className="font-medium mb-2">Tasting Notes:</p>
+                                        <p className="text-muted-foreground">{photo.caption}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                               {photo.rating && photo.rating > 0 && (
                                 <div className="flex items-center space-x-1">
                                   {Array.from({ length: photo.rating }).map((_, i) => (
@@ -792,13 +853,29 @@ export default function RestaurantDetail() {
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {friendsPhotos.map((photo) => (
-                            <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                              <img
-                                src={photo.photo_url}
-                                alt="Friends"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
+                            <Dialog key={photo.id}>
+                              <DialogTrigger asChild>
+                                <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Friends"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>Friends Photo</DialogTitle>
+                                </DialogHeader>
+                                <div className="max-h-[80vh] overflow-auto">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Friends full size"
+                                    className="w-full rounded-lg"
+                                  />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                           ))}
                         </div>
                       </div>
