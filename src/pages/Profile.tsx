@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "lucide-react";
+import { User, Camera, Lock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({ entries: 0, albums: 0 });
+  const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchProfile();
@@ -16,6 +26,7 @@ export default function Profile() {
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      setEmail(user.email || "");
       const { data } = await supabase
         .from("profiles")
         .select("*")
@@ -46,6 +57,95 @@ export default function Profile() {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const fileName = `avatars/${user.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("restaurant-photos")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("restaurant-photos")
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+      toast({
+        title: "Profile picture updated!",
+        description: "Your avatar has been successfully changed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are the same.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password updated!",
+        description: "Your password has been successfully changed.",
+      });
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Password change failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
@@ -59,18 +159,31 @@ export default function Profile() {
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-olive-teal flex items-center justify-center">
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt="Profile"
-                      className="w-full h-full rounded-full object-cover"
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full bg-gradient-olive-teal flex items-center justify-center">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Profile"
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-10 w-10 text-white" />
+                    )}
+                  </div>
+                  <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-navy hover:bg-navy/90 text-white rounded-full p-2 cursor-pointer shadow-lg">
+                    <Camera className="h-4 w-4" />
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                      disabled={uploading}
                     />
-                  ) : (
-                    <User className="h-8 w-8 text-white" />
-                  )}
+                  </label>
                 </div>
                 <div>
                   <p className="font-semibold text-lg">
@@ -81,6 +194,59 @@ export default function Profile() {
                   </p>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Email</Label>
+                <Input
+                  type="email"
+                  value={email}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Password Change Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Change Password
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-navy hover:bg-navy/90"
+                  disabled={changingPassword}
+                >
+                  {changingPassword ? "Updating..." : "Update Password"}
+                </Button>
+              </form>
             </CardContent>
           </Card>
 
