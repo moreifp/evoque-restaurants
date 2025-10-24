@@ -111,16 +111,15 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       
       setFiles(prev => [...prev, ...newFiles]);
       
-      // Auto-process receipt if it's a receipt upload
+      // Show dialog immediately
+      setLastCategory(category);
+      setShowAddMoreDialog(true);
+      
+      // Process in background
       if (category === 'receipt' && newFiles.length > 0) {
-        await processReceipt(newFiles[0]);
-        setLastCategory(category);
-        setShowAddMoreDialog(true);
+        processReceipt(newFiles[0]);
       } else {
-        // Auto-upload files for other categories
-        await autoUploadFiles(newFiles);
-        setLastCategory(category);
-        setShowAddMoreDialog(true);
+        autoUploadFiles(newFiles);
       }
     };
     
