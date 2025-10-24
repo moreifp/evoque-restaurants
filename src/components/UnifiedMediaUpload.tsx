@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Camera } from "lucide-react";
+import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { extractGPSFromImage } from "@/utils/exifExtractor";
 import { cn } from "@/lib/utils";
-import { CustomCamera } from "./CustomCamera";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UploadedFile {
   file: File;
@@ -38,8 +47,8 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
   const [uploading, setUploading] = useState(false);
   const [processingWine, setProcessingWine] = useState<string | null>(null);
   const [processingReceipt, setProcessingReceipt] = useState(false);
-  const [cameraOpen, setCameraOpen] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState<'place' | 'menu' | 'wine' | 'friends' | 'receipt'>('place');
+  const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
+  const [lastCategory, setLastCategory] = useState<keyof typeof categoryConfig | null>(null);
   const { toast } = useToast();
 
   // Update parent whenever files change
@@ -80,13 +89,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     receipt: { icon: Receipt, label: "Receipt", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
   };
 
-  const handleFileSelect = async (category: keyof typeof categoryConfig, useCamera: boolean = false) => {
-    if (useCamera) {
-      setCurrentCategory(category);
-      setCameraOpen(true);
-      return;
-    }
-
+  const handleFileSelect = async (category: keyof typeof categoryConfig) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = category === 'receipt' ? 'image/*' : 'image/*,video/*';
@@ -94,6 +97,8 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     
     input.onchange = async (e) => {
       const selectedFiles = Array.from((e.target as HTMLInputElement).files || []);
+      
+      if (selectedFiles.length === 0) return;
       
       const newFiles: UploadedFile[] = selectedFiles.map(file => ({
         file,
@@ -106,31 +111,17 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       // Auto-process receipt if it's a receipt upload
       if (category === 'receipt' && newFiles.length > 0) {
         await processReceipt(newFiles[0]);
+        setLastCategory(category);
+        setShowAddMoreDialog(true);
       } else {
         // Auto-upload files for other categories
         await autoUploadFiles(newFiles);
+        setLastCategory(category);
+        setShowAddMoreDialog(true);
       }
     };
     
     input.click();
-  };
-
-  const handleCameraCapture = async (photos: File[]) => {
-    const newFiles: UploadedFile[] = photos.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      category: currentCategory,
-    }));
-    
-    setFiles(prev => [...prev, ...newFiles]);
-    
-    // Auto-process receipt if it's a receipt upload
-    if (currentCategory === 'receipt' && newFiles.length > 0) {
-      await processReceipt(newFiles[0]);
-    } else {
-      // Auto-upload files for other categories
-      await autoUploadFiles(newFiles);
-    }
   };
 
   const processReceipt = async (fileData: UploadedFile) => {
@@ -324,67 +315,60 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
           const config = categoryConfig[category];
           const Icon = config.icon;
           return (
-            <div key={category} className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleFileSelect(category)}
-                className="flex flex-col items-center justify-center h-40 w-full rounded-2xl border-2 transition-all hover:border-[#0d1a2d] hover:shadow-lg bg-background"
-                style={{ borderColor: 'rgba(13, 26, 45, 0.12)' }}
-              >
-                <div className={`bg-gradient-to-br ${config.color} p-4 rounded-xl mb-3`}>
-                  <Icon className="h-8 w-8 text-white" />
-                </div>
-                <span className="font-semibold text-[#0d1a2d]">{config.label}</span>
-              </button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleFileSelect(category, true)}
-                className="w-full"
-              >
-                <Camera className="h-4 w-4 mr-2" />
-                Camera
-              </Button>
-            </div>
+            <button
+              key={category}
+              type="button"
+              onClick={() => handleFileSelect(category)}
+              className="flex flex-col items-center justify-center h-40 rounded-2xl border-2 transition-all hover:border-[#0d1a2d] hover:shadow-lg bg-background"
+              style={{ borderColor: 'rgba(13, 26, 45, 0.12)' }}
+            >
+              <div className={`bg-gradient-to-br ${config.color} p-4 rounded-xl mb-3`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <span className="font-semibold text-[#0d1a2d]">{config.label}</span>
+            </button>
           );
         })}
         
         {/* Receipt button - centered in last row */}
         <div className="col-span-2 flex justify-center">
-          <div className="space-y-2 w-[calc(50%-0.5rem)]">
-            <button
-              type="button"
-              onClick={() => handleFileSelect('receipt')}
-              className="flex flex-col items-center justify-center h-40 w-full rounded-2xl border-2 transition-all hover:border-[#0d1a2d] hover:shadow-lg bg-background"
-              style={{ borderColor: 'rgba(13, 26, 45, 0.12)' }}
-            >
-              <div className={`bg-gradient-to-br ${categoryConfig.receipt.color} p-4 rounded-xl mb-3`}>
-                <Receipt className="h-8 w-8 text-white" />
-              </div>
-              <span className="font-semibold text-[#0d1a2d]">Receipt</span>
-            </button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleFileSelect('receipt', true)}
-              className="w-full"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              Camera
-            </Button>
-          </div>
+          <button
+            type="button"
+            onClick={() => handleFileSelect('receipt')}
+            className="flex flex-col items-center justify-center h-40 w-[calc(50%-0.5rem)] rounded-2xl border-2 transition-all hover:border-[#0d1a2d] hover:shadow-lg bg-background"
+            style={{ borderColor: 'rgba(13, 26, 45, 0.12)' }}
+          >
+            <div className={`bg-gradient-to-br ${categoryConfig.receipt.color} p-4 rounded-xl mb-3`}>
+              <Receipt className="h-8 w-8 text-white" />
+            </div>
+            <span className="font-semibold text-[#0d1a2d]">Receipt</span>
+          </button>
         </div>
       </div>
 
-      {/* Custom Camera Dialog */}
-      <CustomCamera
-        isOpen={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onPhotosCapture={handleCameraCapture}
-        category={categoryConfig[currentCategory].label}
-      />
+      {/* Add More Photos Dialog */}
+      <AlertDialog open={showAddMoreDialog} onOpenChange={setShowAddMoreDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add more photos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Would you like to add another {lastCategory && categoryConfig[lastCategory].label.toLowerCase()} photo?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, I'm done</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowAddMoreDialog(false);
+              if (lastCategory) {
+                setTimeout(() => handleFileSelect(lastCategory), 100);
+              }
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add More
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Wine Section - Must come first to show rating/notes */}
       {files.some(f => f.category === 'wine') && (
