@@ -89,11 +89,14 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     receipt: { icon: Receipt, label: "Receipt", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
   };
 
-  const handleFileSelect = async (category: keyof typeof categoryConfig) => {
+  const handleFileSelect = async (category: keyof typeof categoryConfig, useCamera = false) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = category === 'receipt' ? 'image/*' : 'image/*,video/*';
     input.multiple = category !== 'receipt';
+    if (useCamera) {
+      input.capture = 'environment'; // Opens camera directly on mobile
+    }
     
     input.onchange = async (e) => {
       const selectedFiles = Array.from((e.target as HTMLInputElement).files || []);
@@ -348,24 +351,36 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       {/* Add More Photos Dialog */}
       <AlertDialog open={showAddMoreDialog} onOpenChange={setShowAddMoreDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Add more photos?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-center text-2xl">Add more photos?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
               Would you like to add another {lastCategory && categoryConfig[lastCategory].label.toLowerCase()} photo?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, I'm done</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              setShowAddMoreDialog(false);
-              if (lastCategory) {
-                setTimeout(() => handleFileSelect(lastCategory), 100);
-              }
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
+          <AlertDialogFooter className="flex-col sm:flex-col gap-3 mt-4">
+            <Button
+              size="lg"
+              className="w-full h-16 text-lg font-semibold bg-navy hover:bg-navy/90 text-white"
+              onClick={() => {
+                setShowAddMoreDialog(false);
+                if (lastCategory) {
+                  setTimeout(() => handleFileSelect(lastCategory, true), 100);
+                }
+              }}
+            >
+              <Plus className="h-6 w-6 mr-2" />
               Add More
-            </AlertDialogAction>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full h-16 text-lg font-semibold bg-wine-red hover:bg-wine-red/90 text-white border-wine-red"
+              onClick={() => setShowAddMoreDialog(false)}
+            >
+              <X className="h-6 w-6 mr-2" />
+              I'm Done
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

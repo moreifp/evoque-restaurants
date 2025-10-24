@@ -23,6 +23,7 @@ export default {
         sand: "hsl(var(--sand))",
         olive: "hsl(var(--olive))",
         teal: "hsl(var(--teal))",
+        "wine-red": "hsl(var(--wine-red))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
