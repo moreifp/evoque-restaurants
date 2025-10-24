@@ -12,6 +12,7 @@ import RestaurantDetail from "./pages/RestaurantDetail";
 import SharedRestaurant from "./pages/SharedRestaurant";
 import AddRestaurant from "./pages/AddRestaurant";
 import Albums from "./pages/Albums";
+import AlbumsMap from "./pages/AlbumsMap";
 import CreateAlbum from "./pages/CreateAlbum";
 import AlbumDetail from "./pages/AlbumDetail";
 import Following from "./pages/Following";
@@ -72,6 +73,7 @@ const App = () => {
                 <Route path="/dining/:id" element={<RestaurantDetail />} />
                 <Route path="/dining/add" element={<AddRestaurant />} />
                 <Route path="/albums" element={<Albums />} />
+                <Route path="/albums/map" element={<AlbumsMap />} />
                 <Route path="/albums/create" element={<CreateAlbum />} />
                 <Route path="/albums/:id" element={<AlbumDetail />} />
                 <Route path="/following" element={<Following />} />

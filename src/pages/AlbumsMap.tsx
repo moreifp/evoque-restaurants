@@ -1,0 +1,249 @@
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Navigation } from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, MapPin } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+interface RestaurantLocation {
+  id: string;
+  restaurant_name: string;
+  location_address: string;
+  location_lat: number;
+  location_lng: number;
+  visit_date: string;
+  rating?: number;
+}
+
+export default function AlbumsMap() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<any>(null);
+  const [restaurants, setRestaurants] = useState<RestaurantLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const markersRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  const fetchRestaurants = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch all restaurant entries with locations from user's albums
+      const { data: albumEntries } = await supabase
+        .from("album_entries")
+        .select(`
+          entry_id,
+          albums!inner(user_id),
+          restaurant_entries!inner(
+            id,
+            restaurant_name,
+            location_address,
+            location_lat,
+            location_lng,
+            visit_date,
+            rating
+          )
+        `)
+        .eq("albums.user_id", user.id)
+        .not("restaurant_entries.location_lat", "is", null)
+        .not("restaurant_entries.location_lng", "is", null);
+
+      if (albumEntries) {
+        // Extract unique restaurants (same restaurant might be in multiple albums)
+        const uniqueRestaurants = new Map<string, RestaurantLocation>();
+        
+        albumEntries.forEach((entry: any) => {
+          const restaurant = entry.restaurant_entries;
+          if (!uniqueRestaurants.has(restaurant.id)) {
+            uniqueRestaurants.set(restaurant.id, {
+              id: restaurant.id,
+              restaurant_name: restaurant.restaurant_name,
+              location_address: restaurant.location_address,
+              location_lat: restaurant.location_lat,
+              location_lng: restaurant.location_lng,
+              visit_date: restaurant.visit_date,
+              rating: restaurant.rating,
+            });
+          }
+        });
+
+        setRestaurants(Array.from(uniqueRestaurants.values()));
+      }
+
+      setLoading(false);
+    } catch (error: any) {
+      console.error("Error fetching restaurants:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load restaurant locations",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!mapRef.current || restaurants.length === 0 || !window.google) return;
+
+    // Initialize Google Maps
+    const googleMap = new window.google.maps.Map(mapRef.current, {
+      zoom: 4,
+      center: { lat: 0, lng: 0 },
+      mapTypeControl: true,
+      streetViewControl: false,
+      fullscreenControl: true,
+    });
+
+    setMap(googleMap);
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current = [];
+
+    // Add markers for each restaurant
+    const bounds = new window.google.maps.LatLngBounds();
+    
+    restaurants.forEach((restaurant) => {
+      const position = {
+        lat: restaurant.location_lat,
+        lng: restaurant.location_lng,
+      };
+
+      const marker = new window.google.maps.Marker({
+        position,
+        map: googleMap,
+        title: restaurant.restaurant_name,
+        animation: window.google.maps.Animation.DROP,
+      });
+
+      // Create info window
+      const infoContent = `
+        <div style="padding: 8px; max-width: 250px;">
+          <h3 style="font-weight: 600; font-size: 16px; margin: 0 0 8px 0; color: #000;">
+            ${restaurant.restaurant_name}
+          </h3>
+          ${restaurant.rating ? `
+            <div style="margin-bottom: 6px; color: #666;">
+              ${"⭐".repeat(restaurant.rating)}
+            </div>
+          ` : ""}
+          <p style="margin: 4px 0; font-size: 14px; color: #666;">
+            ${restaurant.location_address}
+          </p>
+          <p style="margin: 4px 0; font-size: 12px; color: #999;">
+            Visited: ${new Date(restaurant.visit_date).toLocaleDateString()}
+          </p>
+          <button 
+            onclick="window.location.href='/dining/${restaurant.id}'" 
+            style="margin-top: 8px; padding: 6px 12px; background: hsl(var(--primary)); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;"
+          >
+            View Details
+          </button>
+        </div>
+      `;
+
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: infoContent,
+      });
+
+      marker.addListener("click", () => {
+        // Close all other info windows
+        markersRef.current.forEach((m: any) => {
+          if (m.infoWindow) {
+            m.infoWindow.close();
+          }
+        });
+        infoWindow.open(googleMap, marker);
+      });
+
+      // Store info window reference
+      (marker as any).infoWindow = infoWindow;
+
+      markersRef.current.push(marker);
+      bounds.extend(position);
+    });
+
+    // Fit map to show all markers
+    if (restaurants.length > 0) {
+      googleMap.fitBounds(bounds);
+      
+      // Adjust zoom if only one restaurant
+      if (restaurants.length === 1) {
+        googleMap.setZoom(15);
+      }
+    }
+
+    return () => {
+      markersRef.current.forEach(marker => marker.setMap(null));
+    };
+  }, [restaurants]);
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
+      <Navigation />
+      
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/albums")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Restaurant Map</h1>
+              <p className="text-muted-foreground mt-1">
+                {restaurants.length} {restaurants.length === 1 ? "location" : "locations"} from your albums
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Map Container */}
+        {loading ? (
+          <div className="flex items-center justify-center h-[calc(100vh-200px)] bg-card rounded-lg">
+            <div className="text-center">
+              <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
+              <p className="text-muted-foreground">Loading map...</p>
+            </div>
+          </div>
+        ) : restaurants.length === 0 ? (
+          <div className="flex items-center justify-center h-[calc(100vh-200px)] bg-card rounded-lg">
+            <div className="text-center p-8">
+              <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Locations Found</h3>
+              <p className="text-muted-foreground mb-6">
+                Add restaurants with location data to your albums to see them on the map
+              </p>
+              <Button onClick={() => navigate("/dining/add")}>
+                Add Restaurant
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg overflow-hidden shadow-large border">
+            <div ref={mapRef} className="w-full h-[calc(100vh-200px)]" />
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, BookImage } from "lucide-react";
+import { Plus, BookImage, Map } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
 
@@ -34,10 +34,16 @@ export default function Albums() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Albums</h1>
-          <Button onClick={() => navigate("/albums/create")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Album
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/albums/map")}>
+              <Map className="h-4 w-4 mr-2" />
+              Map
+            </Button>
+            <Button onClick={() => navigate("/albums/create")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Album
+            </Button>
+          </div>
         </div>
 
         {/* Albums Grid */}
