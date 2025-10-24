@@ -36,6 +36,7 @@ export default function RestaurantDetail() {
   const [currentAlbums, setCurrentAlbums] = useState<any[]>([]);
   const [shareLoading, setShareLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [generatingNote, setGeneratingNote] = useState(false);
   
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -443,6 +444,39 @@ export default function RestaurantDetail() {
     setFormData((prev) => ({ ...prev, rating }));
   };
 
+  const handleGenerateNote = async () => {
+    setGeneratingNote(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-restaurant-note", {
+        body: {
+          restaurantName: formData.restaurant_name,
+          location: formData.location_address,
+          rating: formData.rating,
+          companions: formData.companions,
+          visitDate: formData.visit_date,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.note) {
+        setFormData((prev) => ({ ...prev, notes: data.note }));
+        toast({
+          title: "Note Generated",
+          description: "AI has generated a note based on your restaurant details",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate note",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingNote(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -586,30 +620,23 @@ export default function RestaurantDetail() {
                   <CardTitle>Restaurant Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Restaurant Name */}
+                  <div>
+                    <h2 className="text-2xl font-bold">{entry.restaurant_name}</h2>
+                  </div>
+
                   {/* Location */}
                   {entry.location_address && (
-                    <div>
-                      <Label className="text-lg flex items-center gap-2 mb-2">
-                        <MapPin className="h-5 w-5" />
-                        Restaurant Location
-                      </Label>
-                      <p className="text-muted-foreground pl-7">{entry.location_address}</p>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                      <p className="text-muted-foreground">{entry.location_address}</p>
                     </div>
                   )}
 
-                  {/* Restaurant Name */}
-                  <div>
-                    <Label className="text-lg mb-2">Restaurant Name</Label>
-                    <p className="text-muted-foreground">{entry.restaurant_name}</p>
-                  </div>
-
                   {/* Visit Date */}
-                  <div>
-                    <Label className="text-lg flex items-center gap-2 mb-2">
-                      <Calendar className="h-5 w-5" />
-                      Visit Date
-                    </Label>
-                    <p className="text-muted-foreground pl-7">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 flex-shrink-0" />
+                    <p className="text-muted-foreground">
                       {new Date(entry.visit_date).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
@@ -970,7 +997,18 @@ export default function RestaurantDetail() {
 
                   {/* Notes */}
                   <div className="space-y-2">
-                    <Label htmlFor="notes" className="text-lg">Notes</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="notes" className="text-lg">Notes</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateNote}
+                        disabled={generatingNote || !formData.restaurant_name}
+                      >
+                        {generatingNote ? "Generating..." : "Generate with AI"}
+                      </Button>
+                    </div>
                     <Textarea
                       id="notes"
                       placeholder="Share your thoughts, favorite dishes, ambience..."
