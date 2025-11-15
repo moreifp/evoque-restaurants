@@ -424,7 +424,7 @@ export default function RestaurantDetail() {
 
       const token = tokenData?.token;
       const shareUrl = token 
-        ? `https://food.evoque.guru/${token}`
+        ? `https://food.evoque.guru/s/${token}`
         : `https://food.evoque.guru/share/${id}`;
       
       await navigator.clipboard.writeText(shareUrl);
@@ -438,7 +438,7 @@ export default function RestaurantDetail() {
     } catch (error) {
       console.error('Error generating share token:', error);
       // Fallback to old share URL
-      const shareUrl = `https://food.evoque.guru/share/${id}`;
+      const shareUrl = `https://food.evoque.guru/s/${id}`;
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

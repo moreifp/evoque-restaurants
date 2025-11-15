@@ -54,7 +54,8 @@ const App = () => {
             {/* Public routes */}
             <Route path="/share/:id" element={<SharedRestaurant />} />
             <Route path="/token" element={<TokenInput />} />
-            <Route path="/:token" element={<SharedByToken />} />
+            <Route path="/s/:token" element={<SharedByToken />} />
+            <Route path="/:token" element={<SharedByToken />} /> {/* Legacy support */}
             
             {/* Redirects for old routes */}
             <Route path="/albums" element={<Navigate to="/dining?tab=albums" replace />} />
