@@ -51,14 +51,16 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public routes */}
+            {/* Public routes - specific routes FIRST */}
             <Route path="/share/:id" element={<SharedRestaurant />} />
-            <Route path="/token" element={<TokenInput />} />
             <Route path="/s/:token" element={<SharedByToken />} />
-            <Route path="/:token" element={<SharedByToken />} /> {/* Legacy support */}
+            <Route path="/token" element={<TokenInput />} />
             
             {/* Redirects for old routes */}
             <Route path="/albums" element={<Navigate to="/dining?tab=albums" replace />} />
+            
+            {/* Legacy token route - LAST to avoid conflicts with other routes */}
+            <Route path="/:token" element={<SharedByToken />} />
             
             {/* Protected routes */}
             {loading ? (
