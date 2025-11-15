@@ -7,18 +7,16 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Auth } from "./components/Auth";
 import Home from "./pages/Home";
-import DiningList from "./pages/DiningList";
+import Dining from "./pages/Dining";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import SharedRestaurant from "./pages/SharedRestaurant";
 import AddRestaurant from "./pages/AddRestaurant";
-import Albums from "./pages/Albums";
 import AlbumsMap from "./pages/AlbumsMap";
 import CreateAlbum from "./pages/CreateAlbum";
 import AlbumDetail from "./pages/AlbumDetail";
-import Following from "./pages/Following";
 import UserPublicAlbums from "./pages/UserPublicAlbums";
 import WineCellar from "./pages/WineCellar";
-import Profile from "./pages/Profile";
+import Account from "./pages/Account";
 import RestaurantPlanner from "./pages/RestaurantPlanner";
 import PlanDetail from "./pages/PlanDetail";
 import NotFound from "./pages/NotFound";
@@ -69,19 +67,17 @@ const App = () => {
             ) : (
               <>
                 <Route path="/" element={<Home />} />
-                <Route path="/dining" element={<DiningList />} />
+                <Route path="/dining" element={<Dining />} />
                 <Route path="/dining/:id" element={<RestaurantDetail />} />
                 <Route path="/dining/add" element={<AddRestaurant />} />
-                <Route path="/albums" element={<Albums />} />
                 <Route path="/albums/map" element={<AlbumsMap />} />
                 <Route path="/albums/create" element={<CreateAlbum />} />
                 <Route path="/albums/:id" element={<AlbumDetail />} />
-                <Route path="/following" element={<Following />} />
                 <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
                 <Route path="/wine-cellar" element={<WineCellar />} />
+                <Route path="/account" element={<Account />} />
                 <Route path="/planner" element={<RestaurantPlanner />} />
                 <Route path="/plans/:id" element={<PlanDetail />} />
-                <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />
               </>
             )}

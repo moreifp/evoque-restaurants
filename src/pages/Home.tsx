@@ -207,6 +207,21 @@ export default function Home() {
             </Button>
           </Card>
         )}
+
+        {/* Footer */}
+        <footer className="mt-16 py-8 text-center border-t border-border">
+          <p className="text-sm text-muted-foreground mb-4">
+            Discover more about Evoque
+          </p>
+          <a
+            href="https://evoque.guru/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:text-accent/80 transition-colors font-medium"
+          >
+            Visit evoque.guru →
+          </a>
+        </footer>
       </main>
     </div>
   );
