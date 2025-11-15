@@ -76,10 +76,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card
-            className="group hover:shadow-large transition-all cursor-pointer"
-            onClick={() => navigate("/planner")}
-          >
+          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/planner")}>
             <CardContent className="flex items-center space-x-4 p-6">
               <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <Sparkles className="h-6 w-6 text-accent" />
@@ -106,7 +103,10 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/dining?tab=albums")}>
+          <Card
+            className="group hover:shadow-large transition-all cursor-pointer"
+            onClick={() => navigate("/dining?tab=albums")}
+          >
             <CardContent className="flex items-center space-x-4 p-6">
               <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <BookImage className="h-6 w-6 text-accent" />
@@ -124,7 +124,7 @@ export default function Home() {
                 <Search className="h-6 w-6 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Search by Tag</h3>
+                <h3 className="font-semibold text-lg">Search</h3>
                 <p className="text-sm text-muted-foreground">Filter and discover</p>
               </div>
             </CardContent>
@@ -210,9 +210,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-16 py-8 text-center border-t border-border">
-          <p className="text-sm text-muted-foreground mb-4">
-            Discover more about Evoque
-          </p>
+          <p className="text-sm text-muted-foreground mb-4">Discover more about Evoque</p>
           <a
             href="https://evoque.guru/"
             target="_blank"
