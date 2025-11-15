@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReceiptItemsList } from "@/components/ReceiptItemsList";
+import evoqueIcon from "@/assets/evoque-icon.png";
+import evoqueLogo from "@/assets/evoque-logo-full.png";
 
 export default function SharedRestaurant() {
   const { id } = useParams();
@@ -118,7 +120,7 @@ export default function SharedRestaurant() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <img src="/src/assets/evoque-icon.png" alt="Evoque" className="w-5 h-5" />
+              <img src={evoqueIcon} alt="Evoque" className="w-5 h-5" />
               <span>Shared via <strong className="text-foreground">Evoque</strong></span>
             </div>
             <Button variant="ghost" size="sm" asChild>
@@ -313,9 +315,9 @@ export default function SharedRestaurant() {
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <img 
-              src="/src/assets/evoque-logo.svg" 
+              src={evoqueLogo} 
               alt="Evoque" 
-              className="h-12 mx-auto"
+              className="h-16 mx-auto"
             />
             <h3 className="text-2xl font-bold">
               Part of Evoque Community!
