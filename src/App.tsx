@@ -54,6 +54,7 @@ const App = () => {
             {/* Public routes */}
             <Route path="/share/:id" element={<SharedRestaurant />} />
             <Route path="/token" element={<TokenInput />} />
+            <Route path="/:token" element={<SharedByToken />} />
             
             {/* Redirects for old routes */}
             <Route path="/albums" element={<Navigate to="/dining?tab=albums" replace />} />
@@ -84,7 +85,6 @@ const App = () => {
                 <Route path="/account" element={<Account />} />
                 <Route path="/planner" element={<RestaurantPlanner />} />
                 <Route path="/plans/:id" element={<PlanDetail />} />
-                <Route path="/:token" element={<SharedByToken />} />
                 <Route path="*" element={<NotFound />} />
               </>
             )}
