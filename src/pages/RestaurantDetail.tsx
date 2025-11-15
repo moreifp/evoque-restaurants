@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -18,6 +18,7 @@ import { LocationPicker } from "@/components/LocationPicker";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -402,67 +403,101 @@ export default function RestaurantDetail() {
   };
 
   const handleShare = async () => {
-    setShareLoading(true);
-    const newIsPublic = !entry.is_public;
+    if (!entry.is_public) {
+      toast({
+        title: "Restaurante Privado",
+        description: "Torne o restaurante público primeiro para compartilhar",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    setShareLoading(true);
+    try {
+      // Generate short token via edge function
+      const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
+        "generate-share-token",
+        { body: { entry_id: id } }
+      );
+
+      if (tokenError) throw tokenError;
+
+      const token = tokenData?.token;
+      const shareUrl = token 
+        ? `https://food.evoque.guru/${token}`
+        : `https://food.evoque.guru/share/${id}`;
+      
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      
+      toast({
+        title: "Link Copiado!",
+        description: `Link: ${token || id}`,
+      });
+    } catch (error) {
+      console.error('Error generating share token:', error);
+      // Fallback to old share URL
+      const shareUrl = `https://food.evoque.guru/share/${id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({
+        title: "Link Copiado!",
+        description: "Link de compartilhamento copiado",
+      });
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleMakePublic = async () => {
+    setShareLoading(true);
     const { error } = await supabase
       .from("restaurant_entries")
-      .update({ is_public: newIsPublic })
+      .update({ is_public: true })
       .eq("id", id);
 
     if (error) {
       toast({
-        title: "Error",
-        description: "Failed to update sharing settings",
+        title: "Erro",
+        description: "Falha ao tornar público",
         variant: "destructive",
       });
       setShareLoading(false);
       return;
     }
 
-    if (newIsPublic) {
-      try {
-        // Generate short token via edge function
-        const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
-          "generate-share-token",
-          { body: { entry_id: id } }
-        );
+    toast({
+      title: "Restaurante Público",
+      description: "Agora você pode compartilhar o link",
+    });
 
-        if (tokenError) throw tokenError;
+    fetchEntry();
+    setShareLoading(false);
+  };
 
-        const token = tokenData?.token;
-        const shareUrl = token 
-          ? `${window.location.origin}/${token}`
-          : `${window.location.origin}/share/${id}`;
-        
-        await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        
-        toast({
-          title: "Link Copiado!",
-          description: token 
-            ? `Link curto copiado: ${token}`
-            : "Link de compartilhamento copiado",
-        });
-      } catch (error) {
-        console.error('Error generating share token:', error);
-        // Fallback to old share URL
-        const shareUrl = `${window.location.origin}/share/${id}`;
-        await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        toast({
-          title: "Link Copied!",
-          description: "Share link copied to clipboard",
-        });
-      }
-    } else {
+  const handleMakePrivate = async () => {
+    setShareLoading(true);
+    const { error } = await supabase
+      .from("restaurant_entries")
+      .update({ is_public: false })
+      .eq("id", id);
+
+    if (error) {
       toast({
-        title: "Compartilhamento Desativado",
-        description: "Este restaurante agora é privado",
+        title: "Erro",
+        description: "Falha ao tornar privado",
+        variant: "destructive",
       });
+      setShareLoading(false);
+      return;
     }
+
+    toast({
+      title: "Restaurante Privado",
+      description: "O link de compartilhamento foi desativado",
+    });
 
     fetchEntry();
     setShareLoading(false);
@@ -555,14 +590,37 @@ export default function RestaurantDetail() {
                     <Edit className="h-5 w-5 mr-2" />
                     Edit
                   </Button>
-                  <Button
-                    variant={entry.is_public ? "default" : "outline"}
-                    size="icon"
-                    onClick={handleShare}
-                    disabled={shareLoading}
-                  >
-                    {copied ? <Check className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant={entry.is_public ? "default" : "outline"}
+                        size="icon"
+                        disabled={shareLoading}
+                      >
+                        {copied ? <Check className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 bg-background border shadow-lg z-50">
+                      {entry.is_public ? (
+                        <>
+                          <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
+                            <LinkIcon className="h-4 w-4 mr-2" />
+                            Copiar Link
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={handleMakePrivate} className="cursor-pointer text-destructive">
+                            <Lock className="h-4 w-4 mr-2" />
+                            Tornar Privado
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <DropdownMenuItem onClick={handleMakePublic} className="cursor-pointer">
+                          <Globe className="h-4 w-4 mr-2" />
+                          Tornar Público
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Dialog open={albumDialogOpen} onOpenChange={setAlbumDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="icon">
