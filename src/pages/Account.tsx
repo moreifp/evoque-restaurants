@@ -1,0 +1,501 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Navigation } from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+export default function Account() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Profile state
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Social state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProfile();
+    fetchCurrentUser();
+  }, []);
+
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setEmail(user.email || "");
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      
+      if (profile) {
+        setDisplayName(profile.display_name || "");
+        setAvatarUrl(profile.avatar_url || "");
+      }
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+      fetchFollowing(user.id);
+    }
+  };
+
+  const fetchFollowing = async (userId: string) => {
+    const { data } = await supabase
+      .from("user_follows")
+      .select(`
+        following_id,
+        profiles!user_follows_following_id_fkey (
+          id,
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq("follower_id", userId);
+
+    if (data) {
+      setFollowing(data.map(f => f.profiles).filter(Boolean));
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("restaurant-photos")
+        .upload(`avatars/${fileName}`, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("restaurant-photos")
+        .getPublicUrl(`avatars/${fileName}`);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      toast({ title: "Profile picture updated!" });
+    } catch (error: any) {
+      toast({
+        title: "Error uploading photo",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Password updated successfully!" });
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Error updating password",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .or(`display_name.ilike.%${searchQuery}%`)
+      .neq("id", currentUserId)
+      .limit(10);
+
+    setSearchResults(data || []);
+  };
+
+  const handleFollow = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_follows")
+        .insert({
+          follower_id: currentUserId,
+          following_id: userId,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Following!",
+        description: "You are now following this user",
+      });
+
+      if (currentUserId) fetchFollowing(currentUserId);
+      handleSearch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUnfollow = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_follows")
+        .delete()
+        .eq("follower_id", currentUserId)
+        .eq("following_id", userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Unfollowed",
+        description: "You have unfollowed this user",
+      });
+
+      if (currentUserId) fetchFollowing(currentUserId);
+      handleSearch();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isFollowing = (userId: string) => {
+    return following.some(f => f.id === userId);
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: "Signed out successfully" });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-subtle">
+      <Navigation />
+      
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+        <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
+
+        <div className="max-w-3xl space-y-6">
+          {/* Profile Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>Manage your profile information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={avatarUrl} />
+                    <AvatarFallback className="text-2xl">
+                      {displayName?.charAt(0)?.toUpperCase() || email?.charAt(0)?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <label htmlFor="avatar-upload">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                      disabled={uploading}
+                      asChild
+                    >
+                      <span>
+                        <Camera className="h-4 w-4" />
+                      </span>
+                    </Button>
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">{displayName || "No name set"}</h3>
+                  <p className="text-sm text-muted-foreground">{email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Password Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Change Password
+              </CardTitle>
+              <CardDescription>Update your password</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <Button type="submit" disabled={passwordLoading}>
+                  {passwordLoading ? "Updating..." : "Update Password"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Social Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Social
+              </CardTitle>
+              <CardDescription>Search and connect with other users</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search users by name..."
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  />
+                </div>
+                <Button onClick={handleSearch}>Search</Button>
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Search Results</h4>
+                  <div className="space-y-2">
+                    {searchResults.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage src={user.avatar_url} />
+                            <AvatarFallback>
+                              {user.display_name?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.display_name || "Anonymous"}</p>
+                          </div>
+                        </div>
+                        {isFollowing(user.id) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUnfollow(user.id)}
+                          >
+                            <UserMinus className="h-4 w-4 mr-2" />
+                            Unfollow
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => handleFollow(user.id)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Follow
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Following ({following.length})</h4>
+                {following.length > 0 ? (
+                  <div className="space-y-2">
+                    {following.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                        onClick={() => navigate(`/user/${user.id}/albums`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            <AvatarImage src={user.avatar_url} />
+                            <AvatarFallback>
+                              {user.display_name?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <p className="font-medium">{user.display_name || "Anonymous"}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnfollow(user.id);
+                          }}
+                        >
+                          <UserMinus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    You're not following anyone yet
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Legal Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Legal</CardTitle>
+              <CardDescription>Terms and policies</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <a
+                href="https://evoque.guru/#page-0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+              >
+                <span>Terms of Use</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              <a
+                href="https://evoque.guru/#page-0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+              >
+                <span>Privacy Policy</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </CardContent>
+          </Card>
+
+          {/* Sign Out */}
+          <Button
+            variant="destructive"
+            size="lg"
+            className="w-full"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+      </main>
+    </div>
+  );
+}

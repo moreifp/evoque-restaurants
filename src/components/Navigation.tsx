@@ -1,44 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, UtensilsCrossed, BookImage, User, LogOut, Users, ExternalLink, Wine, Sparkles } from "lucide-react";
+import { Home, UtensilsCrossed, Wine, Sparkles, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import evoqueLogo from "@/assets/evoque-logo.svg";
 
 export const Navigation = () => {
   const location = useLocation();
-  const { toast } = useToast();
-
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error signing out",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Signed out successfully",
-      });
-    }
-  };
 
   const navItems = [
     { path: "/", icon: Home, label: "Home" },
-    { path: "/dining", icon: UtensilsCrossed, label: "DiningOut" },
-    { path: "/albums", icon: BookImage, label: "Albums" },
+    { path: "/dining", icon: UtensilsCrossed, label: "Dining" },
     { path: "/planner", icon: Sparkles, label: "AI Planner" },
     { path: "/wine-cellar", icon: Wine, label: "Wine Cellar" },
-    { path: "/following", icon: Users, label: "Social" },
-    { path: "/profile", icon: User, label: "Profile" },
+    { path: "/account", icon: Settings, label: "Account" },
   ];
 
   return (
@@ -65,56 +39,6 @@ export const Navigation = () => {
                 </Link>
               );
             })}
-
-            <Button variant="ghost" className="flex items-center space-x-2" asChild>
-              <a href="https://evoque.guru/" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                <span>Website</span>
-              </a>
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2">
-                  <span>Legal</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <a
-                    href="https://evoque.guru/#page-0"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center"
-                  >
-                    <span>Terms of Use</span>
-                    <ExternalLink className="h-3 w-3 ml-2" />
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a
-                    href="https://evoque.guru/#page-0"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center"
-                  >
-                    <span>Privacy Policy</span>
-                    <ExternalLink className="h-3 w-3 ml-2" />
-                  </a>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button variant="ghost" size="icon" onClick={handleSignOut} className="ml-2">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Mobile Navigation */}
-          <div className="md:hidden flex items-center">
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </div>
