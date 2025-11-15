@@ -46,10 +46,10 @@ serve(async (req) => {
       );
     }
 
-    // Generate a unique short token (6-8 characters)
+    // Generate a unique short token (10 characters)
     const generateToken = () => {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      const length = 6;
+      const length = 10;
       let token = '';
       for (let i = 0; i < length; i++) {
         token += chars.charAt(Math.floor(Math.random() * chars.length));

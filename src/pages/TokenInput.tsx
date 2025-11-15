@@ -61,7 +61,7 @@ const TokenInput = () => {
           </div>
           <CardTitle>Digite o Código de Compartilhamento</CardTitle>
           <CardDescription>
-            Insira o código de 6 caracteres para ver o restaurante compartilhado
+            Insira o código de 10 caracteres para ver o restaurante compartilhado
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,10 +69,10 @@ const TokenInput = () => {
             <div>
               <Input
                 type="text"
-                placeholder="abc123"
+                placeholder="k3m9p2x7n4"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                maxLength={8}
+                maxLength={12}
                 className="text-center text-lg tracking-wider uppercase"
                 autoFocus
               />
