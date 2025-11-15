@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Auth } from "./components/Auth";
 import Home from "./pages/Home";
@@ -51,6 +51,9 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/share/:id" element={<SharedRestaurant />} />
+            
+            {/* Redirects for old routes */}
+            <Route path="/albums" element={<Navigate to="/dining?tab=albums" replace />} />
             
             {/* Protected routes */}
             {loading ? (

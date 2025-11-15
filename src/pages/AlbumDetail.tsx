@@ -116,7 +116,7 @@ export default function AlbumDetail() {
         description: "The album has been permanently deleted",
       });
 
-      navigate("/albums");
+      navigate("/dining?tab=albums");
     } catch (error: any) {
       toast({
         title: "Delete failed",

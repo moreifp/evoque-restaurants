@@ -41,7 +41,7 @@ export default function CreateAlbum() {
         description: "Your album has been created successfully",
       });
 
-      navigate("/albums");
+      navigate("/dining?tab=albums");
     } catch (error: any) {
       toast({
         title: "Error",

@@ -106,7 +106,7 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/albums")}>
+          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/dining?tab=albums")}>
             <CardContent className="flex items-center space-x-4 p-6">
               <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                 <BookImage className="h-6 w-6 text-accent" />
