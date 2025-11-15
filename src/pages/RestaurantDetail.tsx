@@ -1043,8 +1043,40 @@ export default function RestaurantDetail() {
                             </div>
                           )}
                         </div>
+
+                        {/* OCR Raw Text */}
+                        {receipt.ocr_raw_text && (
+                          <div className="border-t pt-4 mt-4">
+                            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                              <Sparkles className="h-4 w-4" />
+                              Receipt Transcription (OCR)
+                            </h4>
+                            <div className="bg-muted/50 rounded-lg p-4">
+                              <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground">
+                                {receipt.ocr_raw_text}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* AI Generated Description */}
+              {entry.description && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5" />
+                      AI Generated Description
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {entry.description}
+                    </p>
                   </CardContent>
                 </Card>
               )}
