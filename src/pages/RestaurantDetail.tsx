@@ -421,18 +421,46 @@ export default function RestaurantDetail() {
     }
 
     if (newIsPublic) {
-      const shareUrl = `${window.location.origin}/share/${id}`;
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({
-        title: "Link Copied!",
-        description: "Share link copied to clipboard",
-      });
+      try {
+        // Generate short token via edge function
+        const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
+          "generate-share-token",
+          { body: { entry_id: id } }
+        );
+
+        if (tokenError) throw tokenError;
+
+        const token = tokenData?.token;
+        const shareUrl = token 
+          ? `${window.location.origin}/${token}`
+          : `${window.location.origin}/share/${id}`;
+        
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        toast({
+          title: "Link Copiado!",
+          description: token 
+            ? `Link curto copiado: ${token}`
+            : "Link de compartilhamento copiado",
+        });
+      } catch (error) {
+        console.error('Error generating share token:', error);
+        // Fallback to old share URL
+        const shareUrl = `${window.location.origin}/share/${id}`;
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast({
+          title: "Link Copied!",
+          description: "Share link copied to clipboard",
+        });
+      }
     } else {
       toast({
-        title: "Sharing Disabled",
-        description: "This restaurant is now private",
+        title: "Compartilhamento Desativado",
+        description: "Este restaurante agora é privado",
       });
     }
 

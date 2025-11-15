@@ -434,6 +434,41 @@ export type Database = {
           },
         ]
       }
+      share_tokens: {
+        Row: {
+          clicks: number
+          created_at: string
+          entry_id: string
+          expires_at: string | null
+          id: string
+          token: string
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          entry_id: string
+          expires_at?: string | null
+          id?: string
+          token: string
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          entry_id?: string
+          expires_at?: string | null
+          id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_tokens_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           category: string | null

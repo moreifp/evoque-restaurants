@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.restaurant-planner]
 verify_jwt = true
+
+[functions.generate-share-token]
+verify_jwt = true
