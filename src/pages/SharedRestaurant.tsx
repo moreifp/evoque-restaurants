@@ -113,7 +113,22 @@ export default function SharedRestaurant() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+      {/* Subtle Banner CTA */}
+      <div className="fixed top-16 left-0 right-0 z-40 bg-muted/50 border-b backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <img src="/src/assets/evoque-icon.png" alt="Evoque" className="w-5 h-5" />
+              <span>Shared via <strong className="text-foreground">Evoque</strong></span>
+            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <a href="https://food.evoque.guru">Join Community</a>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 md:pb-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
           <div className="mb-6">
@@ -292,6 +307,35 @@ export default function SharedRestaurant() {
           )}
         </div>
       </main>
+
+      {/* Footer CTA */}
+      <footer className="bg-gradient-olive-teal text-white mt-12">
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto text-center space-y-6">
+            <img 
+              src="/src/assets/evoque-logo.svg" 
+              alt="Evoque" 
+              className="h-12 mx-auto"
+            />
+            <h3 className="text-2xl font-bold">
+              Part of Evoque Community!
+            </h3>
+            <p className="text-white/90 max-w-md mx-auto">
+              Create and share your own culinary experiences, wine collections, and restaurant discoveries.
+            </p>
+            <Button 
+              size="lg" 
+              variant="secondary"
+              asChild
+              className="font-semibold"
+            >
+              <a href="https://food.evoque.guru">
+                Join Evoque Community
+              </a>
+            </Button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
