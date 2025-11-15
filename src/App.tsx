@@ -10,6 +10,8 @@ import Home from "./pages/Home";
 import Dining from "./pages/Dining";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import SharedRestaurant from "./pages/SharedRestaurant";
+import SharedByToken from "./pages/SharedByToken";
+import TokenInput from "./pages/TokenInput";
 import AddRestaurant from "./pages/AddRestaurant";
 import AlbumsMap from "./pages/AlbumsMap";
 import CreateAlbum from "./pages/CreateAlbum";
@@ -51,6 +53,7 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/share/:id" element={<SharedRestaurant />} />
+            <Route path="/token" element={<TokenInput />} />
             
             {/* Redirects for old routes */}
             <Route path="/albums" element={<Navigate to="/dining?tab=albums" replace />} />
@@ -81,6 +84,7 @@ const App = () => {
                 <Route path="/account" element={<Account />} />
                 <Route path="/planner" element={<RestaurantPlanner />} />
                 <Route path="/plans/:id" element={<PlanDetail />} />
+                <Route path="/:token" element={<SharedByToken />} />
                 <Route path="*" element={<NotFound />} />
               </>
             )}
