@@ -10,10 +10,12 @@ import { Separator } from "@/components/ui/separator";
 import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useI18n();
   
   // Profile state
   const [email, setEmail] = useState("");
@@ -109,7 +111,7 @@ export default function Account() {
       if (updateError) throw updateError;
 
       setAvatarUrl(publicUrl);
-      toast({ title: "Profile picture updated!" });
+      toast({ title: t("account.avatarUploaded") });
     } catch (error: any) {
       toast({
         title: "Error uploading photo",
@@ -126,7 +128,7 @@ export default function Account() {
     
     if (newPassword !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
+        title: t("account.passwordMismatch"),
         variant: "destructive",
       });
       return;
@@ -134,8 +136,8 @@ export default function Account() {
 
     if (newPassword.length < 6) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters",
+        title: t("account.passwordTooShort"),
+        description: t("account.passwordTooShort"),
         variant: "destructive",
       });
       return;
@@ -149,7 +151,7 @@ export default function Account() {
 
       if (error) throw error;
 
-      toast({ title: "Password updated successfully!" });
+      toast({ title: t("account.passwordChanged") });
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
@@ -188,8 +190,8 @@ export default function Account() {
       if (error) throw error;
 
       toast({
-        title: "Following!",
-        description: "You are now following this user",
+        title: t("account.follow"),
+        description: t("account.following"),
       });
 
       if (currentUserId) fetchFollowing(currentUserId);
@@ -257,8 +259,8 @@ export default function Account() {
           {/* Profile Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Manage your profile information</CardDescription>
+              <CardTitle>{t("account.profile")}</CardTitle>
+              <CardDescription>{t("account.profile")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-6">
@@ -314,34 +316,34 @@ export default function Account() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Lock className="h-5 w-5" />
-                Change Password
+                {t("account.changePassword")}
               </CardTitle>
-              <CardDescription>Update your password</CardDescription>
+              <CardDescription>{t("account.password")}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
+                  <Label htmlFor="new-password">{t("account.newPassword")}</Label>
                   <Input
                     id="new-password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
+                    placeholder={t("account.newPassword")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Label htmlFor="confirm-password">{t("account.confirmPassword")}</Label>
                   <Input
                     id="confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
+                    placeholder={t("account.confirmPassword")}
                   />
                 </div>
                 <Button type="submit" disabled={passwordLoading}>
-                  {passwordLoading ? "Updating..." : "Update Password"}
+                  {passwordLoading ? t("account.changing") : t("account.changePassword")}
                 </Button>
               </form>
             </CardContent>
@@ -352,7 +354,7 @@ export default function Account() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Social
+                {t("account.social")}
               </CardTitle>
               <CardDescription>Search and connect with other users</CardDescription>
             </CardHeader>
@@ -362,7 +364,7 @@ export default function Account() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Search users by name..."
+                    placeholder={t("account.searchPlaceholder")}
                     className="pl-10"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -416,7 +418,7 @@ export default function Account() {
               <Separator />
 
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Following ({following.length})</h4>
+                <h4 className="text-sm font-medium">{t("account.following")} ({following.length})</h4>
                 {following.length > 0 ? (
                   <div className="space-y-2">
                     {following.map((user) => (
@@ -449,7 +451,7 @@ export default function Account() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground py-4 text-center">
-                    You're not following anyone yet
+                    {t("account.noFollowing")}
                   </p>
                 )}
               </div>
@@ -492,7 +494,7 @@ export default function Account() {
             onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
+            {t("account.signOut")}
           </Button>
         </div>
       </main>
