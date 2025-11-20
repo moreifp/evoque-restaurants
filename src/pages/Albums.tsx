@@ -6,9 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, BookImage, Map } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
+import { useI18n } from "@/i18n/i18n";
+import { format } from "date-fns";
+import { enUS, ptBR } from "date-fns/locale";
 
 export default function Albums() {
   const navigate = useNavigate();
+  const { t, language } = useI18n();
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,15 +37,15 @@ export default function Albums() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Albums</h1>
+          <h1 className="text-3xl font-bold">{t("albums.title")}</h1>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate("/albums/map")}>
               <Map className="h-4 w-4 mr-2" />
-              Map
+              {t("albums.map")}
             </Button>
             <Button onClick={() => navigate("/albums/create")}>
               <Plus className="h-4 w-4 mr-2" />
-              Create Album
+              {t("albums.createAlbum")}
             </Button>
           </div>
         </div>
@@ -49,7 +53,7 @@ export default function Albums() {
         {/* Albums Grid */}
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading your albums...</p>
+            <p className="text-muted-foreground">{t("albums.loading")}</p>
           </div>
         ) : albums.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -72,7 +76,9 @@ export default function Albums() {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-3">
-                    {new Date(album.created_at).toLocaleDateString()}
+                    {format(new Date(album.created_at), "PPP", {
+                      locale: language === "pt" ? ptBR : enUS,
+                    })}
                   </p>
                 </CardContent>
               </Card>
@@ -81,13 +87,13 @@ export default function Albums() {
         ) : (
           <Card className="p-12 text-center">
             <BookImage className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Albums Yet</h3>
+            <h3 className="text-xl font-semibold mb-2">{t("albums.noAlbums")}</h3>
             <p className="text-muted-foreground mb-6">
-              Create your first album to organize your culinary experiences
+              {t("albums.noAlbumsDesc")}
             </p>
             <Button onClick={() => navigate("/albums/create")}>
               <Plus className="h-4 w-4 mr-2" />
-              Create Album
+              {t("albums.createAlbum")}
             </Button>
           </Card>
         )}
