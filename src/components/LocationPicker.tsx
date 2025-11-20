@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { MapPin, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -15,6 +16,7 @@ interface LocationPickerProps {
 }
 
 export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
