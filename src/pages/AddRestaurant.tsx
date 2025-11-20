@@ -15,6 +15,7 @@ import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { z } from "zod";
+import { useI18n } from "@/i18n/i18n";
 
 const AUTOSAVE_KEY = "restaurant-draft-autosave";
 
@@ -35,6 +36,7 @@ const restaurantSchema = z.object({
 export default function AddRestaurant() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, language } = useI18n();
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
@@ -78,8 +80,8 @@ export default function AddRestaurant() {
         setSelectedAlbumId(parsed.selectedAlbumId);
         setSelectedTags(parsed.selectedTags || []);
         toast({
-          title: "Draft restored",
-          description: "Your previous work has been restored",
+          title: t("addRestaurant.draftRestored"),
+          description: t("addRestaurant.draftRestoredDesc"),
         });
       } catch (e) {
         console.error("Failed to restore autosave:", e);
@@ -127,7 +129,7 @@ export default function AddRestaurant() {
       if (!validation.success) {
         const errors = validation.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('. ');
         toast({
-          title: "Validation Error",
+          title: t("addRestaurant.validationError"),
           description: errors,
           variant: "destructive",
         });
@@ -272,16 +274,16 @@ export default function AddRestaurant() {
       localStorage.removeItem(AUTOSAVE_KEY);
       
       toast({
-        title: "Restaurant added!",
+        title: t("addRestaurant.restaurantAdded"),
         description: selectedAlbumId && selectedAlbumId !== "none" 
-          ? "Your memory has been saved and added to the album"
-          : "Your memory has been saved",
+          ? t("addRestaurant.memoryAdded")
+          : t("addRestaurant.memorySaved"),
       });
 
       navigate("/dining");
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t("addRestaurant.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -297,17 +299,15 @@ export default function AddRestaurant() {
   const generateDescription = async () => {
     if (!formData.restaurant_name || !formData.location_address) {
       toast({
-        title: "Missing information",
-        description: "Please enter restaurant name and location first",
+        title: t("addRestaurant.missingInfo"),
+        description: t("addRestaurant.missingInfoDesc"),
         variant: "destructive",
       });
       return;
     }
 
     setGeneratingDescription(true);
-    try {
-      const language = navigator.language.toLowerCase().startsWith('pt') ? 'pt' : 'en';
-      
+    try {      
       const { data, error } = await supabase.functions.invoke('generate-restaurant-description', {
         body: {
           restaurantName: formData.restaurant_name,
@@ -321,17 +321,15 @@ export default function AddRestaurant() {
       if (data?.description) {
         setFormData(prev => ({ ...prev, description: data.description }));
         toast({
-          title: language === 'pt' ? "Descrição gerada!" : "Description generated!",
-          description: language === 'pt' 
-            ? "A descrição foi criada com sucesso" 
-            : "The description was successfully created",
+          title: t("addRestaurant.descriptionGenerated"),
+          description: t("addRestaurant.descriptionSuccess"),
         });
       }
     } catch (error) {
       console.error('Error generating description:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate description. Please try again.",
+        title: t("addRestaurant.error"),
+        description: t("addRestaurant.failedGenerate"),
         variant: "destructive",
       });
     } finally {
@@ -355,12 +353,12 @@ export default function AddRestaurant() {
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <h1 className="text-3xl font-bold">Add Restaurant Experience</h1>
+              <h1 className="text-3xl font-bold">{t("addRestaurant.title")}</h1>
             </div>
             {lastSaved && (
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Check className="h-4 w-4" />
-                <span>Autosaved</span>
+                <span>{t("addRestaurant.autosaved")}</span>
               </div>
             )}
           </div>
@@ -368,7 +366,7 @@ export default function AddRestaurant() {
           {/* Form */}
           <Card>
             <CardHeader>
-              <CardTitle>Restaurant Details</CardTitle>
+              <CardTitle>{t("addRestaurant.restaurantDetails")}</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -387,11 +385,11 @@ export default function AddRestaurant() {
 
                 {/* Restaurant Name - SECOND */}
                 <div className="space-y-2">
-                  <Label htmlFor="restaurant_name" className="text-lg">Restaurant Name *</Label>
+                  <Label htmlFor="restaurant_name" className="text-lg">{t("addRestaurant.restaurantName")} *</Label>
                   <Input
                     id="restaurant_name"
                     type="text"
-                    placeholder="La Piazza"
+                    placeholder={t("addRestaurant.restaurantNamePlaceholder")}
                     value={formData.restaurant_name}
                     onChange={(e) =>
                       setFormData({ ...formData, restaurant_name: e.target.value })
@@ -403,7 +401,7 @@ export default function AddRestaurant() {
 
                 {/* Visit Date - THIRD */}
                 <div className="space-y-2">
-                  <Label htmlFor="visit_date" className="text-lg">Visit Date *</Label>
+                  <Label htmlFor="visit_date" className="text-lg">{t("addRestaurant.visitDate")} *</Label>
                   <Input
                     id="visit_date"
                     type="date"
@@ -443,7 +441,7 @@ export default function AddRestaurant() {
 
                 {/* Rating */}
                 <div className="space-y-2">
-                  <Label className="text-lg">Rating</Label>
+                  <Label className="text-lg">{t("addRestaurant.rating")}</Label>
                   <div className="flex items-center space-x-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -467,11 +465,11 @@ export default function AddRestaurant() {
 
                 {/* Companions */}
                 <div className="space-y-2">
-                  <Label htmlFor="companions" className="text-lg">Who were you with?</Label>
+                  <Label htmlFor="companions" className="text-lg">{t("addRestaurant.companions")}</Label>
                   <Input
                     id="companions"
                     type="text"
-                    placeholder="Friends, Family, Solo..."
+                    placeholder={t("addRestaurant.companionsPlaceholder")}
                     value={formData.companions}
                     onChange={(e) =>
                       setFormData({ ...formData, companions: e.target.value })
@@ -483,7 +481,7 @@ export default function AddRestaurant() {
                 {/* AI-Generated Description */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="description" className="text-lg">Restaurant Description</Label>
+                    <Label htmlFor="description" className="text-lg">{t("addRestaurant.description")}</Label>
                     <Button
                       type="button"
                       variant="outline"
@@ -493,12 +491,12 @@ export default function AddRestaurant() {
                       className="h-8"
                     >
                       <Sparkles className="h-4 w-4 mr-2" />
-                      {generatingDescription ? "Generating..." : "Generate with AI"}
+                      {generatingDescription ? t("addRestaurant.generating") : t("addRestaurant.generateWithAI")}
                     </Button>
                   </div>
                   <Textarea
                     id="description"
-                    placeholder="A short, elegant description of the restaurant (max 240 characters)"
+                    placeholder={t("addRestaurant.descriptionPlaceholder")}
                     rows={3}
                     maxLength={240}
                     value={formData.description}
@@ -508,16 +506,16 @@ export default function AddRestaurant() {
                     className="text-base"
                   />
                   <p className="text-xs text-muted-foreground">
-                    {formData.description.length}/240 characters
+                    {formData.description.length}/240 {t("addRestaurant.descriptionLength")}
                   </p>
                 </div>
 
                 {/* Notes */}
                 <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-lg">Notes</Label>
+                  <Label htmlFor="notes" className="text-lg">{t("addRestaurant.notes")}</Label>
                   <Textarea
                     id="notes"
-                    placeholder="Share your thoughts, favorite dishes, ambience..."
+                    placeholder={t("addRestaurant.notesPlaceholder")}
                     rows={5}
                     value={formData.notes}
                     onChange={(e) =>
@@ -535,7 +533,7 @@ export default function AddRestaurant() {
                     className="flex-1 h-12 text-lg"
                   >
                     <Save className="h-5 w-5 mr-2" />
-                    {loading ? "Saving..." : "Save Restaurant"}
+                    {loading ? t("addRestaurant.saving") : t("addRestaurant.save")}
                   </Button>
                   <Button
                     type="button"
@@ -543,7 +541,7 @@ export default function AddRestaurant() {
                     onClick={() => navigate(-1)}
                     className="h-12 text-lg"
                   >
-                    Cancel
+                    {t("addRestaurant.cancel")}
                   </Button>
                 </div>
               </form>

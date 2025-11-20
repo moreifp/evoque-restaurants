@@ -19,11 +19,15 @@ import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/i18n/i18n";
+import { format } from "date-fns";
+import { enUS, ptBR } from "date-fns/locale";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, language } = useI18n();
   const [entry, setEntry] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
@@ -115,8 +119,8 @@ export default function RestaurantDetail() {
 
     if (error) {
       toast({
-        title: "Error",
-        description: "Failed to load restaurant details",
+        title: t("restaurantDetail.error"),
+        description: t("restaurantDetail.loadFailed"),
         variant: "destructive",
       });
       navigate("/dining");
@@ -300,8 +304,8 @@ export default function RestaurantDetail() {
       }
 
       toast({
-        title: "Success",
-        description: "Restaurant updated successfully",
+        title: t("restaurantDetail.success"),
+        description: t("restaurantDetail.restaurantUpdated"),
       });
 
       setEditMode(false);
@@ -319,7 +323,7 @@ export default function RestaurantDetail() {
       });
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t("restaurantDetail.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -331,8 +335,8 @@ export default function RestaurantDetail() {
   const handleAddToAlbum = async () => {
     if (!selectedAlbumId || selectedAlbumId === "none") {
       toast({
-        title: "Error",
-        description: "Please select an album",
+        title: t("restaurantDetail.error"),
+        description: t("restaurantDetail.albumError"),
         variant: "destructive",
       });
       return;
@@ -347,8 +351,8 @@ export default function RestaurantDetail() {
 
     if (existing) {
       toast({
-        title: "Info",
-        description: "Restaurant is already in this album",
+        title: t("restaurantDetail.info"),
+        description: t("restaurantDetail.alreadyInAlbum"),
       });
       return;
     }
@@ -362,16 +366,16 @@ export default function RestaurantDetail() {
 
     if (error) {
       toast({
-        title: "Error",
-        description: "Failed to add to album",
+        title: t("restaurantDetail.error"),
+        description: t("restaurantDetail.albumFailed"),
         variant: "destructive",
       });
       return;
     }
 
     toast({
-      title: "Success",
-      description: "Restaurant added to album",
+      title: t("restaurantDetail.success"),
+      description: t("restaurantDetail.albumAdded"),
     });
 
     setAlbumDialogOpen(false);
@@ -387,16 +391,16 @@ export default function RestaurantDetail() {
 
     if (error) {
       toast({
-        title: "Error",
-        description: "Failed to delete restaurant",
+        title: t("restaurantDetail.error"),
+        description: t("restaurantDetail.deleteFailed"),
         variant: "destructive",
       });
       return;
     }
 
     toast({
-      title: "Success",
-      description: "Restaurant deleted successfully",
+      title: t("restaurantDetail.success"),
+      description: t("restaurantDetail.deleteSuccess"),
     });
     
     navigate("/dining");
@@ -405,8 +409,8 @@ export default function RestaurantDetail() {
   const handleShare = async () => {
     if (!entry.is_public) {
       toast({
-        title: "Restaurante Privado",
-        description: "Torne o restaurante público primeiro para compartilhar",
+        title: t("restaurantDetail.restaurantPrivate"),
+        description: t("restaurantDetail.makePublicFirst"),
         variant: "destructive",
       });
       return;
@@ -432,8 +436,8 @@ export default function RestaurantDetail() {
       setTimeout(() => setCopied(false), 2000);
       
       toast({
-        title: "Link Copiado!",
-        description: `Link: ${token || id}`,
+        title: t("restaurantDetail.linkCopied"),
+        description: `${t("restaurantDetail.shareLink")}: ${token || id}`,
       });
     } catch (error) {
       console.error('Error generating share token:', error);
@@ -443,8 +447,8 @@ export default function RestaurantDetail() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({
-        title: "Link Copiado!",
-        description: "Link de compartilhamento copiado",
+        title: t("restaurantDetail.linkCopied"),
+        description: t("restaurantDetail.shareLinkCopied"),
       });
     } finally {
       setShareLoading(false);
@@ -460,8 +464,8 @@ export default function RestaurantDetail() {
 
     if (error) {
       toast({
-        title: "Erro",
-        description: "Falha ao tornar público",
+        title: t("restaurantDetail.makePrivateError"),
+        description: t("restaurantDetail.makePublicFailed"),
         variant: "destructive",
       });
       setShareLoading(false);
@@ -469,8 +473,8 @@ export default function RestaurantDetail() {
     }
 
     toast({
-      title: "Restaurante Público",
-      description: "Agora você pode compartilhar o link",
+      title: t("restaurantDetail.restaurantNowPublic"),
+      description: t("restaurantDetail.canShareNow"),
     });
 
     fetchEntry();
@@ -486,8 +490,8 @@ export default function RestaurantDetail() {
 
     if (error) {
       toast({
-        title: "Erro",
-        description: "Falha ao tornar privado",
+        title: t("restaurantDetail.makePrivateError"),
+        description: t("restaurantDetail.makePrivateFailed"),
         variant: "destructive",
       });
       setShareLoading(false);
@@ -495,8 +499,8 @@ export default function RestaurantDetail() {
     }
 
     toast({
-      title: "Restaurante Privado",
-      description: "O link de compartilhamento foi desativado",
+      title: t("restaurantDetail.restaurantNowPrivate"),
+      description: t("restaurantDetail.shareLinkDeactivated"),
     });
 
     fetchEntry();
@@ -517,6 +521,7 @@ export default function RestaurantDetail() {
           rating: formData.rating,
           companions: formData.companions,
           visitDate: formData.visit_date,
+          language,
         },
       });
 
@@ -525,14 +530,14 @@ export default function RestaurantDetail() {
       if (data?.note) {
         setFormData((prev) => ({ ...prev, notes: data.note }));
         toast({
-          title: "Note Generated",
-          description: "AI has generated a note based on your restaurant details",
+          title: t("restaurantDetail.noteGenerated"),
+          description: t("restaurantDetail.noteGeneratedDesc"),
         });
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate note",
+        title: t("restaurantDetail.error"),
+        description: error.message || t("restaurantDetail.noteFailed"),
         variant: "destructive",
       });
     } finally {
@@ -545,7 +550,7 @@ export default function RestaurantDetail() {
       <div className="min-h-screen bg-gradient-subtle">
         <Navigation />
         <div className="container mx-auto px-4 pt-24 text-center">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t("restaurantDetail.loading")}</p>
         </div>
       </div>
     );
@@ -577,7 +582,7 @@ export default function RestaurantDetail() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <h1 className="text-3xl font-bold">
-                {editMode ? "Edit Restaurant" : entry.restaurant_name}
+                {editMode ? t("restaurantDetail.editRestaurant") : entry.restaurant_name}
               </h1>
             </div>
             <div className="flex items-center gap-2">
@@ -588,7 +593,7 @@ export default function RestaurantDetail() {
                     onClick={() => setEditMode(true)}
                   >
                     <Edit className="h-5 w-5 mr-2" />
-                    Edit
+                    {t("restaurantDetail.edit")}
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -602,23 +607,23 @@ export default function RestaurantDetail() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 bg-background border shadow-lg z-50">
                       {entry.is_public ? (
-                        <>
-                          <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
-                            <LinkIcon className="h-4 w-4 mr-2" />
-                            Copiar Link
+                          <>
+                            <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
+                              <LinkIcon className="h-4 w-4 mr-2" />
+                              {t("restaurantDetail.copyLink")}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={handleMakePrivate} className="cursor-pointer text-destructive">
+                              <Lock className="h-4 w-4 mr-2" />
+                              {t("restaurantDetail.makePrivate")}
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem onClick={handleMakePublic} className="cursor-pointer">
+                            <Globe className="h-4 w-4 mr-2" />
+                            {t("restaurantDetail.makePublic")}
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={handleMakePrivate} className="cursor-pointer text-destructive">
-                            <Lock className="h-4 w-4 mr-2" />
-                            Tornar Privado
-                          </DropdownMenuItem>
-                        </>
-                      ) : (
-                        <DropdownMenuItem onClick={handleMakePublic} className="cursor-pointer">
-                          <Globe className="h-4 w-4 mr-2" />
-                          Tornar Público
-                        </DropdownMenuItem>
-                      )}
+                        )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Dialog open={albumDialogOpen} onOpenChange={setAlbumDialogOpen}>
@@ -629,7 +634,7 @@ export default function RestaurantDetail() {
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Add to Album</DialogTitle>
+                        <DialogTitle>{t("restaurantDetail.addToAlbum")}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
                         <AlbumSelector
@@ -641,10 +646,10 @@ export default function RestaurantDetail() {
                             variant="outline"
                             onClick={() => setAlbumDialogOpen(false)}
                           >
-                            Cancel
+                            {t("restaurantDetail.cancel")}
                           </Button>
                           <Button onClick={handleAddToAlbum}>
-                            Add to Album
+                            {t("restaurantDetail.addToAlbum")}
                           </Button>
                         </div>
                       </div>
@@ -658,14 +663,14 @@ export default function RestaurantDetail() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Restaurant Entry</AlertDialogTitle>
+                        <AlertDialogTitle>{t("restaurantDetail.deleteTitle")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete this restaurant entry and all associated photos and receipts.
+                          {t("restaurantDetail.deleteDescription")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t("restaurantDetail.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete}>{t("restaurantDetail.delete")}</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -681,7 +686,7 @@ export default function RestaurantDetail() {
               {currentAlbums.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Albums</CardTitle>
+                    <CardTitle>{t("restaurantDetail.albums")}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
@@ -703,7 +708,7 @@ export default function RestaurantDetail() {
               {/* Main Info Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Restaurant Details</CardTitle>
+                  <CardTitle>{t("restaurantDetail.restaurantDetails")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Restaurant Name */}
@@ -723,10 +728,8 @@ export default function RestaurantDetail() {
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 flex-shrink-0" />
                     <p className="text-muted-foreground">
-                      {new Date(entry.visit_date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
+                      {format(new Date(entry.visit_date), "PPP", {
+                        locale: language === "pt" ? ptBR : enUS,
                       })}
                     </p>
                   </div>
@@ -734,7 +737,7 @@ export default function RestaurantDetail() {
                   {/* Rating */}
                   {entry.rating > 0 && (
                     <div>
-                      <Label className="text-lg mb-2">Rating</Label>
+                      <Label className="text-lg mb-2">{t("restaurantDetail.rating")}</Label>
                       <div className="flex items-center space-x-1 pl-0">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Star
@@ -756,7 +759,7 @@ export default function RestaurantDetail() {
                     <div>
                       <Label className="text-lg flex items-center gap-2 mb-2">
                         <Users className="h-5 w-5" />
-                        Who were you with?
+                        {t("restaurantDetail.companions")}
                       </Label>
                       <p className="text-muted-foreground pl-7">{entry.companions}</p>
                     </div>
@@ -765,7 +768,7 @@ export default function RestaurantDetail() {
                   {/* Notes */}
                   {entry.notes && (
                     <div>
-                      <Label className="text-lg mb-2">Notes</Label>
+                      <Label className="text-lg mb-2">{t("restaurantDetail.notes")}</Label>
                       <p className="text-muted-foreground whitespace-pre-wrap">{entry.notes}</p>
                     </div>
                   )}
@@ -773,7 +776,7 @@ export default function RestaurantDetail() {
                   {/* Tags */}
                   {tags.length > 0 && (
                     <div>
-                      <Label className="text-lg mb-2">Tags</Label>
+                      <Label className="text-lg mb-2">{t("restaurantDetail.tags")}</Label>
                       <div className="flex flex-wrap gap-2">
                         {tags.map((tag) => (
                           <Badge key={tag} variant="secondary">{tag}</Badge>
@@ -788,7 +791,7 @@ export default function RestaurantDetail() {
               {(placePhotos.length > 0 || menuPhotos.length > 0 || winePhotos.length > 0 || friendsPhotos.length > 0) && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Photos</CardTitle>
+                    <CardTitle>{t("restaurantDetail.photos")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-8">
                     {/* Place Photos */}
@@ -796,7 +799,7 @@ export default function RestaurantDetail() {
                       <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
                           <Camera className="h-5 w-5" />
-                          Place
+                          {t("restaurantDetail.place")}
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {placePhotos.map((photo) => (
@@ -1104,7 +1107,7 @@ export default function RestaurantDetail() {
 
                   {/* Restaurant Name */}
                   <div className="space-y-2">
-                    <Label htmlFor="restaurant_name" className="text-lg">Restaurant Name *</Label>
+                    <Label htmlFor="restaurant_name" className="text-lg">{t("restaurantDetail.restaurantName")} *</Label>
                     <Input
                       id="restaurant_name"
                       type="text"
@@ -1153,7 +1156,7 @@ export default function RestaurantDetail() {
 
                   {/* Rating */}
                   <div className="space-y-2">
-                    <Label className="text-lg">Rating</Label>
+                    <Label className="text-lg">{t("restaurantDetail.rating")}</Label>
                     <div className="flex items-center space-x-3">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -1177,11 +1180,11 @@ export default function RestaurantDetail() {
 
                   {/* Companions */}
                   <div className="space-y-2">
-                    <Label htmlFor="companions" className="text-lg">Who were you with?</Label>
+                    <Label htmlFor="companions" className="text-lg">{t("restaurantDetail.companions")}</Label>
                     <Input
                       id="companions"
                       type="text"
-                      placeholder="Friends, Family, Solo..."
+                      placeholder={t("restaurantDetail.companionsPlaceholder")}
                       value={formData.companions}
                       onChange={(e) =>
                         setFormData({ ...formData, companions: e.target.value })
@@ -1193,7 +1196,7 @@ export default function RestaurantDetail() {
                   {/* Notes */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="notes" className="text-lg">Notes</Label>
+                      <Label htmlFor="notes" className="text-lg">{t("restaurantDetail.notes")}</Label>
                       <Button
                         type="button"
                         variant="outline"
@@ -1201,12 +1204,12 @@ export default function RestaurantDetail() {
                         onClick={handleGenerateNote}
                         disabled={generatingNote || !formData.restaurant_name}
                       >
-                        {generatingNote ? "Generating..." : "Generate with AI"}
+                        {generatingNote ? t("restaurantDetail.generating") : t("restaurantDetail.generateNote")}
                       </Button>
                     </div>
                     <Textarea
                       id="notes"
-                      placeholder="Share your thoughts, favorite dishes, ambience..."
+                      placeholder={t("restaurantDetail.notesPlaceholder")}
                       rows={5}
                       value={formData.notes}
                       onChange={(e) =>
@@ -1224,7 +1227,7 @@ export default function RestaurantDetail() {
                       className="flex-1 h-12 text-lg"
                     >
                       <Save className="h-5 w-5 mr-2" />
-                      {saving ? "Saving..." : "Save Changes"}
+                      {saving ? t("restaurantDetail.saving") : t("restaurantDetail.save")}
                     </Button>
                     <Button
                       type="button"
@@ -1251,7 +1254,7 @@ export default function RestaurantDetail() {
                       }}
                       className="h-12 text-lg"
                     >
-                      Cancel
+                      {t("restaurantDetail.cancel")}
                     </Button>
                   </div>
                 </div>
