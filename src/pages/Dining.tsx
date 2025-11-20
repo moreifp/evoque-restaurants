@@ -10,10 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, MapPin, Star, X, Map, BookImage } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/i18n";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
 
 export default function Dining() {
   const navigate = useNavigate();
+  const { t, language } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "restaurants";
   const tagFilter = searchParams.get("tag");
@@ -108,27 +110,27 @@ export default function Dining() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
         <Tabs value={activeTab} onValueChange={(value) => setSearchParams({ tab: value })}>
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold">Dining</h1>
+            <h1 className="text-3xl font-bold">{t("dining.title")}</h1>
             <div className="flex items-center gap-2">
               <TabsList>
-                <TabsTrigger value="restaurants">Restaurants</TabsTrigger>
-                <TabsTrigger value="albums">Albums</TabsTrigger>
+                <TabsTrigger value="restaurants">{t("dining.restaurants")}</TabsTrigger>
+                <TabsTrigger value="albums">{t("dining.albums")}</TabsTrigger>
               </TabsList>
               {activeTab === "restaurants" && (
                 <Button onClick={() => navigate("/dining/add")}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Restaurant
+                  {t("dining.addRestaurant")}
                 </Button>
               )}
               {activeTab === "albums" && (
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => navigate("/albums/map")}>
                     <Map className="h-4 w-4 mr-2" />
-                    Map
+                    {t("albums.map")}
                   </Button>
                   <Button onClick={() => navigate("/albums/create")}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Album
+                    {t("albums.createAlbum")}
                   </Button>
                 </div>
               )}
@@ -142,7 +144,7 @@ export default function Dining() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search by location (e.g., New York), restaurant name, or notes..."
+                  placeholder={t("dining.searchPlaceholder")}
                   className="pl-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -152,15 +154,15 @@ export default function Dining() {
               <div className="flex flex-wrap gap-4">
                 <Select value={selectedRating} onValueChange={setSelectedRating}>
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by rating" />
+                    <SelectValue placeholder={t("dining.filterByRating")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Ratings</SelectItem>
-                    <SelectItem value="5">5 Stars</SelectItem>
-                    <SelectItem value="4">4 Stars</SelectItem>
-                    <SelectItem value="3">3 Stars</SelectItem>
-                    <SelectItem value="2">2 Stars</SelectItem>
-                    <SelectItem value="1">1 Star</SelectItem>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
+                    <SelectItem value="5">5 {t("dining.stars")}</SelectItem>
+                    <SelectItem value="4">4 {t("dining.stars")}</SelectItem>
+                    <SelectItem value="3">3 {t("dining.stars")}</SelectItem>
+                    <SelectItem value="2">2 {t("dining.stars")}</SelectItem>
+                    <SelectItem value="1">1 {t("dining.stars")}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -229,13 +231,13 @@ export default function Dining() {
             ) : (
               <Card className="p-12 text-center">
                 <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Restaurants Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">{t("dining.noResults")}</h3>
                 <p className="text-muted-foreground mb-6">
-                  Start documenting your culinary adventures
+                  {t("dining.noResultsDesc")}
                 </p>
                 <Button onClick={() => navigate("/dining/add")}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Restaurant
+                  {t("dining.addRestaurant")}
                 </Button>
               </Card>
             )}
@@ -244,7 +246,7 @@ export default function Dining() {
           <TabsContent value="albums" className="mt-0">
             {albumsLoading ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">Loading your albums...</p>
+                <p className="text-muted-foreground">{t("albums.loading")}</p>
               </div>
             ) : albums.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -266,9 +268,9 @@ export default function Dining() {
                           {album.description}
                         </p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-3">
-                        {new Date(album.created_at).toLocaleDateString()}
-                      </p>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      {new Date(album.created_at).toLocaleDateString(language === "pt" ? "pt-BR" : "en-US")}
+                    </p>
                     </CardContent>
                   </Card>
                 ))}
@@ -276,13 +278,13 @@ export default function Dining() {
             ) : (
               <Card className="p-12 text-center">
                 <BookImage className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Albums Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">{t("albums.noAlbums")}</h3>
                 <p className="text-muted-foreground mb-6">
-                  Create your first album to organize your culinary experiences
+                  {t("albums.noAlbumsDesc")}
                 </p>
                 <Button onClick={() => navigate("/albums/create")}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Album
+                  {t("albums.createAlbum")}
                 </Button>
               </Card>
             )}

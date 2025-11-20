@@ -3,6 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 import { Wine, Calendar, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -25,6 +26,7 @@ export default function WineCellar() {
   const [wines, setWines] = useState<WineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { t, language } = useI18n();
 
   useEffect(() => {
     fetchWines();
@@ -60,7 +62,7 @@ export default function WineCellar() {
       setWines(data as any || []);
     } catch (error: any) {
       toast({
-        title: "Error loading wines",
+        title: t("wineCellar.title"),
         description: error.message,
         variant: "destructive",
       });
@@ -79,17 +81,17 @@ export default function WineCellar() {
           <div className="mb-8">
             <div className="flex items-center space-x-3 mb-2">
               <Wine className="h-8 w-8 text-accent" />
-              <h1 className="text-3xl font-bold">My Wine Cellar</h1>
+              <h1 className="text-3xl font-bold">{t("wineCellar.title")}</h1>
             </div>
             <p className="text-muted-foreground">
-              Your collection of wines from memorable dining experiences
+              {t("wineCellar.subtitle")}
             </p>
           </div>
 
           {/* Loading State */}
           {loading && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Loading your wine collection...</p>
+              <p className="text-muted-foreground">{t("common.loading")}</p>
             </div>
           )}
 
@@ -98,12 +100,12 @@ export default function WineCellar() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Wine className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-semibold mb-2">No wines yet</h3>
+                <h3 className="text-xl font-semibold mb-2">{t("wineCellar.comingSoon")}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Start adding wine photos to your restaurant experiences
+                  {t("wineCellar.description")}
                 </p>
                 <Link to="/dining/add" className="text-primary hover:underline">
-                  Add Restaurant Experience
+                  {t("home.addRestaurant")}
                 </Link>
               </CardContent>
             </Card>
@@ -153,7 +155,7 @@ export default function WineCellar() {
                       
                       <div className="flex items-center space-x-2 text-muted-foreground">
                         <Calendar className="h-3.5 w-3.5" />
-                        <span>{new Date(wine.entry.visit_date).toLocaleDateString()}</span>
+                        <span>{new Date(wine.entry.visit_date).toLocaleDateString(language === "pt" ? "pt-BR" : "en-US")}</span>
                       </div>
                       
                       {wine.entry.location_address && (
