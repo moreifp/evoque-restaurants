@@ -33,12 +33,60 @@ const App = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
+      
+      // Create profile if it doesn't exist (for Google sign-in)
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data, error }) => {
+            if (error && error.code === 'PGRST116') {
+              // Profile doesn't exist, create one
+              const displayName = session.user.user_metadata?.full_name || 
+                                session.user.user_metadata?.name || 
+                                session.user.email?.split('@')[0] || 
+                                'User';
+              
+              supabase.from('profiles').insert({
+                id: session.user.id,
+                display_name: displayName,
+              });
+            }
+          });
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setLoading(false);
+      
+      // Create profile for new OAuth users
+      if (session?.user) {
+        setTimeout(() => {
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', session.user.id)
+            .single()
+            .then(({ data, error }) => {
+              if (error && error.code === 'PGRST116') {
+                const displayName = session.user.user_metadata?.full_name || 
+                                  session.user.user_metadata?.name || 
+                                  session.user.email?.split('@')[0] || 
+                                  'User';
+                
+                supabase.from('profiles').insert({
+                  id: session.user.id,
+                  display_name: displayName,
+                });
+              }
+            });
+        }, 0);
+      }
     });
 
     return () => subscription.unsubscribe();
