@@ -311,6 +311,7 @@ export type Database = {
           companions: string | null
           created_at: string | null
           description: string | null
+          google_place_id: string | null
           id: string
           is_public: boolean | null
           location_address: string | null
@@ -329,6 +330,7 @@ export type Database = {
           companions?: string | null
           created_at?: string | null
           description?: string | null
+          google_place_id?: string | null
           id?: string
           is_public?: boolean | null
           location_address?: string | null
@@ -347,6 +349,7 @@ export type Database = {
           companions?: string | null
           created_at?: string | null
           description?: string | null
+          google_place_id?: string | null
           id?: string
           is_public?: boolean | null
           location_address?: string | null
