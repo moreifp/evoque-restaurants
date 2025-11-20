@@ -46,10 +46,10 @@ serve(async (req) => {
       );
     }
 
-    // Generate a unique short token (10 characters)
+    // Generate a unique short token (8 characters to match constraint)
     const generateToken = () => {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      const length = 10;
+      const length = 8;
       let token = '';
       for (let i = 0; i < length; i++) {
         token += chars.charAt(Math.floor(Math.random() * chars.length));
