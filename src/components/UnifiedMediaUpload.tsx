@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { extractGPSFromImage } from "@/utils/exifExtractor";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [lastCategory, setLastCategory] = useState<keyof typeof categoryConfig | null>(null);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   // Update parent whenever files change
   const updateParent = () => {
@@ -82,11 +84,11 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
   };
 
   const categoryConfig = {
-    place: { icon: Landmark, label: "Place", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
-    menu: { icon: UtensilsCrossed, label: "Menu", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
-    wine: { icon: Wine, label: "Wine", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
-    friends: { icon: Users, label: "Friends", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
-    receipt: { icon: Receipt, label: "Receipt", color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    place: { icon: Landmark, label: t("unifiedMediaUpload.categories.place"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    menu: { icon: UtensilsCrossed, label: t("unifiedMediaUpload.categories.menu"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    wine: { icon: Wine, label: t("unifiedMediaUpload.categories.wine"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    friends: { icon: Users, label: t("unifiedMediaUpload.categories.friends"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    receipt: { icon: Receipt, label: t("unifiedMediaUpload.categories.receipt"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
   };
 
   const handleFileSelect = async (category: keyof typeof categoryConfig, useCamera = false) => {
@@ -163,12 +165,12 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       });
 
       toast({
-        title: "Receipt processed!",
-        description: "Receipt data extracted successfully",
+        title: t("unifiedMediaUpload.toasts.receiptProcessed"),
+        description: t("unifiedMediaUpload.toasts.receiptSuccess"),
       });
     } catch (error: any) {
       toast({
-        title: "Error processing receipt",
+        title: t("unifiedMediaUpload.toasts.receiptError"),
         description: error.message,
         variant: "destructive",
       });
@@ -219,12 +221,12 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       });
 
       toast({
-        title: "Wine recognized!",
-        description: extractedWineInfo?.name || "Wine information extracted",
+        title: t("unifiedMediaUpload.toasts.wineRecognized"),
+        description: extractedWineInfo?.name || t("unifiedMediaUpload.toasts.wineInfo"),
       });
     } catch (error: any) {
       toast({
-        title: "Error analyzing wine",
+        title: t("unifiedMediaUpload.toasts.wineError"),
         description: error.message,
         variant: "destructive",
       });
@@ -289,12 +291,12 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       updateParent();
       
       toast({
-        title: "Files uploaded!",
-        description: `${newFiles.length} file(s) uploaded successfully`,
+        title: t("unifiedMediaUpload.toasts.filesUploaded"),
+        description: t("unifiedMediaUpload.toasts.filesSuccess").replace("{count}", newFiles.length.toString()),
       });
     } catch (error: any) {
       toast({
-        title: "Upload failed",
+        title: t("unifiedMediaUpload.toasts.uploadFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -307,8 +309,8 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
     <div className="space-y-6">
       {/* Title */}
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-[#0d1a2d]">Add your photos</h2>
-        <p className="text-lg text-muted-foreground">Tap a button then upload</p>
+        <h2 className="text-3xl font-bold text-[#0d1a2d]">{t("unifiedMediaUpload.title")}</h2>
+        <p className="text-lg text-muted-foreground">{t("unifiedMediaUpload.subtitle")}</p>
       </div>
 
       {/* Category Buttons Grid */}
@@ -352,9 +354,9 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       <AlertDialog open={showAddMoreDialog} onOpenChange={setShowAddMoreDialog}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-center text-2xl">Add more photos?</AlertDialogTitle>
+            <AlertDialogTitle className="text-center text-2xl">{t("unifiedMediaUpload.addMoreDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-base">
-              Would you like to add another {lastCategory && categoryConfig[lastCategory].label.toLowerCase()} photo?
+              {t("unifiedMediaUpload.addMoreDialog.description").replace("{category}", lastCategory ? categoryConfig[lastCategory].label.toLowerCase() : "")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-col gap-3 mt-4">
@@ -369,7 +371,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
               }}
             >
               <Plus className="h-6 w-6 mr-2" />
-              Add More
+              {t("unifiedMediaUpload.addMoreDialog.addMore")}
             </Button>
             <Button
               size="lg"
@@ -378,7 +380,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
               onClick={() => setShowAddMoreDialog(false)}
             >
               <X className="h-6 w-6 mr-2" />
-              I'm Done
+              {t("unifiedMediaUpload.addMoreDialog.done")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -390,7 +392,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wine className="h-5 w-5" />
-              Wine Collection ({files.filter(f => f.category === 'wine').length})
+              {t("unifiedMediaUpload.wine.collectionTitle")} ({files.filter(f => f.category === 'wine').length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -425,7 +427,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
                           className="w-full"
                         >
                           <Sparkles className="h-4 w-4 mr-2" />
-                          {processingWine === file.preview ? "Analyzing..." : "Recognize Wine"}
+                          {processingWine === file.preview ? t("unifiedMediaUpload.wine.analyzing") : t("unifiedMediaUpload.wine.recognize")}
                         </Button>
                       ) : (
                         <div className="space-y-2">
@@ -434,13 +436,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
                               <p className="font-semibold text-base">{file.wineInfo?.name ?? file.wineInfo?.wineInfo?.name}</p>
                             )}
                             {(file.wineInfo?.vintage ?? file.wineInfo?.wineInfo?.vintage) && (
-                              <p className="text-muted-foreground">Vintage: {file.wineInfo?.vintage ?? file.wineInfo?.wineInfo?.vintage}</p>
+                              <p className="text-muted-foreground">{t("unifiedMediaUpload.wine.vintage")} {file.wineInfo?.vintage ?? file.wineInfo?.wineInfo?.vintage}</p>
                             )}
                             {(file.wineInfo?.region ?? file.wineInfo?.wineInfo?.region) && (
-                              <p className="text-muted-foreground">Region: {file.wineInfo?.region ?? file.wineInfo?.wineInfo?.region}</p>
+                              <p className="text-muted-foreground">{t("unifiedMediaUpload.wine.region")} {file.wineInfo?.region ?? file.wineInfo?.wineInfo?.region}</p>
                             )}
                             {(file.wineInfo?.type ?? file.wineInfo?.wineInfo?.type) && (
-                              <p className="text-muted-foreground">Type: {file.wineInfo?.type ?? file.wineInfo?.wineInfo?.type}</p>
+                              <p className="text-muted-foreground">{t("unifiedMediaUpload.wine.type")} {file.wineInfo?.type ?? file.wineInfo?.wineInfo?.type}</p>
                             )}
                           </div>
                         </div>
@@ -448,7 +450,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
                       {/* Wine Rating */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium">Rating</p>
+                        <p className="text-sm font-medium">{t("unifiedMediaUpload.wine.rating")}</p>
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <button
@@ -474,9 +476,9 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
                   {/* Tasting Notes */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Tasting Notes</label>
+                    <label className="text-sm font-medium">{t("unifiedMediaUpload.wine.tastingNotes")}</label>
                     <Textarea
-                      placeholder="Share your thoughts about this wine..."
+                      placeholder={t("wineUpload.tastingPlaceholder")}
                       value={file.caption || ''}
                       onChange={(e) => updateWineCaption(file.preview, e.target.value)}
                       rows={3}

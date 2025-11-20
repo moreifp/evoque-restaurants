@@ -300,6 +300,13 @@ export const en = {
     loadingAlbum: "Loading album...",
     errorLoading: "Error loading album",
   },
+  
+  unifiedMediaUpload: { title: "Add your photos", subtitle: "Tap a button then upload", categories: { place: "Place", menu: "Menu", wine: "Wine", friends: "Friends", receipt: "Receipt" }, addMoreDialog: { title: "Add more photos?", description: "Would you like to add another {category} photo?", addMore: "Add More", done: "I'm Done" }, wine: { collectionTitle: "Wine Collection", analyzing: "Analyzing...", recognize: "Recognize Wine", rating: "Rating", tastingNotes: "Tasting Notes", vintage: "Vintage:", region: "Region:", type: "Type:" }, toasts: { receiptProcessed: "Receipt processed!", receiptSuccess: "Receipt data extracted successfully", receiptError: "Error processing receipt", filesUploaded: "Files uploaded!", filesSuccess: "{count} file(s) uploaded successfully", uploadFailed: "Upload failed", wineRecognized: "Wine recognized!", wineInfo: "Wine information extracted", wineError: "Error analyzing wine" } },
+  
+  receiptUpload: { label: "Upload Receipt/Invoice", selectImage: "Select Receipt Image", processing: "Processing...", processReceipt: "Process Receipt", helpText: "Upload a photo of your receipt to automatically extract dishes, drinks, and prices", extractedItems: "Extracted Items", quantity: "Qty:", subtotal: "Subtotal", tax: "Tax", serviceFee: "Service Fee", total: "Total", toasts: { processing: "Processing receipt...", processingWait: "This may take a few seconds", success: "Receipt processed!", extracted: "Extracted {count} items from your receipt", failed: "Processing failed", rateLimit: "Rate limit reached. Please wait a moment and try again.", noCredits: "AI credits exhausted. Please add credits to your Lovable workspace." } },
+  
+  wineUpload: { label: "Wine Photos", selectPhotos: "Select Wine Photos", uploading: "Uploading...", upload: "Upload", rating: "Wine Rating", tastingNotes: "Your Tasting Notes", tastingPlaceholder: "What did you think of this wine? Taste, aroma, pairing, food match...", recognized: "Recognized:", unknown: "Unknown", invalidFiles: "Invalid files", invalidFilesDesc: "Only images are allowed for wine photos", uploadSuccess: "Upload successful", uploadSuccessDesc: "{count} wine photo(s) uploaded", uploadFailed: "Upload failed", analysisFailed: "Analysis failed" },
+  
   shared: {
     sharedVia: "Shared via",
     joinCommunity: "Join Community",

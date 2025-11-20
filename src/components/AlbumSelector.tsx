@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 
 interface AlbumSelectorProps {
   selectedAlbumId?: string;
@@ -20,6 +21,7 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const [newAlbum, setNewAlbum] = useState({
     title: "",
@@ -61,8 +63,8 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
       if (error) throw error;
 
       toast({
-        title: "Album created!",
-        description: "Your new album is ready",
+        title: t("albumSelector.toasts.created"),
+        description: t("albumSelector.toasts.ready"),
       });
 
       // Add to list and select it
@@ -77,25 +79,25 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
       }, 0);
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
-    } finally {
+    } finally{
       setCreating(false);
     }
   };
 
   return (
     <div className="space-y-2">
-      <Label className="text-lg">Add to Album (Optional)</Label>
+      <Label className="text-lg">{t("albumSelector.label")}</Label>
       <div className="flex gap-2">
         <Select value={selectedAlbumId || "none"} onValueChange={(value) => onAlbumSelect(value === "none" ? undefined : value)}>
           <SelectTrigger className="flex-1 h-12 text-lg">
-            <SelectValue placeholder={loading ? "Loading albums..." : "Select an album"} />
+            <SelectValue placeholder={loading ? t("albumSelector.loading") : t("albumSelector.selectAlbum")} />
           </SelectTrigger>
           <SelectContent className="text-lg">
-            <SelectItem value="none">No album</SelectItem>
+            <SelectItem value="none">{t("albumSelector.noAlbum")}</SelectItem>
             {albums.map((album) => (
               <SelectItem key={album.id} value={album.id}>
                 {album.title}
@@ -117,14 +119,14 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Album</DialogTitle>
+              <DialogTitle>{t("albumSelector.createAlbum")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateAlbum} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="album-title" className="text-lg">Album Title *</Label>
+                <Label htmlFor="album-title" className="text-lg">{t("albumSelector.titleLabel")}</Label>
                 <Input
                   id="album-title"
-                  placeholder="Summer in Tuscany"
+                  placeholder={t("albumSelector.titlePlaceholder")}
                   value={newAlbum.title}
                   onChange={(e) =>
                     setNewAlbum({ ...newAlbum, title: e.target.value })
@@ -134,10 +136,10 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="album-description" className="text-lg">Description</Label>
+                <Label htmlFor="album-description" className="text-lg">{t("albumSelector.descriptionLabel")}</Label>
                 <Textarea
                   id="album-description"
-                  placeholder="A collection of memorable dining experiences..."
+                  placeholder={t("albumSelector.descriptionPlaceholder")}
                   rows={3}
                   value={newAlbum.description}
                   onChange={(e) =>
@@ -152,10 +154,10 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
                   variant="outline"
                   onClick={() => setDialogOpen(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" disabled={creating}>
-                  {creating ? "Creating..." : "Create Album"}
+                  {creating ? t("albumSelector.creating") : t("albumSelector.createAlbum")}
                 </Button>
               </div>
             </form>

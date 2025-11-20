@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/i18n/i18n";
 
 const SUGGESTED_TAGS = [
   "Japanese", "Chinese", "Thai", "Vietnamese", "Korean", "Indian",
@@ -26,6 +27,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchExistingTags();
@@ -80,7 +82,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="tags" className="text-lg">Tags</Label>
+      <Label htmlFor="tags" className="text-lg">{t("tagInput.label")}</Label>
       <div className="space-y-3">
         {/* Selected Tags */}
         {selectedTags.length > 0 && (
@@ -109,7 +111,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
           <Input
             id="tags"
             type="text"
-            placeholder="Type to add tags (e.g., Italian, Fine Dining)..."
+            placeholder={t("tagInput.placeholder")}
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -134,7 +136,7 @@ export function TagInput({ selectedTags, onTagsChange }: TagInputProps) {
         </div>
 
         <p className="text-base text-muted-foreground">
-          Press Enter to add a tag, or select from suggestions
+          {t("tagInput.helpText")}
         </p>
       </div>
     </div>

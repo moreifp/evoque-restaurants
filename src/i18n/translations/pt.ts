@@ -300,6 +300,13 @@ export const pt = {
     loadingAlbum: "Carregando álbum...",
     errorLoading: "Erro ao carregar álbum",
   },
+  
+  unifiedMediaUpload: { title: "Adicione suas fotos", subtitle: "Toque em um botão e envie", categories: { place: "Lugar", menu: "Cardápio", wine: "Vinho", friends: "Amigos", receipt: "Conta" }, addMoreDialog: { title: "Adicionar mais fotos?", description: "Gostaria de adicionar outra foto de {category}?", addMore: "Adicionar Mais", done: "Concluído" }, wine: { collectionTitle: "Coleção de Vinhos", analyzing: "Analisando...", recognize: "Reconhecer Vinho", rating: "Avaliação", tastingNotes: "Notas de Degustação", vintage: "Safra:", region: "Região:", type: "Tipo:" }, toasts: { receiptProcessed: "Conta processada!", receiptSuccess: "Dados da conta extraídos com sucesso", receiptError: "Erro ao processar conta", filesUploaded: "Arquivos enviados!", filesSuccess: "{count} arquivo(s) enviado(s) com sucesso", uploadFailed: "Falha no envio", wineRecognized: "Vinho reconhecido!", wineInfo: "Informações do vinho extraídas", wineError: "Erro ao analisar vinho" } },
+  
+  receiptUpload: { label: "Enviar Conta/Nota Fiscal", selectImage: "Selecionar Imagem da Conta", processing: "Processando...", processReceipt: "Processar Conta", helpText: "Envie uma foto da sua conta para extrair automaticamente pratos, bebidas e preços", extractedItems: "Itens Extraídos", quantity: "Qtd:", subtotal: "Subtotal", tax: "Impostos", serviceFee: "Taxa de Serviço", total: "Total", toasts: { processing: "Processando conta...", processingWait: "Isso pode levar alguns segundos", success: "Conta processada!", extracted: "Extraídos {count} itens da sua conta", failed: "Falha no processamento", rateLimit: "Limite de requisições atingido. Por favor, aguarde um momento e tente novamente.", noCredits: "Créditos de IA esgotados. Por favor, adicione créditos ao seu workspace Lovable." } },
+  
+  wineUpload: { label: "Fotos de Vinhos", selectPhotos: "Selecionar Fotos de Vinhos", uploading: "Enviando...", upload: "Enviar", rating: "Avaliação do Vinho", tastingNotes: "Suas Notas de Degustação", tastingPlaceholder: "O que achou deste vinho? Sabor, aroma, harmonização...", recognized: "Reconhecido:", unknown: "Desconhecido", invalidFiles: "Arquivos inválidos", invalidFilesDesc: "Apenas imagens são permitidas para fotos de vinhos", uploadSuccess: "Envio bem-sucedido", uploadSuccessDesc: "{count} foto(s) de vinho enviada(s)", uploadFailed: "Falha no envio", analysisFailed: "Falha na análise" },
+  
   shared: {
     sharedVia: "Compartilhado via",
     joinCommunity: "Junte-se à Comunidade",

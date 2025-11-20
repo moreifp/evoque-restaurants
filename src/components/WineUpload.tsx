@@ -6,6 +6,7 @@ import { Upload, X, Sparkles, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/i18n";
 
 interface WineData {
   url: string;
@@ -27,6 +28,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [analyzingIndex, setAnalyzingIndex] = useState<number | null>(null);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -35,8 +37,8 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
 
     if (validFiles.length !== selectedFiles.length) {
       toast({
-        title: "Invalid files",
-        description: "Only images are allowed for wine photos",
+        title: t("wineUpload.invalidFiles"),
+        description: t("wineUpload.invalidFilesDesc"),
         variant: "destructive",
       });
     }
@@ -127,13 +129,13 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
         }
 
         toast({
-          title: "Wine recognized!",
-          description: data.wineInfo.name || "Wine information extracted",
+          title: t("unifiedMediaUpload.toasts.wineRecognized"),
+          description: data.wineInfo.name || t("unifiedMediaUpload.toasts.wineInfo"),
         });
       }
     } catch (error: any) {
       toast({
-        title: "Analysis failed",
+        title: t("wineUpload.analysisFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -183,12 +185,12 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
       setWineInfos([]);
       
       toast({
-        title: "Upload successful",
-        description: `${wineData.length} wine photo(s) uploaded`,
+        title: t("wineUpload.uploadSuccess"),
+        description: t("wineUpload.uploadSuccessDesc").replace("{count}", wineData.length.toString()),
       });
     } catch (error: any) {
       toast({
-        title: "Upload failed",
+        title: t("wineUpload.uploadFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -200,7 +202,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Wine Photos</Label>
+        <Label>{t("wineUpload.label")}</Label>
         <div className="flex items-center space-x-2">
           <Button
             type="button"
@@ -209,7 +211,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
             className="flex-1"
           >
             <Upload className="h-4 w-4 mr-2" />
-            Select Wine Photos
+            {t("wineUpload.selectPhotos")}
           </Button>
           <input
             id="wine-upload"
@@ -225,7 +227,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
               onClick={uploadFiles}
               disabled={uploading}
             >
-              {uploading ? "Uploading..." : `Upload ${files.length}`}
+              {uploading ? t("wineUpload.uploading") : `${t("wineUpload.upload")} ${files.length}`}
             </Button>
           )}
         </div>
@@ -262,11 +264,11 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
                     className="w-full"
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
-                    {analyzingIndex === index ? "Analyzing..." : "Recognize Wine"}
+                    {analyzingIndex === index ? t("unifiedMediaUpload.wine.analyzing") : t("unifiedMediaUpload.wine.recognize")}
                   </Button>
                   
                   <div className="space-y-2">
-                    <Label>Wine Rating</Label>
+                    <Label>{t("wineUpload.rating")}</Label>
                     <div className="flex items-center space-x-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -289,10 +291,10 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor={`caption-${index}`}>Your Tasting Notes</Label>
+                    <Label htmlFor={`caption-${index}`}>{t("wineUpload.tastingNotes")}</Label>
                     <Textarea
                       id={`caption-${index}`}
-                      placeholder="What did you think of this wine? Taste, aroma, pairing, food match..."
+                      placeholder={t("wineUpload.tastingPlaceholder")}
                       value={captions[index]}
                       onChange={(e) => updateCaption(index, e.target.value)}
                       rows={3}
@@ -301,8 +303,8 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
 
                   {wineInfos[index] && (
                     <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                      <p className="font-semibold mb-1">Recognized:</p>
-                      <p>{wineInfos[index].name || 'Unknown'}</p>
+                      <p className="font-semibold mb-1">{t("wineUpload.recognized")}</p>
+                      <p>{wineInfos[index].name || t("wineUpload.unknown")}</p>
                       {wineInfos[index].producer && <p>{wineInfos[index].producer}</p>}
                       {wineInfos[index].region && <p>{wineInfos[index].region}</p>}
                     </div>

@@ -5,6 +5,7 @@ import { Upload, X, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useI18n } from "@/i18n/i18n";
 
 interface ReceiptItem {
   item_type: "dish" | "drink";
@@ -35,6 +36,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
   const [processing, setProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -90,8 +92,8 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
 
       // Process with AI
       toast({
-        title: "Processing receipt...",
-        description: "This may take a few seconds",
+        title: t("receiptUpload.toasts.processing"),
+        description: t("receiptUpload.toasts.processingWait"),
       });
 
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
@@ -145,8 +147,8 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
       }
 
       toast({
-        title: "Receipt processed!",
-        description: `Extracted ${extractedData.items.length} items from your receipt`,
+        title: t("receiptUpload.toasts.success"),
+        description: t("receiptUpload.toasts.extracted").replace("{count}", extractedData.items.length.toString()),
       });
 
       // Pass receipt data with photo URL to callback
@@ -156,13 +158,13 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
       
       let errorMessage = error.message;
       if (error.message?.includes("429")) {
-        errorMessage = "Rate limit reached. Please wait a moment and try again.";
+        errorMessage = t("receiptUpload.toasts.rateLimit");
       } else if (error.message?.includes("402")) {
-        errorMessage = "AI credits exhausted. Please add credits to your Lovable workspace.";
+        errorMessage = t("receiptUpload.toasts.noCredits");
       }
       
       toast({
-        title: "Processing failed",
+        title: t("receiptUpload.toasts.failed"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -174,7 +176,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Upload Receipt/Invoice</Label>
+        <Label>{t("receiptUpload.label")}</Label>
         <div className="flex items-center space-x-2">
           <Button
             type="button"
@@ -183,7 +185,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
             className="flex-1"
           >
             <Upload className="h-4 w-4 mr-2" />
-            Select Receipt Image
+            {t("receiptUpload.selectImage")}
           </Button>
           <input
             id="receipt-upload"
@@ -201,19 +203,19 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
               {processing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
+                  {t("receiptUpload.processing")}
                 </>
               ) : (
                 <>
                   <FileText className="h-4 w-4 mr-2" />
-                  Process Receipt
+                  {t("receiptUpload.processReceipt")}
                 </>
               )}
             </Button>
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          Upload a photo of your receipt to automatically extract dishes, drinks, and prices
+          {t("receiptUpload.helpText")}
         </p>
       </div>
 
@@ -239,7 +241,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
       {receiptData && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Extracted Items</CardTitle>
+            <CardTitle className="text-lg">{t("receiptUpload.extractedItems")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Items */}
@@ -252,7 +254,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {item.item_type} • Qty: {item.quantity}
+                      {item.item_type} • {t("receiptUpload.quantity")} {item.quantity}
                     </p>
                   </div>
                   <div className="text-right">
@@ -271,7 +273,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
             <div className="border-t pt-4 space-y-1">
               {receiptData.subtotal && (
                 <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
+                  <span>{t("receiptUpload.subtotal")}</span>
                   <span>
                     {receiptData.currency} {receiptData.subtotal.toFixed(2)}
                   </span>
@@ -279,7 +281,7 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
               )}
               {receiptData.tax && (
                 <div className="flex justify-between text-sm">
-                  <span>Tax</span>
+                  <span>{t("receiptUpload.tax")}</span>
                   <span>
                     {receiptData.currency} {receiptData.tax.toFixed(2)}
                   </span>
@@ -287,14 +289,14 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
               )}
               {receiptData.service_fee && (
                 <div className="flex justify-between text-sm">
-                  <span>Service Fee</span>
+                  <span>{t("receiptUpload.serviceFee")}</span>
                   <span>
                     {receiptData.currency} {receiptData.service_fee.toFixed(2)}
                   </span>
                 </div>
               )}
               <div className="flex justify-between font-bold pt-2 border-t">
-                <span>Total</span>
+                <span>{t("receiptUpload.total")}</span>
                 <span>
                   {receiptData.currency} {receiptData.total.toFixed(2)}
                 </span>
