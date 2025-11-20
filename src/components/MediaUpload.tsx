@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Image as ImageIcon, Video, MapPin } from "lucide-react";
+import { Upload, X, Video, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { extractGPSFromImage, reverseGeocode, PhotoLocation } from "@/utils/exifExtractor";
+import { extractGPSFromImage, reverseGeocode } from "@/utils/exifExtractor";
+import { useI18n } from "@/i18n/i18n";
 
 interface MediaUploadProps {
   onMediaUpload: (urls: string[]) => void;
@@ -13,6 +14,7 @@ interface MediaUploadProps {
 }
 
 export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocation = false }: MediaUploadProps) => {
+  const { t } = useI18n();
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -31,8 +33,8 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
 
     if (validFiles.length !== selectedFiles.length) {
       toast({
-        title: "Invalid files",
-        description: "Only images and videos are allowed",
+        title: t("mediaUpload.invalidFiles"),
+        description: t("mediaUpload.invalidFilesDesc"),
         variant: "destructive",
       });
     }
@@ -56,14 +58,14 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
             });
             
             toast({
-              title: "Location extracted!",
-              description: "Photo location has been automatically detected",
+              title: t("mediaUpload.locationExtracted"),
+              description: t("mediaUpload.locationExtractedDesc"),
             });
           }
         } else {
           toast({
-            title: "No location data",
-            description: "This photo doesn't contain GPS coordinates",
+            title: t("mediaUpload.noLocationData"),
+            description: t("mediaUpload.noLocationDataDesc"),
             variant: "destructive",
           });
         }
@@ -107,7 +109,7 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('restaurant-photos')
           .upload(filePath, file);
 
@@ -125,12 +127,12 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
       setPreviews([]);
       
       toast({
-        title: "Upload successful",
-        description: `${uploadedUrls.length} file(s) uploaded`,
+        title: t("mediaUpload.uploadSuccessful"),
+        description: `${uploadedUrls.length} ${t("mediaUpload.uploadSuccessful")}`,
       });
     } catch (error: any) {
       toast({
-        title: "Upload failed",
+        title: t("mediaUpload.uploadFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -142,7 +144,7 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Photos & Videos</Label>
+        <Label>{t("mediaUpload.title")}</Label>
         <div className="flex items-center space-x-2">
           <Button
             type="button"
@@ -154,12 +156,12 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
             {extractingLocation ? (
               <>
                 <MapPin className="h-4 w-4 mr-2 animate-pulse" />
-                Extracting Location...
+                {t("mediaUpload.extractingLocation")}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Select Photos/Videos
+                {t("mediaUpload.selectButton")}
               </>
             )}
           </Button>
@@ -177,12 +179,12 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
               onClick={uploadFiles}
               disabled={uploading}
             >
-              {uploading ? "Uploading..." : `Upload ${files.length}`}
+              {uploading ? t("mediaUpload.uploading") : `${t("mediaUpload.uploadButton")} ${files.length}`}
             </Button>
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          Upload photos and videos of the restaurant
+          {t("mediaUpload.helpText")}
         </p>
       </div>
 
