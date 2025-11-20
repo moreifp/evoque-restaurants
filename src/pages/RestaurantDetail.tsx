@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ReceiptItemsList } from "@/components/ReceiptItemsList";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
@@ -973,16 +974,46 @@ export default function RestaurantDetail() {
                 </Card>
               )}
 
-              {/* Receipt Section */}
-              {receipt && (
+              {/* AI Generated Description */}
+              {entry.description && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <ReceiptIcon className="h-5 w-5" />
-                      Receipt
+                      <Sparkles className="h-5 w-5" />
+                      AI Generated Description
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {entry.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Private Receipt Section - ALWAYS LAST */}
+              {receipt ? (
+                <Card className="border-2 border-yellow-500/50 bg-yellow-50/5">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <ReceiptIcon className="h-5 w-5" />
+                        {t("receiptSection.title")}
+                      </CardTitle>
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 gap-1">
+                        <Lock className="h-3 w-3" />
+                        {t("receiptSection.visibility")}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Alert className="border-yellow-200 bg-yellow-50/50">
+                      <Lock className="h-4 w-4 text-yellow-700" />
+                      <AlertDescription className="text-yellow-800">
+                        {t("receiptSection.privateNote")}
+                      </AlertDescription>
+                    </Alert>
+
                     <div className="grid md:grid-cols-[200px,1fr] gap-6">
                       {receipt.photo_url && (
                         <Dialog>
@@ -991,23 +1022,23 @@ export default function RestaurantDetail() {
                               <div className="aspect-square w-full max-w-[200px] rounded-lg overflow-hidden border-2 border-border hover:border-primary transition-colors">
                                 <img
                                   src={receipt.photo_url}
-                                  alt="Receipt"
+                                  alt={t("receiptSection.receiptImage")}
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                 />
                               </div>
                               <p className="text-xs text-muted-foreground text-center mt-2">
-                                Click to view full size
+                                {t("receiptSection.clickToView")}
                               </p>
                             </div>
                           </DialogTrigger>
                           <DialogContent className="max-w-3xl">
                             <DialogHeader>
-                              <DialogTitle>Receipt Image</DialogTitle>
+                              <DialogTitle>{t("receiptSection.receiptImage")}</DialogTitle>
                             </DialogHeader>
                             <div className="max-h-[70vh] overflow-auto">
                               <img
                                 src={receipt.photo_url}
-                                alt="Receipt full size"
+                                alt={t("receiptSection.receiptImage")}
                                 className="w-full rounded-lg"
                               />
                             </div>
@@ -1047,12 +1078,11 @@ export default function RestaurantDetail() {
                           )}
                         </div>
 
-                        {/* OCR Raw Text */}
                         {receipt.ocr_raw_text && (
                           <div className="border-t pt-4 mt-4">
                             <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                               <Sparkles className="h-4 w-4" />
-                              Receipt Transcription (OCR)
+                              {t("receiptSection.receiptTranscription")}
                             </h4>
                             <div className="bg-muted/50 rounded-lg p-4">
                               <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground">
@@ -1065,21 +1095,11 @@ export default function RestaurantDetail() {
                     </div>
                   </CardContent>
                 </Card>
-              )}
-
-              {/* AI Generated Description */}
-              {entry.description && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5" />
-                      AI Generated Description
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground whitespace-pre-wrap">
-                      {entry.description}
-                    </p>
+              ) : editMode && (
+                <Card className="border-2 border-dashed border-muted">
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    <ReceiptIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>{t("receiptSection.notAvailable")}</p>
                   </CardContent>
                 </Card>
               )}
