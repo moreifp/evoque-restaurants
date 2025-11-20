@@ -354,6 +354,8 @@ export const en = {
     locationFoundDesc: "Showing restaurants near you. Click on the map to select one.",
     locationError: "Location error",
     locationErrorDesc: "Could not get your location. Please search manually.",
+    viewOnMaps: "View on Google Maps",
+    openInMaps: "Open in Google Maps",
   },
   tagInput: {
     label: "Tags",

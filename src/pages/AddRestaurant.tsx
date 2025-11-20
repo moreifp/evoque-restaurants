@@ -28,6 +28,7 @@ const restaurantSchema = z.object({
   location_address: z.string().max(500, 'Address is too long').optional().or(z.literal('')),
   location_lat: z.number().min(-90).max(90).nullable().optional(),
   location_lng: z.number().min(-180).max(180).nullable().optional(),
+  google_place_id: z.string().nullable().optional(),
   rating: z.number().int().min(0).max(5).nullable().optional(),
   companions: z.string().max(200, 'Companions field is too long').optional().or(z.literal('')),
   notes: z.string().max(5000, 'Notes are too long').optional().or(z.literal('')),
@@ -64,6 +65,7 @@ export default function AddRestaurant() {
     location_address: "",
     location_lat: null as number | null,
     location_lng: null as number | null,
+    google_place_id: null as string | null,
     rating: 0,
     companions: "",
     notes: "",
@@ -379,6 +381,7 @@ export default function AddRestaurant() {
                       location_address: location.address,
                       location_lat: location.lat,
                       location_lng: location.lng,
+                      google_place_id: location.placeId || null,
                     });
                   }}
                 />

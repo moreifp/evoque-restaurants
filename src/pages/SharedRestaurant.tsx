@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon } from "lucide-react";
+import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
@@ -122,9 +122,24 @@ export default function SharedRestaurant() {
               {entry.location_address && (
                 <div className="flex items-start space-x-3">
                   <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">Location</p>
                     <p className="text-muted-foreground">{entry.location_address}</p>
+                    {(entry.google_place_id || (entry.location_lat && entry.location_lng)) && (
+                      <a
+                        href={
+                          entry.google_place_id
+                            ? `https://www.google.com/maps/place/?q=place_id:${entry.google_place_id}`
+                            : `https://www.google.com/maps/search/?api=1&query=${entry.location_lat},${entry.location_lng}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline mt-1"
+                      >
+                        <span>View on Google Maps</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                 </div>
               )}

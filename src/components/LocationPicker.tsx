@@ -12,6 +12,7 @@ interface LocationPickerProps {
     address: string;
     lat: number;
     lng: number;
+    placeId?: string;
   }) => void;
 }
 
@@ -58,6 +59,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
             address: place.formatted_address,
             lat,
             lng,
+            placeId: place.place_id,
           });
           setInputValue(place.name || place.formatted_address.split(",")[0]);
           
@@ -83,7 +85,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
     const google = (window as any).google;
     const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
       types: ["establishment"],
-      fields: ["name", "formatted_address", "geometry.location"],
+      fields: ["name", "formatted_address", "geometry.location", "place_id"],
     });
 
     autocomplete.bindTo("bounds", map);
@@ -100,6 +102,7 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
           address: place.formatted_address || "",
           lat,
           lng,
+          placeId: place.place_id,
         });
         setInputValue(place.name);
 

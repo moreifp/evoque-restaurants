@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -721,7 +721,24 @@ export default function RestaurantDetail() {
                   {entry.location_address && (
                     <div className="flex items-start gap-2">
                       <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                      <p className="text-muted-foreground">{entry.location_address}</p>
+                      <div className="flex-1">
+                        <p className="text-muted-foreground">{entry.location_address}</p>
+                        {(entry.google_place_id || (entry.location_lat && entry.location_lng)) && (
+                          <a
+                            href={
+                              entry.google_place_id
+                                ? `https://www.google.com/maps/place/?q=place_id:${entry.google_place_id}`
+                                : `https://www.google.com/maps/search/?api=1&query=${entry.location_lat},${entry.location_lng}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline mt-1"
+                          >
+                            <span>{t("locationPicker.viewOnMaps")}</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   )}
 
