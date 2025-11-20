@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Auth } from "./components/Auth";
-import Home from "./pages/Home";
+import Index from "./pages/Index";
 import Dining from "./pages/Dining";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import SharedRestaurant from "./pages/SharedRestaurant";
@@ -124,7 +124,7 @@ const App = () => {
               <Route path="*" element={<Auth />} />
             ) : (
               <>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<Index />} />
                 <Route path="/dining" element={<Dining />} />
                 <Route path="/dining/:id" element={<RestaurantDetail />} />
                 <Route path="/dining/add" element={<AddRestaurant />} />
