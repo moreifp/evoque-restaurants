@@ -9,10 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 
 export default function CreateAlbum() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -37,14 +39,14 @@ export default function CreateAlbum() {
       if (error) throw error;
 
       toast({
-        title: "Album created!",
-        description: "Your album has been created successfully",
+        title: t("albums.created"),
+        description: t("albums.albumCreatedDesc"),
       });
 
       navigate("/dining?tab=albums");
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -68,23 +70,23 @@ export default function CreateAlbum() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-3xl font-bold">Create Album</h1>
+            <h1 className="text-3xl font-bold">{t("albums.createAlbum")}</h1>
           </div>
 
           {/* Form */}
           <Card>
             <CardHeader>
-              <CardTitle>Album Details</CardTitle>
+              <CardTitle>{t("albums.albumDetails")}</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Album Title */}
                 <div className="space-y-2">
-                  <Label htmlFor="title">Album Title *</Label>
+                  <Label htmlFor="title">{t("albums.albumTitle")} *</Label>
                   <Input
                     id="title"
                     type="text"
-                    placeholder="Summer in Tuscany"
+                    placeholder={t("albums.albumTitlePlaceholder")}
                     value={formData.title}
                     onChange={(e) =>
                       setFormData({ ...formData, title: e.target.value })
@@ -95,10 +97,10 @@ export default function CreateAlbum() {
 
                 {/* Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t("albums.description")}</Label>
                   <Textarea
                     id="description"
-                    placeholder="A collection of memorable dining experiences from our summer trip..."
+                    placeholder={t("albums.descriptionPlaceholder")}
                     rows={5}
                     value={formData.description}
                     onChange={(e) =>
@@ -115,14 +117,14 @@ export default function CreateAlbum() {
                     className="flex-1"
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    {loading ? "Creating..." : "Create Album"}
+                    {loading ? t("albums.creating") : t("albums.create")}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => navigate(-1)}
                   >
-                    Cancel
+                    {t("albums.cancel")}
                   </Button>
                 </div>
               </form>
