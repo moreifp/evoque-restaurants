@@ -1,18 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, UtensilsCrossed, Wine, Sparkles, Settings } from "lucide-react";
+import { Home, UtensilsCrossed, Wine, Sparkles, Settings, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/i18n";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import evoqueLogo from "@/assets/evoque-logo.svg";
 
 export const Navigation = () => {
   const location = useLocation();
+  const { language, setLanguage, t } = useI18n();
 
   const navItems = [
-    { path: "/", icon: Home, label: "Home" },
-    { path: "/dining", icon: UtensilsCrossed, label: "Dining" },
-    { path: "/planner", icon: Sparkles, label: "AI Planner" },
-    { path: "/wine-cellar", icon: Wine, label: "Wine Cellar" },
-    { path: "/account", icon: Settings, label: "Account" },
+    { path: "/", icon: Home, label: t("navigation.home") },
+    { path: "/dining", icon: UtensilsCrossed, label: t("navigation.dining") },
+    { path: "/planner", icon: Sparkles, label: t("navigation.planner") },
+    { path: "/wine-cellar", icon: Wine, label: t("navigation.wineCellar") },
+    { path: "/account", icon: Settings, label: t("navigation.account") },
   ];
 
   return (
@@ -39,6 +47,24 @@ export const Navigation = () => {
                 </Link>
               );
             })}
+            
+            {/* Language Switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="ml-2">
+                  <Globe className="h-4 w-4 mr-2" />
+                  {language.toUpperCase()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
+                <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
+                  🇺🇸 English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
+                  🇧🇷 Português
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

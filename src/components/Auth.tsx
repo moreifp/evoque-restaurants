@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n/i18n";
 import evoqueLogo from "@/assets/evoque-logo.svg";
 import { z } from "zod";
 
@@ -36,6 +37,7 @@ export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   // Validate password in real-time for sign up
   const validatePassword = (pwd: string) => {
@@ -60,7 +62,7 @@ export const Auth = () => {
         const validation = z.string().email('Invalid email address').safeParse(email);
         if (!validation.success) {
           toast({
-            title: "Validation Error",
+            title: t("auth.invalidCredentials"),
             description: validation.error.errors[0].message,
             variant: "destructive",
           });
@@ -75,8 +77,8 @@ export const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: "Check your email",
-          description: "We've sent you a password reset link",
+          title: t("auth.resetEmailSent"),
+          description: t("auth.resetEmailSent"),
         });
         setIsForgotPassword(false);
         setEmail("");
@@ -114,8 +116,8 @@ export const Auth = () => {
           });
 
           toast({
-            title: "Account created!",
-            description: "Welcome to Evoque",
+            title: t("auth.signUpSuccess"),
+            description: t("auth.signUpSuccess"),
           });
         }
       } else {
@@ -139,8 +141,8 @@ export const Auth = () => {
         if (error) throw error;
 
         toast({
-          title: "Welcome back!",
-          description: "You've signed in successfully",
+          title: t("auth.signInSuccess"),
+          description: t("auth.signInSuccess"),
         });
       }
     } catch (error: any) {
@@ -168,21 +170,21 @@ export const Auth = () => {
           </div>
           <CardDescription>
             {isForgotPassword
-              ? "Enter your email to receive a password reset link"
+              ? t("auth.resetPassword")
               : isSignUp
-              ? "Create an account to start preserving your culinary memories"
-              : "Sign in to access your dining diary"}
+              ? t("auth.createAccount")
+              : t("auth.signIn")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && !isForgotPassword && (
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
+                <Label htmlFor="displayName">{t("auth.displayName")}</Label>
                 <Input
                   id="displayName"
                   type="text"
-                  placeholder="Your name"
+                  placeholder={t("account.displayNamePlaceholder")}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   required={isSignUp}
@@ -190,7 +192,7 @@ export const Auth = () => {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -202,7 +204,7 @@ export const Auth = () => {
             </div>
             {!isForgotPassword && (
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -216,7 +218,7 @@ export const Auth = () => {
               />
               {isSignUp && (
                 <div className="text-sm space-y-1 mt-2">
-                  <p className="text-muted-foreground font-medium">Password must contain:</p>
+                  <p className="text-muted-foreground font-medium">{t("auth.passwordRequirements")}</p>
                   <ul className="space-y-1">
                     <li className={cn(
                       "flex items-center gap-2",
@@ -256,7 +258,7 @@ export const Auth = () => {
               className="w-full"
               disabled={loading}
             >
-              {loading ? "Loading..." : isForgotPassword ? "Send Reset Link" : isSignUp ? "Create Account" : "Sign In"}
+              {loading ? t("common.loading") : isForgotPassword ? t("auth.sendResetLink") : isSignUp ? t("auth.createAccount") : t("auth.signIn")}
             </Button>
           </form>
           {!isSignUp && !isForgotPassword && (
@@ -266,7 +268,7 @@ export const Auth = () => {
                 onClick={() => setIsForgotPassword(true)}
                 className="text-accent hover:underline"
               >
-                Forgot password?
+                {t("auth.forgotPassword")}
               </button>
             </div>
           )}
@@ -280,10 +282,10 @@ export const Auth = () => {
               className="text-accent hover:underline"
             >
               {isForgotPassword
-                ? "Back to sign in"
+                ? t("auth.backToSignIn")
                 : isSignUp
-                ? "Already have an account? Sign in"
-                : "Don't have an account? Sign up"}
+                ? t("auth.alreadyHaveAccount")
+                : t("auth.dontHaveAccount")}
             </button>
           </div>
         </CardContent>

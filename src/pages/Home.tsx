@@ -6,10 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, BookImage, Search, UtensilsCrossed, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/i18n/i18n";
 import evoqueIcon from "@/assets/evoque-icon.png";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t, language } = useI18n();
   const [recentEntries, setRecentEntries] = useState<any[]>([]);
   const [popularTags, setPopularTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,9 +55,9 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Keep the taste alive</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">{t("home.title")}</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Remember. Share. Discover your culinary journey.
+            {t("home.subtitle")}
           </p>
         </div>
 
@@ -70,8 +72,8 @@ export default function Home() {
                 <Plus className="h-6 w-6 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Add a Restaurant</h3>
-                <p className="text-sm text-muted-foreground">Capture a new memory</p>
+                <h3 className="font-semibold text-lg">{t("home.addRestaurant")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.addRestaurantDesc")}</p>
               </div>
             </CardContent>
           </Card>
@@ -82,8 +84,8 @@ export default function Home() {
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">AI Planner</h3>
-                <p className="text-sm text-muted-foreground">Plan your dining trip</p>
+                <h3 className="font-semibold text-lg">{t("home.aiPlanner")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.aiPlannerDesc")}</p>
               </div>
             </CardContent>
           </Card>
@@ -97,8 +99,8 @@ export default function Home() {
                 <BookImage className="h-6 w-6 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Create an Album</h3>
-                <p className="text-sm text-muted-foreground">Organize your experiences</p>
+                <h3 className="font-semibold text-lg">{t("home.createAlbum")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.createAlbumDesc")}</p>
               </div>
             </CardContent>
           </Card>
@@ -112,8 +114,8 @@ export default function Home() {
                 <BookImage className="h-6 w-6 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Browse Albums</h3>
-                <p className="text-sm text-muted-foreground">Explore your collections</p>
+                <h3 className="font-semibold text-lg">{t("home.browseAlbums")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.browseAlbumsDesc")}</p>
               </div>
             </CardContent>
           </Card>
@@ -124,8 +126,8 @@ export default function Home() {
                 <Search className="h-6 w-6 text-accent" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">Search</h3>
-                <p className="text-sm text-muted-foreground">Filter and discover</p>
+                <h3 className="font-semibold text-lg">{t("home.search")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.searchDesc")}</p>
               </div>
             </CardContent>
           </Card>
@@ -134,7 +136,7 @@ export default function Home() {
         {/* Popular Tags */}
         {popularTags.length > 0 && (
           <div className="mb-12">
-            <h2 className="text-2xl font-semibold mb-4">Explore by Tag</h2>
+            <h2 className="text-2xl font-semibold mb-4">{t("home.exploreTags")}</h2>
             <div className="flex flex-wrap gap-2">
               {popularTags.map((tag) => (
                 <Badge
@@ -153,11 +155,11 @@ export default function Home() {
         {/* Recent Entries */}
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading your memories...</p>
+            <p className="text-muted-foreground">{t("common.loading")}</p>
           </div>
         ) : recentEntries.length > 0 ? (
           <div>
-            <h2 className="text-2xl font-semibold mb-4">Recent Experiences</h2>
+            <h2 className="text-2xl font-semibold mb-4">{t("home.recentExperiences")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recentEntries.map((entry) => (
                 <Card
@@ -183,7 +185,7 @@ export default function Home() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(entry.visit_date).toLocaleDateString("en-US", {
+                      {new Date(entry.visit_date).toLocaleDateString(language === "pt" ? "pt-BR" : "en-US", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -197,27 +199,27 @@ export default function Home() {
         ) : (
           <Card className="p-12 text-center">
             <UtensilsCrossed className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Start Your Culinary Journey</h3>
+            <h3 className="text-xl font-semibold mb-2">{t("home.noExperiences")}</h3>
             <p className="text-muted-foreground mb-6">
-              Add your first restaurant experience to begin creating memories
+              {t("home.startJourney")}
             </p>
             <Button onClick={() => navigate("/dining/add")}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Restaurant
+              {t("home.addRestaurant")}
             </Button>
           </Card>
         )}
 
         {/* Footer */}
         <footer className="mt-16 py-8 text-center border-t border-border">
-          <p className="text-sm text-muted-foreground mb-4">Discover more about Evoque</p>
+          <p className="text-sm text-muted-foreground mb-4">{t("home.footer")}</p>
           <a
             href="https://evoque.guru/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-accent hover:text-accent/80 transition-colors font-medium"
           >
-            Visit evoque.guru →
+            {t("home.learnMore")} evoque.guru →
           </a>
         </footer>
       </main>
