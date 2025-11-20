@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { ReceiptItemsList } from "@/components/ReceiptItemsList";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
 
@@ -12,8 +11,6 @@ export default function SharedRestaurant() {
   const { id } = useParams();
   const [entry, setEntry] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
-  const [receipt, setReceipt] = useState<any>(null);
-  const [receiptItems, setReceiptItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -40,7 +37,6 @@ export default function SharedRestaurant() {
     setEntry(data);
     setLoading(false);
     fetchPhotos();
-    fetchReceipt();
   };
 
   const fetchPhotos = async () => {
@@ -51,29 +47,6 @@ export default function SharedRestaurant() {
       .order("created_at", { ascending: false });
 
     if (data) setPhotos(data);
-  };
-
-  const fetchReceipt = async () => {
-    const { data } = await supabase
-      .from("receipts")
-      .select("*")
-      .eq("entry_id", id)
-      .maybeSingle();
-
-    if (data) {
-      setReceipt(data);
-      fetchReceiptItems(data.id);
-    }
-  };
-
-  const fetchReceiptItems = async (receiptId: string) => {
-    const { data } = await supabase
-      .from("receipt_items")
-      .select("*")
-      .eq("receipt_id", receiptId)
-      .order("created_at", { ascending: true });
-
-    if (data) setReceiptItems(data);
   };
 
   if (loading) {
@@ -265,44 +238,6 @@ export default function SharedRestaurant() {
                       />
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Receipt Section */}
-          {receipt && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Receipt Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ReceiptItemsList items={receiptItems} />
-                <div className="pt-4 border-t space-y-2">
-                  {receipt.subtotal && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>${parseFloat(receipt.subtotal).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {receipt.tax && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tax</span>
-                      <span>${parseFloat(receipt.tax).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {receipt.service_fee && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Service Fee</span>
-                      <span>${parseFloat(receipt.service_fee).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {receipt.total && (
-                    <div className="flex justify-between text-lg font-semibold pt-2 border-t">
-                      <span>Total</span>
-                      <span>${parseFloat(receipt.total).toFixed(2)}</span>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>

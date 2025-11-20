@@ -165,8 +165,10 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       });
 
       toast({
-        title: t("unifiedMediaUpload.toasts.receiptProcessed"),
-        description: t("unifiedMediaUpload.toasts.receiptSuccess"),
+        title: "✅ " + t("unifiedMediaUpload.toasts.receiptProcessed"),
+        description: extracted.total 
+          ? `${t("unifiedMediaUpload.toasts.receiptSuccess")} - Total: ${extracted.currency || 'USD'} ${extracted.total}`
+          : t("unifiedMediaUpload.toasts.receiptSuccess"),
       });
     } catch (error: any) {
       toast({
@@ -529,8 +531,13 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
                 {/* Processed Receipt Data */}
                 {file.receiptData && (
-                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                    <h4 className="font-semibold text-lg">Extracted Information</h4>
+                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg border-2 border-green-500/30">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-lg">Extracted Information</h4>
+                      <Badge className="bg-green-100 text-green-800 border-green-300">
+                        ✅ Processed
+                      </Badge>
+                    </div>
                     
                       {(file.receiptData?.items || file.receiptData?.data?.items)?.length > 0 && (
                         <div className="space-y-2">

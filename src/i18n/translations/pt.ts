@@ -309,6 +309,16 @@ export const pt = {
   
   receiptUpload: { label: "Enviar Conta/Nota Fiscal", selectImage: "Selecionar Imagem da Conta", processing: "Processando...", processReceipt: "Processar Conta", helpText: "Envie uma foto da sua conta para extrair automaticamente pratos, bebidas e preços", extractedItems: "Itens Extraídos", quantity: "Qtd:", subtotal: "Subtotal", tax: "Impostos", serviceFee: "Taxa de Serviço", total: "Total", toasts: { processing: "Processando conta...", processingWait: "Isso pode levar alguns segundos", success: "Conta processada!", extracted: "Extraídos {count} itens da sua conta", failed: "Falha no processamento", rateLimit: "Limite de requisições atingido. Por favor, aguarde um momento e tente novamente.", noCredits: "Créditos de IA esgotados. Por favor, adicione créditos ao seu workspace Lovable." } },
   
+  receiptSection: {
+    title: "Meu Recibo (Privado)",
+    privateNote: "🔒 Esta informação é privada e NÃO será compartilhada quando você compartilhar este restaurante com outras pessoas.",
+    visibility: "Privado - Não Compartilhável",
+    clickToView: "Clique para ver em tamanho real",
+    receiptImage: "Imagem do Recibo",
+    receiptTranscription: "Transcrição do Recibo (OCR)",
+    notAvailable: "Nenhum recibo salvo para esta visita",
+  },
+  
   wineUpload: { label: "Fotos de Vinhos", selectPhotos: "Selecionar Fotos de Vinhos", uploading: "Enviando...", upload: "Enviar", rating: "Avaliação do Vinho", tastingNotes: "Suas Notas de Degustação", tastingPlaceholder: "O que achou deste vinho? Sabor, aroma, harmonização...", recognized: "Reconhecido:", unknown: "Desconhecido", invalidFiles: "Arquivos inválidos", invalidFilesDesc: "Apenas imagens são permitidas para fotos de vinhos", uploadSuccess: "Envio bem-sucedido", uploadSuccessDesc: "{count} foto(s) de vinho enviada(s)", uploadFailed: "Falha no envio", analysisFailed: "Falha na análise" },
   
   shared: {

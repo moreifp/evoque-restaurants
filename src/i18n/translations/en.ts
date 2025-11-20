@@ -309,6 +309,16 @@ export const en = {
   
   receiptUpload: { label: "Upload Receipt/Invoice", selectImage: "Select Receipt Image", processing: "Processing...", processReceipt: "Process Receipt", helpText: "Upload a photo of your receipt to automatically extract dishes, drinks, and prices", extractedItems: "Extracted Items", quantity: "Qty:", subtotal: "Subtotal", tax: "Tax", serviceFee: "Service Fee", total: "Total", toasts: { processing: "Processing receipt...", processingWait: "This may take a few seconds", success: "Receipt processed!", extracted: "Extracted {count} items from your receipt", failed: "Processing failed", rateLimit: "Rate limit reached. Please wait a moment and try again.", noCredits: "AI credits exhausted. Please add credits to your Lovable workspace." } },
   
+  receiptSection: {
+    title: "My Receipt (Private)",
+    privateNote: "🔒 This information is private and will NOT be shared when you share this restaurant with others.",
+    visibility: "Private - Not Shareable",
+    clickToView: "Click to view full size",
+    receiptImage: "Receipt Image",
+    receiptTranscription: "Receipt Transcription (OCR)",
+    notAvailable: "No receipt saved for this visit",
+  },
+  
   wineUpload: { label: "Wine Photos", selectPhotos: "Select Wine Photos", uploading: "Uploading...", upload: "Upload", rating: "Wine Rating", tastingNotes: "Your Tasting Notes", tastingPlaceholder: "What did you think of this wine? Taste, aroma, pairing, food match...", recognized: "Recognized:", unknown: "Unknown", invalidFiles: "Invalid files", invalidFilesDesc: "Only images are allowed for wine photos", uploadSuccess: "Upload successful", uploadSuccessDesc: "{count} wine photo(s) uploaded", uploadFailed: "Upload failed", analysisFailed: "Analysis failed" },
   
   shared: {
