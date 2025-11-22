@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus } from "lucide-react";
+import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,7 @@ import {
 interface UploadedFile {
   file: File;
   preview: string;
-  category: 'place' | 'menu' | 'wine' | 'friends' | 'receipt';
+  category: 'place' | 'food' | 'friends' | 'wine' | 'menu' | 'receipt';
   url?: string;
   wineInfo?: any;
   caption?: string;
@@ -36,9 +36,10 @@ interface UnifiedMediaUploadProps {
   entryId?: string; // Pass when editing existing restaurant for autosave
   onUploadsChange: (data: {
     place: string[];
-    menu: string[];
-    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    food: string[];
     friends: string[];
+    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    menu: string[];
     receipt: any | null;
   }) => void;
   onLocationExtracted?: (location: { lat: number; lng: number; address: string }) => void;
@@ -59,9 +60,10 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
   const updateParent = () => {
     const currentData = {
       place: [] as string[],
-      menu: [] as string[],
-      wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
+      food: [] as string[],
       friends: [] as string[],
+      wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
+      menu: [] as string[],
       receipt: null as any,
     };
 
@@ -76,7 +78,7 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
           });
         } else if (fileData.category === 'receipt') {
           currentData.receipt = fileData.receiptData;
-        } else if (fileData.category === 'place' || fileData.category === 'menu' || fileData.category === 'friends') {
+        } else if (fileData.category === 'place' || fileData.category === 'food' || fileData.category === 'friends' || fileData.category === 'menu') {
           currentData[fileData.category].push(fileData.url);
         }
       }
@@ -87,9 +89,10 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
 
   const categoryConfig = {
     place: { icon: Landmark, label: t("unifiedMediaUpload.categories.place"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
-    menu: { icon: UtensilsCrossed, label: t("unifiedMediaUpload.categories.menu"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
-    wine: { icon: Wine, label: t("unifiedMediaUpload.categories.wine"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    food: { icon: Utensils, label: t("unifiedMediaUpload.categories.food"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
     friends: { icon: Users, label: t("unifiedMediaUpload.categories.friends"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    wine: { icon: Wine, label: t("unifiedMediaUpload.categories.wine"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
+    menu: { icon: UtensilsCrossed, label: t("unifiedMediaUpload.categories.menu"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
     receipt: { icon: Receipt, label: t("unifiedMediaUpload.categories.receipt"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
   };
 
@@ -369,6 +372,7 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
         // If entryId exists (editing existing restaurant), save immediately to DB
         if (entryId) {
           const photoType = fileData.category === 'menu' ? 'menu' :
+                           fileData.category === 'food' ? 'food' :
                            fileData.category === 'wine' ? 'wine' :
                            fileData.category === 'friends' ? 'friends' :
                            'restaurant_photo';
@@ -436,7 +440,7 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
 
       {/* Category Buttons Grid */}
       <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-        {(Object.keys(categoryConfig) as Array<keyof typeof categoryConfig>).slice(0, 4).map((category) => {
+        {(Object.keys(categoryConfig) as Array<keyof typeof categoryConfig>).slice(0, 5).map((category) => {
           const config = categoryConfig[category];
           const Icon = config.icon;
           return (
@@ -466,7 +470,7 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
             <div className={`bg-gradient-to-br ${categoryConfig.receipt.color} p-4 rounded-xl mb-3`}>
               <Receipt className="h-8 w-8 text-white" />
             </div>
-            <span className="font-semibold text-[#0d1a2d]">Receipt</span>
+            <span className="font-semibold text-[#0d1a2d]">{categoryConfig.receipt.label}</span>
           </button>
         </div>
       </div>

@@ -47,15 +47,17 @@ export default function AddRestaurant() {
   
   const [uploadData, setUploadData] = useState<{
     place: string[];
-    menu: string[];
-    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    food: string[];
     friends: string[];
+    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    menu: string[];
     receipt: any | null;
   }>({
     place: [],
-    menu: [],
-    wine: [],
+    food: [],
     friends: [],
+    wine: [],
+    menu: [],
     receipt: null,
   });
 
