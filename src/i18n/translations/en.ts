@@ -24,6 +24,7 @@ export const en = {
     dining: "Dining",
     planner: "AI Planner",
     wineCellar: "Wine Cellar",
+    wine: "Wine",
     account: "Account",
   },
   auth: {
