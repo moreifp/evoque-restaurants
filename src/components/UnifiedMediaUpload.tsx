@@ -440,7 +440,7 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
 
       {/* Category Buttons Grid */}
       <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-        {(Object.keys(categoryConfig) as Array<keyof typeof categoryConfig>).slice(0, 5).map((category) => {
+        {(Object.keys(categoryConfig) as Array<keyof typeof categoryConfig>).map((category) => {
           const config = categoryConfig[category];
           const Icon = config.icon;
           return (
@@ -458,21 +458,6 @@ export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtract
             </button>
           );
         })}
-        
-        {/* Receipt button - centered in last row */}
-        <div className="col-span-2 flex justify-center">
-          <button
-            type="button"
-            onClick={() => handleFileSelect('receipt')}
-            className="flex flex-col items-center justify-center h-40 w-[calc(50%-0.5rem)] rounded-2xl border-2 transition-all hover:border-[#0d1a2d] hover:shadow-lg bg-background"
-            style={{ borderColor: 'rgba(13, 26, 45, 0.12)' }}
-          >
-            <div className={`bg-gradient-to-br ${categoryConfig.receipt.color} p-4 rounded-xl mb-3`}>
-              <Receipt className="h-8 w-8 text-white" />
-            </div>
-            <span className="font-semibold text-[#0d1a2d]">{categoryConfig.receipt.label}</span>
-          </button>
-        </div>
       </div>
 
       {/* Add More Photos Dialog */}
