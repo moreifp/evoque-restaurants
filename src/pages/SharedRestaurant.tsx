@@ -190,7 +190,91 @@ export default function SharedRestaurant() {
             </CardContent>
           </Card>
 
-          {/* Wine Section */}
+          {/* Place Photos */}
+          {photos.filter(p => p.type === 'place').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Place
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {photos.filter(p => p.type === 'place').map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="aspect-square rounded-lg overflow-hidden"
+                    >
+                      <img
+                        src={photo.photo_url}
+                        alt="Place"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Food Photos */}
+          {photos.filter(p => p.type === 'food').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Food
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {photos.filter(p => p.type === 'food').map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="aspect-square rounded-lg overflow-hidden"
+                    >
+                      <img
+                        src={photo.photo_url}
+                        alt="Food"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Friends Photos */}
+          {photos.filter(p => p.type === 'friends').length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Friends
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {photos.filter(p => p.type === 'friends').map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="aspect-square rounded-lg overflow-hidden"
+                    >
+                      <img
+                        src={photo.photo_url}
+                        alt="Friends"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Wine Photos */}
           {photos.filter(p => p.type === 'wine').length > 0 && (
             <Card>
               <CardHeader>
@@ -230,25 +314,25 @@ export default function SharedRestaurant() {
             </Card>
           )}
 
-          {/* Other Photos */}
-          {photos.filter(p => p.type !== 'wine').length > 0 && (
+          {/* Menu Photos */}
+          {photos.filter(p => p.type === 'menu').length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ImageIcon className="h-5 w-5" />
-                  Photos
+                  Menu
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.filter(p => p.type !== 'wine').map((photo) => (
+                  {photos.filter(p => p.type === 'menu').map((photo) => (
                     <div
                       key={photo.id}
                       className="aspect-square rounded-lg overflow-hidden"
                     >
                       <img
                         src={photo.photo_url}
-                        alt="Restaurant"
+                        alt="Menu"
                         className="w-full h-full object-cover"
                       />
                     </div>
