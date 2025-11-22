@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
@@ -13,6 +14,8 @@ export default function SharedRestaurant() {
   const [photos, setPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -55,6 +58,39 @@ export default function SharedRestaurant() {
       setPhotos(photosWithTypes);
     }
   };
+
+  const openLightbox = (index: number) => {
+    setSelectedPhotoIndex(index);
+    setIsLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setIsLightboxOpen(false);
+    setSelectedPhotoIndex(null);
+  };
+
+  const navigatePhoto = (direction: 'prev' | 'next') => {
+    if (selectedPhotoIndex === null) return;
+    
+    if (direction === 'prev') {
+      setSelectedPhotoIndex(selectedPhotoIndex > 0 ? selectedPhotoIndex - 1 : photos.length - 1);
+    } else {
+      setSelectedPhotoIndex(selectedPhotoIndex < photos.length - 1 ? selectedPhotoIndex + 1 : 0);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isLightboxOpen) return;
+      
+      if (e.key === 'ArrowLeft') navigatePhoto('prev');
+      if (e.key === 'ArrowRight') navigatePhoto('next');
+      if (e.key === 'Escape') closeLightbox();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, selectedPhotoIndex, photos.length]);
 
   if (loading) {
     return (
@@ -208,18 +244,22 @@ export default function SharedRestaurant() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.filter(p => p.type === 'place' || p.type === 'restaurant_photo').map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="aspect-square rounded-lg overflow-hidden"
-                    >
-                      <img
-                        src={photo.photo_url}
-                        alt="Place"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                  {photos.filter(p => p.type === 'place' || p.type === 'restaurant_photo').map((photo) => {
+                    const photoIndex = photos.findIndex(p => p.id === photo.id);
+                    return (
+                      <div
+                        key={photo.id}
+                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => openLightbox(photoIndex)}
+                      >
+                        <img
+                          src={photo.photo_url}
+                          alt="Place"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -236,18 +276,22 @@ export default function SharedRestaurant() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.filter(p => p.type === 'food').map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="aspect-square rounded-lg overflow-hidden"
-                    >
-                      <img
-                        src={photo.photo_url}
-                        alt="Food"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                  {photos.filter(p => p.type === 'food').map((photo) => {
+                    const photoIndex = photos.findIndex(p => p.id === photo.id);
+                    return (
+                      <div
+                        key={photo.id}
+                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => openLightbox(photoIndex)}
+                      >
+                        <img
+                          src={photo.photo_url}
+                          alt="Food"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -264,18 +308,22 @@ export default function SharedRestaurant() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.filter(p => p.type === 'friends').map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="aspect-square rounded-lg overflow-hidden"
-                    >
-                      <img
-                        src={photo.photo_url}
-                        alt="Friends"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                  {photos.filter(p => p.type === 'friends').map((photo) => {
+                    const photoIndex = photos.findIndex(p => p.id === photo.id);
+                    return (
+                      <div
+                        key={photo.id}
+                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => openLightbox(photoIndex)}
+                      >
+                        <img
+                          src={photo.photo_url}
+                          alt="Friends"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -292,30 +340,36 @@ export default function SharedRestaurant() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {photos.filter(p => p.type === 'wine').map((photo) => (
-                    <div key={photo.id} className="space-y-3">
-                      <div className="aspect-[3/4] rounded-lg overflow-hidden">
-                        <img
-                          src={photo.photo_url}
-                          alt="Wine"
-                          className="w-full h-full object-cover"
-                        />
+                  {photos.filter(p => p.type === 'wine').map((photo) => {
+                    const photoIndex = photos.findIndex(p => p.id === photo.id);
+                    return (
+                      <div key={photo.id} className="space-y-3">
+                        <div 
+                          className="aspect-[3/4] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => openLightbox(photoIndex)}
+                        >
+                          <img
+                            src={photo.photo_url}
+                            alt="Wine"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {photo.rating > 0 && (
+                          <div className="flex items-center space-x-1">
+                            {Array.from({ length: photo.rating }).map((_, i) => (
+                              <Star key={i} className="h-4 w-4 text-accent fill-accent" />
+                            ))}
+                          </div>
+                        )}
+                        {photo.caption && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">Tasting Notes:</p>
+                            <p className="text-sm text-muted-foreground">{photo.caption}</p>
+                          </div>
+                        )}
                       </div>
-                      {photo.rating > 0 && (
-                        <div className="flex items-center space-x-1">
-                          {Array.from({ length: photo.rating }).map((_, i) => (
-                            <Star key={i} className="h-4 w-4 text-accent fill-accent" />
-                          ))}
-                        </div>
-                      )}
-                      {photo.caption && (
-                        <div>
-                          <p className="text-sm font-medium mb-1">Tasting Notes:</p>
-                          <p className="text-sm text-muted-foreground">{photo.caption}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -332,24 +386,93 @@ export default function SharedRestaurant() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.filter(p => p.type === 'menu').map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="aspect-square rounded-lg overflow-hidden"
-                    >
-                      <img
-                        src={photo.photo_url}
-                        alt="Menu"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                  {photos.filter(p => p.type === 'menu').map((photo) => {
+                    const photoIndex = photos.findIndex(p => p.id === photo.id);
+                    return (
+                      <div
+                        key={photo.id}
+                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => openLightbox(photoIndex)}
+                      >
+                        <img
+                          src={photo.photo_url}
+                          alt="Menu"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       </main>
+
+      {/* Photo Lightbox */}
+      <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
+        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none">
+          {selectedPhotoIndex !== null && photos[selectedPhotoIndex] && (
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* Close button */}
+              <button
+                onClick={closeLightbox}
+                className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+
+              {/* Navigation buttons */}
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={() => navigatePhoto('prev')}
+                    className="absolute left-4 z-50 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                  >
+                    <ChevronLeft className="h-8 w-8" />
+                  </button>
+                  <button
+                    onClick={() => navigatePhoto('next')}
+                    className="absolute right-4 z-50 p-3 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                  >
+                    <ChevronRight className="h-8 w-8" />
+                  </button>
+                </>
+              )}
+
+              {/* Photo counter */}
+              <div className="absolute top-4 left-4 z-50 px-3 py-1 rounded-full bg-black/50 text-white text-sm">
+                {selectedPhotoIndex + 1} / {photos.length}
+              </div>
+
+              {/* Main image */}
+              <div className="flex flex-col items-center justify-center w-full h-full p-8">
+                <img
+                  src={photos[selectedPhotoIndex].photo_url}
+                  alt={photos[selectedPhotoIndex].type}
+                  className="max-w-full max-h-full object-contain"
+                />
+                
+                {/* Photo metadata */}
+                {(photos[selectedPhotoIndex].rating > 0 || photos[selectedPhotoIndex].caption) && (
+                  <div className="mt-4 max-w-2xl text-center space-y-2">
+                    {photos[selectedPhotoIndex].rating > 0 && (
+                      <div className="flex items-center justify-center space-x-1">
+                        {Array.from({ length: photos[selectedPhotoIndex].rating }).map((_, i) => (
+                          <Star key={i} className="h-5 w-5 text-accent fill-accent" />
+                        ))}
+                      </div>
+                    )}
+                    {photos[selectedPhotoIndex].caption && (
+                      <p className="text-white/90 text-sm">{photos[selectedPhotoIndex].caption}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Footer CTA */}
       <footer className="bg-gradient-olive-teal text-white mt-12">
