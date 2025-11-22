@@ -14,6 +14,7 @@ import { LocationPicker } from "@/components/LocationPicker";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
+import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
 import { z } from "zod";
 import { useI18n } from "@/i18n/i18n";
 
@@ -42,6 +43,7 @@ export default function AddRestaurant() {
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   
@@ -83,6 +85,7 @@ export default function AddRestaurant() {
         setFormData(parsed.formData);
         setSelectedAlbumId(parsed.selectedAlbumId);
         setSelectedTags(parsed.selectedTags || []);
+        setSocialLinks(parsed.socialLinks || []);
         toast({
           title: t("addRestaurant.draftRestored"),
           description: t("addRestaurant.draftRestoredDesc"),
@@ -104,6 +107,7 @@ export default function AddRestaurant() {
         formData,
         selectedAlbumId,
         selectedTags,
+        socialLinks,
       };
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(dataToSave));
       setLastSaved(new Date());
@@ -272,6 +276,22 @@ export default function AddRestaurant() {
 
           if (entryTagError) throw entryTagError;
         }
+      }
+
+      // Save social links
+      if (socialLinks.length > 0 && entry) {
+        const linksToInsert = socialLinks.map(link => ({
+          entry_id: entry.id,
+          platform: link.platform,
+          url: link.url,
+          title: link.title || null,
+        }));
+
+        const { error: linksError } = await supabase
+          .from("restaurant_social_links")
+          .insert(linksToInsert);
+
+        if (linksError) throw linksError;
       }
 
       // Clear autosave after successful submit
@@ -529,6 +549,12 @@ export default function AddRestaurant() {
                     className="text-lg min-h-[120px]"
                   />
                 </div>
+
+                {/* Social Links */}
+                <SocialLinksInput
+                  links={socialLinks}
+                  onChange={setSocialLinks}
+                />
 
                 {/* Submit */}
                 <div className="flex items-center space-x-4">

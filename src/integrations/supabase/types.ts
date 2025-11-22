@@ -437,6 +437,41 @@ export type Database = {
           },
         ]
       }
+      restaurant_social_links: {
+        Row: {
+          created_at: string | null
+          entry_id: string
+          id: string
+          platform: string
+          title: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          entry_id: string
+          id?: string
+          platform: string
+          title?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          entry_id?: string
+          id?: string
+          platform?: string
+          title?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_social_links_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       share_tokens: {
         Row: {
           clicks: number

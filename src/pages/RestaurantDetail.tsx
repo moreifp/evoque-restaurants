@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle, ExternalLink } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle, ExternalLink, Instagram, Video, Youtube, FileText, Twitter, Facebook } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -17,6 +17,7 @@ import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { LocationPicker } from "@/components/LocationPicker";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
+import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -43,6 +44,7 @@ export default function RestaurantDetail() {
   const [shareLoading, setShareLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generatingNote, setGeneratingNote] = useState(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -78,6 +80,7 @@ export default function RestaurantDetail() {
       fetchReceipt();
       fetchCurrentAlbums();
       fetchTags();
+      fetchSocialLinks();
     }
   }, [id]);
 
@@ -93,6 +96,18 @@ export default function RestaurantDetail() {
 
     if (data) {
       setTags(data.map((d: any) => d.tags.label));
+    }
+  };
+
+  const fetchSocialLinks = async () => {
+    const { data } = await supabase
+      .from("restaurant_social_links")
+      .select("*")
+      .eq("entry_id", id)
+      .order("created_at", { ascending: true });
+
+    if (data) {
+      setSocialLinks(data);
     }
   };
 
@@ -231,6 +246,24 @@ export default function RestaurantDetail() {
           });
       }
 
+      // Update social links
+      await supabase.from("restaurant_social_links").delete().eq("entry_id", id);
+
+      if (socialLinks.length > 0) {
+        const linksToInsert = socialLinks.map(link => ({
+          entry_id: id,
+          platform: link.platform,
+          url: link.url,
+          title: link.title || null,
+        }));
+
+        const { error: linksError } = await supabase
+          .from("restaurant_social_links")
+          .insert(linksToInsert);
+
+        if (linksError) throw linksError;
+      }
+
       toast({
         title: t("restaurantDetail.success"),
         description: t("restaurantDetail.restaurantUpdated"),
@@ -241,6 +274,7 @@ export default function RestaurantDetail() {
       fetchPhotos();
       fetchReceipt();
       fetchTags();
+      fetchSocialLinks();
       
       setUploadData({
         place: [],
@@ -781,6 +815,36 @@ export default function RestaurantDetail() {
                       </div>
                     </div>
                   )}
+
+                  {/* Social Links */}
+                  {socialLinks.length > 0 && (
+                    <div>
+                      <Label className="text-lg mb-2">Social Media</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {socialLinks.map((link, index) => (
+                          <a
+                            key={index}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                          >
+                            {link.platform === 'instagram' && <Instagram className="w-4 h-4" />}
+                            {link.platform === 'tiktok' && <Video className="w-4 h-4" />}
+                            {link.platform === 'youtube' && <Youtube className="w-4 h-4" />}
+                            {link.platform === 'blog' && <FileText className="w-4 h-4" />}
+                            {link.platform === 'twitter' && <Twitter className="w-4 h-4" />}
+                            {link.platform === 'facebook' && <Facebook className="w-4 h-4" />}
+                            {link.platform === 'other' && <ExternalLink className="w-4 h-4" />}
+                            <span className="text-sm font-medium capitalize">
+                              {link.title || link.platform}
+                            </span>
+                            <ExternalLink className="w-3 h-3 opacity-50" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1242,6 +1306,12 @@ export default function RestaurantDetail() {
                       className="text-lg min-h-[120px]"
                     />
                   </div>
+
+                  {/* Social Links */}
+                  <SocialLinksInput
+                    links={socialLinks}
+                    onChange={setSocialLinks}
+                  />
 
                   {/* Action Buttons */}
                   <div className="flex items-center space-x-4">
