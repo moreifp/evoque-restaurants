@@ -34,7 +34,7 @@ export const Navigation = () => {
           </Link>
 
           {/* Navigation Links - Desktop */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden lg:flex items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -54,6 +54,38 @@ export const Navigation = () => {
                 <Button variant="ghost" size="sm" className="ml-2">
                   <Globe className="h-4 w-4 mr-2" />
                   {language.toUpperCase()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
+                <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
+                  🇺🇸 English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
+                  🇧🇷 Português
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Navigation Links - Tablet (icons only) */}
+          <div className="hidden md:flex lg:hidden items-center space-x-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link key={item.path} to={item.path}>
+                  <Button variant="ghost" size="icon" className={cn(isActive && "bg-secondary")}>
+                    <Icon className="h-4 w-4" />
+                  </Button>
+                </Link>
+              );
+            })}
+            
+            {/* Language Switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Globe className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
@@ -86,6 +118,24 @@ export const Navigation = () => {
               </Link>
             );
           })}
+          
+          {/* Language Switcher for Mobile */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex flex-col items-center justify-center flex-1 h-full">
+                <Globe className="h-5 w-5 mb-1 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">{language.toUpperCase()}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg mb-2">
+              <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
+                🇺🇸 English
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
+                🇧🇷 Português
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </nav>
