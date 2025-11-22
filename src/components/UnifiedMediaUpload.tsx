@@ -33,6 +33,7 @@ interface UploadedFile {
 }
 
 interface UnifiedMediaUploadProps {
+  entryId?: string; // Pass when editing existing restaurant for autosave
   onUploadsChange: (data: {
     place: string[];
     menu: string[];
@@ -41,9 +42,10 @@ interface UnifiedMediaUploadProps {
     receipt: any | null;
   }) => void;
   onLocationExtracted?: (location: { lat: number; lng: number; address: string }) => void;
+  onPhotoSaved?: (photoData: { url: string; type: string }) => void; // Callback when photo is saved to DB
 }
 
-export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: UnifiedMediaUploadProps) {
+export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processingWine, setProcessingWine] = useState<string | null>(null);
@@ -154,6 +156,59 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
 
       const extracted = resp?.data ?? resp; // normalize shape from edge function
 
+      // If entryId exists, save receipt immediately to DB
+      if (entryId) {
+        const { data: newReceipt, error: receiptError } = await supabase
+          .from("receipts")
+          .insert({
+            entry_id: entryId,
+            photo_url: publicUrl,
+            subtotal: extracted.subtotal,
+            tax: extracted.tax,
+            service_fee: extracted.service_fee,
+            total: extracted.total,
+            currency: extracted.currency,
+          })
+          .select()
+          .single();
+
+        if (receiptError) {
+          console.error('Error saving receipt to database:', receiptError);
+          throw receiptError;
+        }
+
+        // Save receipt items
+        if (extracted.items && extracted.items.length > 0) {
+          const itemsToInsert = extracted.items.map((item: any) => ({
+            receipt_id: newReceipt.id,
+            item_type: item.item_type,
+            name: item.name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from("receipt_items")
+            .insert(itemsToInsert);
+
+          if (itemsError) {
+            console.error('Error saving receipt items:', itemsError);
+            throw itemsError;
+          }
+        }
+
+        // Notify parent that receipt was saved
+        onPhotoSaved?.({ url: publicUrl, type: 'receipt' });
+
+        toast({
+          title: "✅ Recibo salvo",
+          description: extracted.total 
+            ? `Total: ${extracted.currency || 'USD'} ${extracted.total}`
+            : t("unifiedMediaUpload.toasts.receiptSuccess"),
+        });
+      }
+
       setFiles(prev => {
         const updated = prev.map(f => 
           f.preview === fileData.preview 
@@ -164,12 +219,14 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         return updated;
       });
 
-      toast({
-        title: "✅ " + t("unifiedMediaUpload.toasts.receiptProcessed"),
-        description: extracted.total 
-          ? `${t("unifiedMediaUpload.toasts.receiptSuccess")} - Total: ${extracted.currency || 'USD'} ${extracted.total}`
-          : t("unifiedMediaUpload.toasts.receiptSuccess"),
-      });
+      if (!entryId) {
+        toast({
+          title: "✅ " + t("unifiedMediaUpload.toasts.receiptProcessed"),
+          description: extracted.total 
+            ? `${t("unifiedMediaUpload.toasts.receiptSuccess")} - Total: ${extracted.currency || 'USD'} ${extracted.total}`
+            : t("unifiedMediaUpload.toasts.receiptSuccess"),
+        });
+      }
     } catch (error: any) {
       toast({
         title: t("unifiedMediaUpload.toasts.receiptError"),
@@ -206,6 +263,33 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
       if (functionError) throw functionError;
 
       const extractedWineInfo = resp?.wineInfo ?? null; // normalize shape
+      const wineCaption = extractedWineInfo ? `${extractedWineInfo.name || ''} ${extractedWineInfo.vintage || ''}`.trim() : '';
+
+      // If entryId exists, save wine photo immediately to DB
+      if (entryId) {
+        const { error: dbError } = await supabase
+          .from("restaurant_photos")
+          .insert({
+            entry_id: entryId,
+            photo_url: publicUrl,
+            type: 'wine',
+            caption: wineCaption,
+            rating: null,
+          });
+
+        if (dbError) {
+          console.error('Error saving wine photo to database:', dbError);
+          throw dbError;
+        }
+
+        // Notify parent that photo was saved
+        onPhotoSaved?.({ url: publicUrl, type: 'wine' });
+
+        toast({
+          title: "✅ Vinho salvo",
+          description: t("unifiedMediaUpload.toasts.wineRecognized") + (extractedWineInfo?.name ? `: ${extractedWineInfo.name}` : ''),
+        });
+      }
 
       setFiles(prev => {
         const updated = prev.map(f => 
@@ -213,7 +297,7 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
             ? { 
                 ...f, 
                 wineInfo: extractedWineInfo,
-                caption: extractedWineInfo ? `${extractedWineInfo.name || ''} ${extractedWineInfo.vintage || ''}`.trim() : '', 
+                caption: wineCaption, 
                 url: publicUrl 
               }
             : f
@@ -222,10 +306,12 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         return updated;
       });
 
-      toast({
-        title: t("unifiedMediaUpload.toasts.wineRecognized"),
-        description: extractedWineInfo?.name || t("unifiedMediaUpload.toasts.wineInfo"),
-      });
+      if (!entryId) {
+        toast({
+          title: t("unifiedMediaUpload.toasts.wineRecognized"),
+          description: extractedWineInfo?.name || t("unifiedMediaUpload.toasts.wineInfo"),
+        });
+      }
     } catch (error: any) {
       toast({
         title: t("unifiedMediaUpload.toasts.wineError"),
@@ -280,7 +366,37 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
           .from("restaurant-photos")
           .getPublicUrl(fileName);
 
-        // Update file with URL
+        // If entryId exists (editing existing restaurant), save immediately to DB
+        if (entryId) {
+          const photoType = fileData.category === 'menu' ? 'menu' :
+                           fileData.category === 'wine' ? 'wine' :
+                           fileData.category === 'friends' ? 'friends' :
+                           'restaurant_photo';
+
+          const { error: dbError } = await supabase
+            .from("restaurant_photos")
+            .insert({
+              entry_id: entryId,
+              photo_url: publicUrl,
+              type: photoType,
+            });
+
+          if (dbError) {
+            console.error('Error saving photo to database:', dbError);
+            throw dbError;
+          }
+
+          // Notify parent that photo was saved
+          onPhotoSaved?.({ url: publicUrl, type: photoType });
+
+          // Show individual success toast
+          toast({
+            title: "✅ Foto salva",
+            description: `${categoryConfig[fileData.category].label} adicionada com sucesso`,
+          });
+        }
+
+        // Update file with URL in local state
         setFiles(prev => {
           const updated = prev.map(f => 
             f.preview === fileData.preview ? { ...f, url: publicUrl } : f
@@ -289,13 +405,16 @@ export function UnifiedMediaUpload({ onUploadsChange, onLocationExtracted }: Uni
         });
       }
 
-      // Notify parent with all uploaded data
+      // Notify parent with all uploaded data (for AddRestaurant compatibility)
       updateParent();
       
-      toast({
-        title: t("unifiedMediaUpload.toasts.filesUploaded"),
-        description: t("unifiedMediaUpload.toasts.filesSuccess").replace("{count}", newFiles.length.toString()),
-      });
+      // Show final toast only if NOT editing (no entryId)
+      if (!entryId) {
+        toast({
+          title: t("unifiedMediaUpload.toasts.filesUploaded"),
+          description: t("unifiedMediaUpload.toasts.filesSuccess").replace("{count}", newFiles.length.toString()),
+        });
+      }
     } catch (error: any) {
       toast({
         title: t("unifiedMediaUpload.toasts.uploadFailed"),

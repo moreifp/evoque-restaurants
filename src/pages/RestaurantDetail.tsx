@@ -193,83 +193,8 @@ export default function RestaurantDetail() {
 
       if (entryError) throw entryError;
 
-      // Handle new photo uploads from UnifiedMediaUpload
-      if (uploadData.place.length > 0 || uploadData.menu.length > 0 || uploadData.wine.length > 0 || uploadData.friends.length > 0) {
-        const allPhotos = [
-          ...uploadData.place.map(url => ({
-            entry_id: id,
-            photo_url: url,
-            type: 'restaurant_photo',
-          })),
-          ...uploadData.menu.map(url => ({
-            entry_id: id,
-            photo_url: url,
-            type: 'menu',
-          })),
-          ...uploadData.wine.map(wine => ({
-            entry_id: id,
-            photo_url: wine.url,
-            type: 'wine',
-            caption: wine.caption,
-            rating: wine.rating || null,
-          })),
-          ...uploadData.friends.map(url => ({
-            entry_id: id,
-            photo_url: url,
-            type: 'friends',
-          })),
-        ];
-
-        if (allPhotos.length > 0) {
-          const { error: photoError } = await supabase
-            .from("restaurant_photos")
-            .insert(allPhotos);
-
-          if (photoError) throw photoError;
-        }
-      }
-
-      // Handle receipt upload
-      if (uploadData.receipt) {
-        // Delete existing receipt if any
-        if (receipt) {
-          await supabase.from("receipts").delete().eq("id", receipt.id);
-        }
-
-        const { data: newReceipt, error: receiptError } = await supabase
-          .from("receipts")
-          .insert({
-            entry_id: id,
-            photo_url: uploadData.receipt.photo_url,
-            subtotal: uploadData.receipt.subtotal,
-            tax: uploadData.receipt.tax,
-            service_fee: uploadData.receipt.service_fee,
-            total: uploadData.receipt.total,
-            currency: uploadData.receipt.currency,
-          })
-          .select()
-          .single();
-
-        if (receiptError) throw receiptError;
-
-        // Save receipt items
-        if (uploadData.receipt.items && uploadData.receipt.items.length > 0) {
-          const itemsToInsert = uploadData.receipt.items.map((item: any) => ({
-            receipt_id: newReceipt.id,
-            item_type: item.item_type,
-            name: item.name,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            line_total: item.line_total,
-          }));
-
-          const { error: itemsError } = await supabase
-            .from("receipt_items")
-            .insert(itemsToInsert);
-
-          if (itemsError) throw itemsError;
-        }
-      }
+      // Photos and receipts are now saved progressively by UnifiedMediaUpload
+      // when entryId is provided, so no batch saving needed here
 
       // Update tags
       await supabase.from("entry_tags").delete().eq("entry_id", id);
@@ -1174,6 +1099,7 @@ export default function RestaurantDetail() {
 
                   {/* Unified Media Upload */}
                   <UnifiedMediaUpload
+                    entryId={id}
                     onUploadsChange={setUploadData}
                     onLocationExtracted={(location) => {
                       setFormData({
@@ -1182,6 +1108,13 @@ export default function RestaurantDetail() {
                         location_lat: location.lat,
                         location_lng: location.lng,
                       });
+                    }}
+                    onPhotoSaved={(photoData) => {
+                      // Reload photos to show immediately in the interface
+                      fetchPhotos();
+                      if (photoData.type === 'receipt') {
+                        fetchReceipt();
+                      }
                     }}
                   />
 
