@@ -466,7 +466,7 @@ export default function Account() {
             </CardHeader>
             <CardContent className="space-y-3">
               <a
-                href="https://evoque.guru/#page-0"
+                href="https://evoque.guru/terms"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
