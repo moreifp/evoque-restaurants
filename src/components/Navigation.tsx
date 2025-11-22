@@ -16,11 +16,11 @@ export const Navigation = () => {
   const { language, setLanguage, t } = useI18n();
 
   const navItems = [
-    { path: "/", icon: Home, label: t("navigation.home") },
-    { path: "/dining", icon: UtensilsCrossed, label: t("navigation.dining") },
-    { path: "/planner", icon: Sparkles, label: t("navigation.planner") },
-    { path: "/wine-cellar", icon: Wine, label: t("navigation.wineCellar") },
-    { path: "/account", icon: Settings, label: t("navigation.account") },
+    { path: "/", icon: Home, label: t("navigation.home"), mobileLabel: t("navigation.home") },
+    { path: "/dining", icon: UtensilsCrossed, label: t("navigation.dining"), mobileLabel: t("navigation.dining") },
+    { path: "/planner", icon: Sparkles, label: t("navigation.planner"), mobileLabel: "AI" },
+    { path: "/wine-cellar", icon: Wine, label: t("navigation.wineCellar"), mobileLabel: t("navigation.wine") },
+    { path: "/account", icon: Settings, label: t("navigation.account"), mobileLabel: "" },
   ];
 
   return (
@@ -77,10 +77,12 @@ export const Navigation = () => {
             const isActive = location.pathname === item.path;
             return (
               <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center flex-1 h-full">
-                <Icon className={cn("h-5 w-5 mb-1", isActive ? "text-accent" : "text-muted-foreground")} />
-                <span className={cn("text-xs", isActive ? "text-accent font-medium" : "text-muted-foreground")}>
-                  {item.label}
-                </span>
+                <Icon className={cn("h-5 w-5", item.mobileLabel && "mb-1", isActive ? "text-accent" : "text-muted-foreground")} />
+                {item.mobileLabel && (
+                  <span className={cn("text-xs", isActive ? "text-accent font-medium" : "text-muted-foreground")}>
+                    {item.mobileLabel}
+                  </span>
+                )}
               </Link>
             );
           })}
