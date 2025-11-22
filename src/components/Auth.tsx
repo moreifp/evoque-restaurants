@@ -349,6 +349,17 @@ export const Auth = () => {
                 : t("auth.dontHaveAccount")}
             </button>
           </div>
+          <div className="mt-4 text-center text-xs text-muted-foreground">
+            By signing up, you agree to our{" "}
+            <a
+              href="https://evoque.guru/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              Terms of Use
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>
