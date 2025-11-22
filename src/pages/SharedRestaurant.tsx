@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
@@ -12,6 +12,7 @@ export default function SharedRestaurant() {
   const { id } = useParams();
   const [entry, setEntry] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
+  const [socialLinks, setSocialLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
@@ -40,6 +41,7 @@ export default function SharedRestaurant() {
     setEntry(data);
     setLoading(false);
     fetchPhotos();
+    fetchSocialLinks();
   };
 
   const fetchPhotos = async () => {
@@ -56,6 +58,18 @@ export default function SharedRestaurant() {
         type: photo.type || 'food'
       }));
       setPhotos(photosWithTypes);
+    }
+  };
+
+  const fetchSocialLinks = async () => {
+    const { data } = await supabase
+      .from("restaurant_social_links")
+      .select("*")
+      .eq("entry_id", id)
+      .order("created_at", { ascending: true });
+
+    if (data) {
+      setSocialLinks(data);
     }
   };
 
@@ -232,6 +246,45 @@ export default function SharedRestaurant() {
               )}
             </CardContent>
           </Card>
+
+          {/* Social Links */}
+          {socialLinks.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Find My Review On:</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-3">
+                  {socialLinks.map((link, index) => (
+                    <a
+                      key={index}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-4 py-3 rounded-lg border bg-muted/30 hover:bg-muted/50 hover:shadow-md transition-all"
+                    >
+                      {link.platform === 'instagram' && <Instagram className="w-5 h-5 text-pink-600" />}
+                      {link.platform === 'tiktok' && <Video className="w-5 h-5 text-black" />}
+                      {link.platform === 'youtube' && <Youtube className="w-5 h-5 text-red-600" />}
+                      {link.platform === 'blog' && <FileText className="w-5 h-5 text-blue-600" />}
+                      {link.platform === 'twitter' && <Twitter className="w-5 h-5 text-blue-400" />}
+                      {link.platform === 'facebook' && <Facebook className="w-5 h-5 text-blue-600" />}
+                      {link.platform === 'other' && <ExternalLink className="w-5 h-5" />}
+                      <div className="flex flex-col">
+                        <span className="font-medium capitalize">
+                          {link.title || link.platform}
+                        </span>
+                        {link.title && (
+                          <span className="text-xs text-muted-foreground capitalize">{link.platform}</span>
+                        )}
+                      </div>
+                      <ExternalLink className="w-4 h-4 opacity-50 ml-auto" />
+                    </a>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Place Photos */}
           {photos.filter(p => p.type === 'place' || p.type === 'restaurant_photo').length > 0 && (
