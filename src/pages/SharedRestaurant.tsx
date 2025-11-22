@@ -46,7 +46,14 @@ export default function SharedRestaurant() {
       .eq("entry_id", id)
       .order("created_at", { ascending: false });
 
-    if (data) setPhotos(data);
+    if (data) {
+      // Ensure all photos have a type, default to 'food' for backward compatibility
+      const photosWithTypes = data.map(photo => ({
+        ...photo,
+        type: photo.type || 'food'
+      }));
+      setPhotos(photosWithTypes);
+    }
   };
 
   if (loading) {
@@ -191,7 +198,7 @@ export default function SharedRestaurant() {
           </Card>
 
           {/* Place Photos */}
-          {photos.filter(p => p.type === 'place').length > 0 && (
+          {photos.filter(p => p.type === 'place' || p.type === 'restaurant_photo').length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -201,7 +208,7 @@ export default function SharedRestaurant() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {photos.filter(p => p.type === 'place').map((photo) => (
+                  {photos.filter(p => p.type === 'place' || p.type === 'restaurant_photo').map((photo) => (
                     <div
                       key={photo.id}
                       className="aspect-square rounded-lg overflow-hidden"
