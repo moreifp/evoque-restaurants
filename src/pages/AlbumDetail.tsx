@@ -152,13 +152,61 @@ export default function AlbumDetail() {
     }
   };
 
-  const handleShare = () => {
+  const copyToClipboard = async (text: string) => {
+    // Try Web Share API first (works great on iOS)
+    if (navigator.share) {
+      try {
+        await navigator.share({ url: text });
+        return true;
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name === 'AbortError') {
+          return false;
+        }
+      }
+    }
+
+    // Fallback for iOS Safari - use textarea method
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      // Final fallback using textarea (works on iOS)
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      try {
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return true;
+      } catch (error) {
+        document.body.removeChild(textarea);
+        return false;
+      }
+    }
+  };
+
+  const handleShare = async () => {
     const shareUrl = `${window.location.origin}/albums/${id}`;
-    navigator.clipboard.writeText(shareUrl);
-    toast({
-      title: "Link copied!",
-      description: "Share this link with your friends",
-    });
+    const copied = await copyToClipboard(shareUrl);
+    
+    if (copied !== false) {
+      toast({
+        title: "Link copied!",
+        description: "Share this link with your friends",
+      });
+    } else {
+      toast({
+        title: "Could not copy link",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRemoveFromAlbum = async (entryId: string) => {

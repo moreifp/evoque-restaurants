@@ -335,6 +335,45 @@ export default function RestaurantDetail() {
     navigate("/dining");
   };
 
+  const copyToClipboard = async (text: string) => {
+    // Try Web Share API first (works great on iOS)
+    if (navigator.share) {
+      try {
+        await navigator.share({ url: text });
+        return true;
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name === 'AbortError') {
+          return false;
+        }
+      }
+    }
+
+    // Fallback for iOS Safari - use textarea method
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      // Final fallback using textarea (works on iOS)
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      
+      try {
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return true;
+      } catch (error) {
+        document.body.removeChild(textarea);
+        return false;
+      }
+    }
+  };
+
   const handleShare = async () => {
     if (!entry.is_public) {
       toast({
@@ -360,25 +399,37 @@ export default function RestaurantDetail() {
         ? `https://food.evoque.guru/s/${token}`
         : `https://food.evoque.guru/share/${id}`;
       
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const copied = await copyToClipboard(shareUrl);
       
-      toast({
-        title: t("restaurantDetail.linkCopied"),
-        description: `${t("restaurantDetail.shareLink")}: ${token || id}`,
-      });
+      if (copied !== false) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        toast({
+          title: t("restaurantDetail.linkCopied"),
+          description: `${t("restaurantDetail.shareLink")}: ${token || id}`,
+        });
+      }
     } catch (error) {
       console.error('Error generating share token:', error);
       // Fallback to old share URL
       const shareUrl = `https://food.evoque.guru/s/${id}`;
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({
-        title: t("restaurantDetail.linkCopied"),
-        description: t("restaurantDetail.shareLinkCopied"),
-      });
+      const copied = await copyToClipboard(shareUrl);
+      
+      if (copied !== false) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast({
+          title: t("restaurantDetail.linkCopied"),
+          description: t("restaurantDetail.shareLinkCopied"),
+        });
+      } else {
+        toast({
+          title: "Could not copy link",
+          description: "Please try again",
+          variant: "destructive",
+        });
+      }
     } finally {
       setShareLoading(false);
     }
