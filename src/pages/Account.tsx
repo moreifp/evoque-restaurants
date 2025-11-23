@@ -475,7 +475,7 @@ export default function Account() {
                 <ExternalLink className="h-4 w-4" />
               </a>
               <a
-                href="https://evoque.guru/#page-0"
+                href="https://evoque.guru/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"

@@ -359,6 +359,16 @@ export const Auth = () => {
             >
               Terms of Use
             </a>
+            {" "}and{" "}
+            <a
+              href="https://evoque.guru/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              Privacy Policy
+            </a>
+            .
           </div>
         </CardContent>
       </Card>
