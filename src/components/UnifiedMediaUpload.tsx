@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,14 @@ interface UploadedFile {
 
 interface UnifiedMediaUploadProps {
   entryId?: string; // Pass when editing existing restaurant for autosave
+  initialUploadData?: {
+    place: string[];
+    food: string[];
+    friends: string[];
+    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    menu: string[];
+    receipt: any | null;
+  };
   onUploadsChange: (data: {
     place: string[];
     food: string[];
@@ -46,15 +54,92 @@ interface UnifiedMediaUploadProps {
   onPhotoSaved?: (photoData: { url: string; type: string }) => void; // Callback when photo is saved to DB
 }
 
-export function UnifiedMediaUpload({ entryId, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
+export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processingWine, setProcessingWine] = useState<string | null>(null);
   const [processingReceipt, setProcessingReceipt] = useState(false);
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [lastCategory, setLastCategory] = useState<keyof typeof categoryConfig | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
   const { t } = useI18n();
+
+  // Initialize from saved upload data (for draft restoration)
+  useEffect(() => {
+    if (initialUploadData && !initialized) {
+      const restoredFiles: UploadedFile[] = [];
+      
+      // Restore place photos
+      initialUploadData.place.forEach(url => {
+        restoredFiles.push({
+          file: new File([], 'restored'), // Placeholder file
+          preview: url,
+          category: 'place',
+          url,
+        });
+      });
+      
+      // Restore food photos
+      initialUploadData.food.forEach(url => {
+        restoredFiles.push({
+          file: new File([], 'restored'),
+          preview: url,
+          category: 'food',
+          url,
+        });
+      });
+      
+      // Restore friends photos
+      initialUploadData.friends.forEach(url => {
+        restoredFiles.push({
+          file: new File([], 'restored'),
+          preview: url,
+          category: 'friends',
+          url,
+        });
+      });
+      
+      // Restore wine photos
+      initialUploadData.wine.forEach(wine => {
+        restoredFiles.push({
+          file: new File([], 'restored'),
+          preview: wine.url,
+          category: 'wine',
+          url: wine.url,
+          caption: wine.caption,
+          rating: wine.rating,
+          wineInfo: wine.wineInfo,
+        });
+      });
+      
+      // Restore menu photos
+      initialUploadData.menu.forEach(url => {
+        restoredFiles.push({
+          file: new File([], 'restored'),
+          preview: url,
+          category: 'menu',
+          url,
+        });
+      });
+      
+      // Restore receipt
+      if (initialUploadData.receipt) {
+        restoredFiles.push({
+          file: new File([], 'restored'),
+          preview: initialUploadData.receipt.photo_url,
+          category: 'receipt',
+          url: initialUploadData.receipt.photo_url,
+          receiptData: initialUploadData.receipt,
+        });
+      }
+      
+      if (restoredFiles.length > 0) {
+        setFiles(restoredFiles);
+      }
+      setInitialized(true);
+    }
+  }, [initialUploadData, initialized]);
 
   // Update parent whenever files change
   const updateParent = () => {
