@@ -86,6 +86,9 @@ export default function AddRestaurant() {
         setSelectedAlbumId(parsed.selectedAlbumId);
         setSelectedTags(parsed.selectedTags || []);
         setSocialLinks(parsed.socialLinks || []);
+        if (parsed.uploadData) {
+          setUploadData(parsed.uploadData);
+        }
         toast({
           title: t("addRestaurant.draftRestored"),
           description: t("addRestaurant.draftRestoredDesc"),
@@ -108,6 +111,7 @@ export default function AddRestaurant() {
         selectedAlbumId,
         selectedTags,
         socialLinks,
+        uploadData,
       };
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(dataToSave));
       setLastSaved(new Date());
@@ -118,7 +122,7 @@ export default function AddRestaurant() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formData, selectedAlbumId, selectedTags]);
+  }, [formData, selectedAlbumId, selectedTags, socialLinks, uploadData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -441,6 +445,7 @@ export default function AddRestaurant() {
 
                 {/* Unified Media Upload */}
                 <UnifiedMediaUpload
+                  initialUploadData={uploadData}
                   onUploadsChange={setUploadData}
                   onLocationExtracted={(location) => {
                     setFormData({
