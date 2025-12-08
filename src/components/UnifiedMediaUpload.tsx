@@ -203,6 +203,26 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       
       setFiles(prev => [...prev, ...newFiles]);
       
+      // Show immediate visual confirmation when photo is captured from camera
+      if (useCamera && newFiles.length > 0) {
+        const firstFile = newFiles[0];
+        toast({
+          title: "📸 Foto capturada!",
+          description: (
+            <div className="flex items-center gap-3 mt-2">
+              <img 
+                src={firstFile.preview} 
+                alt="Preview" 
+                className="w-16 h-16 rounded-lg object-cover border border-border shadow-sm"
+              />
+              <span className="text-sm text-muted-foreground">
+                Enviando {categoryConfig[category].label.toLowerCase()}...
+              </span>
+            </div>
+          ),
+        });
+      }
+      
       // Show dialog immediately
       setLastCategory(category);
       setShowAddMoreDialog(true);
