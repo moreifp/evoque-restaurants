@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook } from "lucide-react";
+import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
@@ -221,6 +221,16 @@ export default function SharedRestaurant() {
                   <div>
                     <p className="font-medium">Companions</p>
                     <p className="text-muted-foreground">{entry.companions}</p>
+                  </div>
+                </div>
+              )}
+
+              {entry.description && (
+                <div className="flex items-start space-x-3">
+                  <Sparkles className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="font-medium">About</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{entry.description}</p>
                   </div>
                 </div>
               )}

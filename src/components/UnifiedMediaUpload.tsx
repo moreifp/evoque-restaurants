@@ -485,17 +485,30 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
           });
         }
 
-        // Update file with URL in local state
+        // Update file with URL in local state and notify parent immediately
         setFiles(prev => {
           const updated = prev.map(f => 
             f.preview === fileData.preview ? { ...f, url: publicUrl } : f
           );
+          // Call updateParent in next tick with updated state
+          setTimeout(() => {
+            onUploadsChange({
+              place: updated.filter(f => f.category === 'place' && f.url).map(f => f.url!),
+              food: updated.filter(f => f.category === 'food' && f.url).map(f => f.url!),
+              friends: updated.filter(f => f.category === 'friends' && f.url).map(f => f.url!),
+              wine: updated.filter(f => f.category === 'wine' && f.url).map(f => ({
+                url: f.url!,
+                caption: f.caption || '',
+                rating: f.rating,
+                wineInfo: f.wineInfo,
+              })),
+              menu: updated.filter(f => f.category === 'menu' && f.url).map(f => f.url!),
+              receipt: updated.find(f => f.category === 'receipt')?.receiptData || null,
+            });
+          }, 0);
           return updated;
         });
       }
-
-      // Notify parent with all uploaded data (for AddRestaurant compatibility)
-      updateParent();
       
       // Show final toast only if NOT editing (no entryId)
       if (!entryId) {
