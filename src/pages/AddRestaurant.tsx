@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ const restaurantSchema = z.object({
 
 export default function AddRestaurant() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { t, language } = useI18n();
   const [loading, setLoading] = useState(false);
@@ -45,6 +46,8 @@ export default function AddRestaurant() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [originScheduledVisitId, setOriginScheduledVisitId] = useState<string | null>(null);
+  const [prefilledFromAgenda, setPrefilledFromAgenda] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   
   const [uploadData, setUploadData] = useState<{
@@ -76,8 +79,29 @@ export default function AddRestaurant() {
     description: "",
   });
 
-  // Load autosaved data on mount
+  // Check for URL params from Agenda (Record Experience flow)
   useEffect(() => {
+    const restaurantName = searchParams.get("restaurant_name");
+    const city = searchParams.get("city");
+    const locationAddress = searchParams.get("location_address");
+    const googlePlaceId = searchParams.get("google_place_id");
+    const visitId = searchParams.get("origin_scheduled_visit_id");
+
+    if (restaurantName || visitId) {
+      // Prefill from URL params (Agenda flow)
+      setPrefilledFromAgenda(true);
+      setOriginScheduledVisitId(visitId);
+      setFormData(prev => ({
+        ...prev,
+        restaurant_name: restaurantName || prev.restaurant_name,
+        location_address: locationAddress || city || prev.location_address,
+        google_place_id: googlePlaceId || prev.google_place_id,
+      }));
+      // Don't load autosave when coming from Agenda
+      return;
+    }
+
+    // Load autosaved data on mount (only if not prefilled from Agenda)
     const saved = localStorage.getItem(AUTOSAVE_KEY);
     if (saved) {
       try {
@@ -97,7 +121,7 @@ export default function AddRestaurant() {
         console.error("Failed to restore autosave:", e);
       }
     }
-  }, []);
+  }, [searchParams]);
 
   // Autosave to localStorage (debounced)
   useEffect(() => {
@@ -149,14 +173,21 @@ export default function AddRestaurant() {
         return;
       }
 
-      // Create restaurant entry
+      // Create restaurant entry with optional origin_scheduled_visit_id
+      const insertData: any = {
+        ...formData,
+        user_id: user.id,
+        rating: formData.rating || null,
+      };
+
+      // Link to scheduled visit if coming from Agenda
+      if (originScheduledVisitId) {
+        insertData.origin_scheduled_visit_id = originScheduledVisitId;
+      }
+
       const { data: entry, error: entryError } = await supabase
         .from("restaurant_entries")
-        .insert({
-          ...formData,
-          user_id: user.id,
-          rating: formData.rating || null,
-        })
+        .insert(insertData)
         .select()
         .single();
 
