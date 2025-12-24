@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n/i18n";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import { UpcomingReservationsSection } from "@/components/agenda/UpcomingReservationsSection";
+import { PastVisitReminderBanner } from "@/components/agenda/PastVisitReminderBanner";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -61,6 +62,9 @@ export default function Home() {
             {t("home.subtitle")}
           </p>
         </div>
+
+        {/* Past Visit Reminder Banner */}
+        <PastVisitReminderBanner />
 
         {/* Upcoming Reservations */}
         <UpcomingReservationsSection />
