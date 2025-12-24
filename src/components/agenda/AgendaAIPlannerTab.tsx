@@ -146,21 +146,38 @@ export function AgendaAIPlannerTab({ onVisitsCreated }: AgendaAIPlannerTabProps)
 
       // Save proposed schedule items as scheduled_visits
       if (data.result?.proposed_schedule?.length > 0) {
-        const scheduledVisits = data.result.proposed_schedule.map((slot: any) => ({
-          user_id: user.id,
-          restaurant_name: slot.restaurant_name || slot.restaurant || "TBD",
-          city,
-          start_datetime: slot.datetime || new Date().toISOString(),
-          end_datetime: slot.end_datetime || new Date(new Date(slot.datetime).getTime() + 90 * 60000).toISOString(),
-          meal_type: slot.meal_type || "dinner",
-          status: "planned",
-          source: "ai",
-          ai_plan_id: planData.id,
-          notes: slot.notes || null,
-        }));
+        const scheduledVisits = data.result.proposed_schedule
+          .filter((slot: any) => {
+            // Validate that we have a valid datetime
+            if (!slot.datetime && !slot.date) return false;
+            const testDate = new Date(slot.datetime || slot.date);
+            return !isNaN(testDate.getTime());
+          })
+          .map((slot: any) => {
+            const slotDatetime = slot.datetime || slot.date;
+            const startDate = new Date(slotDatetime);
+            const endDate = slot.end_datetime 
+              ? new Date(slot.end_datetime)
+              : new Date(startDate.getTime() + 90 * 60000);
 
-        await supabase.from("scheduled_visits").insert(scheduledVisits);
-        onVisitsCreated();
+            return {
+              user_id: user.id,
+              restaurant_name: slot.restaurant_name || slot.restaurant || "TBD",
+              city,
+              start_datetime: startDate.toISOString(),
+              end_datetime: endDate.toISOString(),
+              meal_type: slot.meal_type || slot.meal || "dinner",
+              status: "planned",
+              source: "ai",
+              ai_plan_id: planData.id,
+              notes: slot.notes || null,
+            };
+          });
+
+        if (scheduledVisits.length > 0) {
+          await supabase.from("scheduled_visits").insert(scheduledVisits);
+          onVisitsCreated();
+        }
       }
 
       toast({
