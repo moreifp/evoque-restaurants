@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Edit, CalendarPlus, Sparkles, X, Check } from "lucide-react";
+import { Edit, CalendarPlus, Sparkles, X, Check, Globe } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -454,6 +454,17 @@ export default function PlanDetail() {
                       {plan.intake_json.constraints.map((c: string, i: number) => (
                         <Badge key={i} variant="outline">{c}</Badge>
                       ))}
+                    </div>
+                  </div>
+                )}
+                {plan?.intake_json?.timezone && (
+                  <div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Globe className="h-3 w-3" />
+                      Timezone
+                    </div>
+                    <div className="font-medium text-sm">
+                      {plan.intake_json.timezone.replace('_', ' ').replace('/', ' / ')}
                     </div>
                   </div>
                 )}
