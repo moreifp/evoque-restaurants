@@ -119,6 +119,42 @@ export function AddReservationModal({
     }
   }, [editingVisit, isOpen]);
 
+  const enrichVisitData = async (visitId: string, restaurantName: string, city: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('enrich-restaurant-data', {
+        body: { restaurant_name: restaurantName, city }
+      });
+
+      if (error) {
+        console.error('Error enriching restaurant data:', error);
+        return;
+      }
+
+      if (data?.success && data?.data) {
+        const enrichedData = data.data;
+        // Update the visit with enriched data
+        const { error: updateError } = await supabase
+          .from('scheduled_visits')
+          .update({
+            google_place_id: enrichedData.google_place_id,
+            location_address: enrichedData.location_address,
+            phone: enrichedData.phone,
+            website: enrichedData.website,
+            maps_url: enrichedData.maps_url,
+          })
+          .eq('id', visitId);
+
+        if (updateError) {
+          console.error('Error updating visit with enriched data:', updateError);
+        } else {
+          console.log('Visit enriched with Google Places data');
+        }
+      }
+    } catch (err) {
+      console.error('Error calling enrich function:', err);
+    }
+  };
+
   const handleSave = async () => {
     if (!restaurantName.trim() || !city.trim() || !date) {
       toast({
@@ -157,17 +193,29 @@ export function AddReservationModal({
         source: "manual",
       };
 
+      let savedVisitId: string | null = null;
+
       if (editingVisit) {
         const { error } = await supabase
           .from("scheduled_visits")
           .update(visitData)
           .eq("id", editingVisit.id);
         if (error) throw error;
+        savedVisitId = editingVisit.id;
       } else {
-        const { error } = await supabase
+        const { data: insertedData, error } = await supabase
           .from("scheduled_visits")
-          .insert(visitData);
+          .insert(visitData)
+          .select('id')
+          .single();
         if (error) throw error;
+        savedVisitId = insertedData?.id || null;
+      }
+
+      // Auto-enrich with Google Places data if user didn't provide address/phone/website
+      if (savedVisitId && !address && !phone && !website) {
+        // Run enrichment in background (don't block UI)
+        enrichVisitData(savedVisitId, restaurantName.trim(), city.trim());
       }
 
       toast({ title: t("agenda.toasts.saved") });
