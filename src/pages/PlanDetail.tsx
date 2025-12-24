@@ -138,6 +138,9 @@ export default function PlanDetail() {
         return;
       }
 
+      // Get timezone from plan intake_json (default to UTC)
+      const planTimezone = plan?.intake_json?.timezone || 'UTC';
+
       // Parse the day to get a proper date
       let scheduledDate: Date;
       const dayStr = slot.day;
@@ -187,6 +190,7 @@ export default function PlanDetail() {
         notes: slot.notes || null,
         google_place_id: rec?.google_place_id || null,
         party_size: slot.reservation_people || null,
+        timezone: planTimezone,
       });
 
       if (error) throw error;
@@ -211,6 +215,9 @@ export default function PlanDetail() {
         toast.error("Faça login para adicionar reservas");
         return;
       }
+
+      // Get timezone from plan intake_json (default to UTC)
+      const planTimezone = plan?.intake_json?.timezone || 'UTC';
 
       const scheduledVisits = schedule.map((slot) => {
         // Parse the day to get a proper date
@@ -258,6 +265,7 @@ export default function PlanDetail() {
           notes: slot.notes || null,
           google_place_id: rec?.google_place_id || null,
           party_size: slot.reservation_people || null,
+          timezone: planTimezone,
         };
       });
 

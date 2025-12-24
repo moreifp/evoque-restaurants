@@ -7,11 +7,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
-import { CalendarIcon, MapPin, Sparkles } from "lucide-react";
+import { CalendarIcon, MapPin, Sparkles, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+// Common timezones for travel destinations
+const COMMON_TIMEZONES = [
+  { value: "America/New_York", label: "New York (EST/EDT)", offset: "-05:00" },
+  { value: "America/Los_Angeles", label: "Los Angeles (PST/PDT)", offset: "-08:00" },
+  { value: "America/Chicago", label: "Chicago (CST/CDT)", offset: "-06:00" },
+  { value: "America/Sao_Paulo", label: "São Paulo (BRT)", offset: "-03:00" },
+  { value: "America/Mexico_City", label: "Mexico City (CST)", offset: "-06:00" },
+  { value: "Europe/London", label: "London (GMT/BST)", offset: "+00:00" },
+  { value: "Europe/Paris", label: "Paris (CET/CEST)", offset: "+01:00" },
+  { value: "Europe/Rome", label: "Rome (CET/CEST)", offset: "+01:00" },
+  { value: "Europe/Madrid", label: "Madrid (CET/CEST)", offset: "+01:00" },
+  { value: "Europe/Berlin", label: "Berlin (CET/CEST)", offset: "+01:00" },
+  { value: "Europe/Lisbon", label: "Lisbon (WET/WEST)", offset: "+00:00" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)", offset: "+09:00" },
+  { value: "Asia/Shanghai", label: "Shanghai (CST)", offset: "+08:00" },
+  { value: "Asia/Singapore", label: "Singapore (SGT)", offset: "+08:00" },
+  { value: "Asia/Dubai", label: "Dubai (GST)", offset: "+04:00" },
+  { value: "Asia/Bangkok", label: "Bangkok (ICT)", offset: "+07:00" },
+  { value: "Australia/Sydney", label: "Sydney (AEST/AEDT)", offset: "+11:00" },
+  { value: "Pacific/Auckland", label: "Auckland (NZST/NZDT)", offset: "+13:00" },
+];
 
 export default function RestaurantPlanner() {
   const navigate = useNavigate();
@@ -20,6 +49,7 @@ export default function RestaurantPlanner() {
   const [city, setCity] = useState("");
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [timezone, setTimezone] = useState<string>("Europe/London");
   const [language, setLanguage] = useState<'pt-BR' | 'en-US'>('en-US');
 
   const handleStartPlanning = async () => {
@@ -64,7 +94,7 @@ export default function RestaurantPlanner() {
         throw new Error(data.error);
       }
 
-      // Save plan to database
+      // Save plan to database with timezone
       const { data: planData, error: planError } = await supabase
         .from('plans')
         .insert({
@@ -72,7 +102,10 @@ export default function RestaurantPlanner() {
           city,
           start_date: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
-          intake_json: data.result?.intake_summary,
+          intake_json: { 
+            ...data.result?.intake_summary,
+            timezone, // Store timezone in intake_json
+          },
           recommendations_json: data.result?.recommendations,
           schedule_json: data.result?.proposed_schedule,
           status: 'draft',
@@ -237,6 +270,31 @@ export default function RestaurantPlanner() {
                     </PopoverContent>
                   </Popover>
                 </div>
+              </div>
+
+              {/* Timezone */}
+              <div className="space-y-2">
+                <Label>
+                  <Globe className="inline h-4 w-4 mr-1" />
+                  {language === 'pt-BR' ? 'Fuso Horário do Destino' : 'Destination Timezone'}
+                </Label>
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={language === 'pt-BR' ? 'Selecione o fuso horário' : 'Select timezone'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'pt-BR' 
+                    ? 'Horários das reservas serão no fuso horário do destino'
+                    : 'Reservation times will be in the destination timezone'}
+                </p>
               </div>
 
               {/* Submit */}
