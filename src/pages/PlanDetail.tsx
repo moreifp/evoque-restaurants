@@ -144,13 +144,16 @@ export default function PlanDetail() {
       
       // Check if it's a date format (YYYY-MM-DD)
       if (/^\d{4}-\d{2}-\d{2}/.test(dayStr)) {
-        scheduledDate = new Date(dayStr);
+        // Parse date parts to avoid timezone issues
+        const [year, month, day] = dayStr.split('-').map(Number);
+        scheduledDate = new Date(year, month - 1, day);
       } else if (plan?.start_date) {
         // Use plan start date as base for relative days (D1, D2, etc.)
         const dayMatch = dayStr.match(/D(\d+)/i);
         if (dayMatch) {
           const dayOffset = parseInt(dayMatch[1]) - 1;
-          scheduledDate = new Date(plan.start_date);
+          const [year, month, day] = plan.start_date.split('-').map(Number);
+          scheduledDate = new Date(year, month - 1, day);
           scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
         } else {
           scheduledDate = new Date();
@@ -159,8 +162,12 @@ export default function PlanDetail() {
         scheduledDate = new Date();
       }
 
+      // Detect meal type - normalize string for comparison (remove accents and lowercase)
+      const mealNormalized = slot.meal.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const isLunch = mealNormalized.includes('almoco') || mealNormalized.includes('lunch');
+      
       // Set meal time
-      const mealHour = slot.meal.toLowerCase().includes('almoco') || slot.meal.toLowerCase().includes('lunch') ? 12 : 19;
+      const mealHour = isLunch ? 12 : 19;
       scheduledDate.setHours(mealHour, 30, 0, 0);
 
       const endDate = new Date(scheduledDate.getTime() + 90 * 60000); // 1.5 hours later
@@ -173,7 +180,7 @@ export default function PlanDetail() {
         city: plan.city,
         start_datetime: scheduledDate.toISOString(),
         end_datetime: endDate.toISOString(),
-        meal_type: slot.meal.toLowerCase().includes('almoco') || slot.meal.toLowerCase().includes('lunch') ? 'lunch' : 'dinner',
+        meal_type: isLunch ? 'lunch' : 'dinner',
         status: slot.has_reservation ? 'booked' : 'planned',
         source: 'ai',
         ai_plan_id: plan.id,
@@ -211,12 +218,15 @@ export default function PlanDetail() {
         const dayStr = slot.day;
         
         if (/^\d{4}-\d{2}-\d{2}/.test(dayStr)) {
-          scheduledDate = new Date(dayStr);
+          // Parse date parts to avoid timezone issues
+          const [year, month, day] = dayStr.split('-').map(Number);
+          scheduledDate = new Date(year, month - 1, day);
         } else if (plan?.start_date) {
           const dayMatch = dayStr.match(/D(\d+)/i);
           if (dayMatch) {
             const dayOffset = parseInt(dayMatch[1]) - 1;
-            scheduledDate = new Date(plan.start_date);
+            const [year, month, day] = plan.start_date.split('-').map(Number);
+            scheduledDate = new Date(year, month - 1, day);
             scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
           } else {
             scheduledDate = new Date();
@@ -225,7 +235,11 @@ export default function PlanDetail() {
           scheduledDate = new Date();
         }
 
-        const mealHour = slot.meal.toLowerCase().includes('almoco') || slot.meal.toLowerCase().includes('lunch') ? 12 : 19;
+        // Detect meal type - normalize string for comparison (remove accents and lowercase)
+        const mealNormalized = slot.meal.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const isLunch = mealNormalized.includes('almoco') || mealNormalized.includes('lunch');
+        
+        const mealHour = isLunch ? 12 : 19;
         scheduledDate.setHours(mealHour, 30, 0, 0);
 
         const endDate = new Date(scheduledDate.getTime() + 90 * 60000);
@@ -237,7 +251,7 @@ export default function PlanDetail() {
           city: plan.city,
           start_datetime: scheduledDate.toISOString(),
           end_datetime: endDate.toISOString(),
-          meal_type: slot.meal.toLowerCase().includes('almoco') || slot.meal.toLowerCase().includes('lunch') ? 'lunch' : 'dinner',
+          meal_type: isLunch ? 'lunch' : 'dinner',
           status: slot.has_reservation ? 'booked' : 'planned',
           source: 'ai',
           ai_plan_id: plan.id,
