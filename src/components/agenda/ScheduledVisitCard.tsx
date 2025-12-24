@@ -240,6 +240,12 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
                 </p>
               )}
 
+              {visit.party_size && (
+                <p className="text-xs text-primary mt-1">
+                  👥 {visit.party_size} {visit.party_size === 1 ? 'pessoa' : 'pessoas'}
+                </p>
+              )}
+
               {visit.booking_ref && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Ref: {visit.booking_ref}
