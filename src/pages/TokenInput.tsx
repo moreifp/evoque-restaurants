@@ -23,21 +23,13 @@ const TokenInput = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('share_tokens')
-        .select('entry_id, expires_at')
-        .eq('token', token.trim().toLowerCase())
-        .single();
+      // Use secure edge function to validate token
+      const { data, error } = await supabase.functions.invoke('validate-share-token', {
+        body: { token: token.trim().toLowerCase() }
+      });
 
-      if (error || !data) {
-        toast.error("Código inválido ou expirado");
-        setLoading(false);
-        return;
-      }
-
-      // Check if token has expired
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        toast.error("Este código expirou");
+      if (error || !data?.valid) {
+        toast.error(data?.error === 'Token expired' ? "Este código expirou" : "Código inválido ou expirado");
         setLoading(false);
         return;
       }

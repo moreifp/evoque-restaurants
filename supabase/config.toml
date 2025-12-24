@@ -20,3 +20,9 @@ verify_jwt = true
 
 [functions.generate-ics]
 verify_jwt = true
+
+[functions.generate-restaurant-note]
+verify_jwt = true
+
+[functions.validate-share-token]
+verify_jwt = false
