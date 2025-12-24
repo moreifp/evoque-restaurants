@@ -490,6 +490,12 @@ export const en = {
       markAsBooked: "Mark as Booked",
       markAsCompleted: "Mark as Completed",
     },
+    tooltips: {
+      downloadCalendar: "Download calendar event",
+      openMaps: "Open in Google Maps",
+      callRestaurant: "Call restaurant",
+      editReservation: "Edit reservation",
+    },
     modal: {
       addTitle: "Add Reservation",
       editTitle: "Edit Reservation",

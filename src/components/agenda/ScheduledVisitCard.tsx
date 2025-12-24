@@ -28,6 +28,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ScheduledVisit {
   id: string;
@@ -254,44 +260,77 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={handleDownloadICS}>
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleOpenMaps}>
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-              {visit.phone && (
-                <Button variant="outline" size="sm" onClick={handleCall}>
-                  <Phone className="h-4 w-4" />
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                <Edit className="h-4 w-4" />
-              </Button>
-              
-              {/* Status-based actions */}
-              {visit.status === "planned" && !isPast && (
-                <Button variant="secondary" size="sm" onClick={handleMarkAsBooked}>
-                  <Bookmark className="h-4 w-4 mr-1" />
-                  {t("agenda.actions.markAsBooked")}
-                </Button>
-              )}
-              
-              {(isOverdue || isPast) && visit.status !== "completed" && (
-                <Button variant="secondary" size="sm" onClick={handleMarkAsCompleted}>
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  {t("agenda.actions.markAsCompleted")}
-                </Button>
-              )}
-              
-              {(isPast || visit.status === "completed") && (
-                <Button variant="default" size="sm" onClick={handleRecordExperience}>
-                  <Star className="h-4 w-4 mr-1" />
-                  {t("agenda.actions.recordExperience")}
-                </Button>
-              )}
-            </div>
+            <TooltipProvider>
+              <div className="flex flex-wrap gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={handleDownloadICS}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("agenda.tooltips.downloadCalendar")}</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={handleOpenMaps}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("agenda.tooltips.openMaps")}</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {visit.phone && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleCall}>
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("agenda.tooltips.callRestaurant")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={onEdit}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("agenda.tooltips.editReservation")}</p>
+                  </TooltipContent>
+                </Tooltip>
+                
+                {/* Status-based actions */}
+                {visit.status === "planned" && !isPast && (
+                  <Button variant="secondary" size="sm" onClick={handleMarkAsBooked}>
+                    <Bookmark className="h-4 w-4 mr-1" />
+                    {t("agenda.actions.markAsBooked")}
+                  </Button>
+                )}
+                
+                {(isOverdue || isPast) && visit.status !== "completed" && (
+                  <Button variant="secondary" size="sm" onClick={handleMarkAsCompleted}>
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    {t("agenda.actions.markAsCompleted")}
+                  </Button>
+                )}
+                
+                {(isPast || visit.status === "completed") && (
+                  <Button variant="default" size="sm" onClick={handleRecordExperience}>
+                    <Star className="h-4 w-4 mr-1" />
+                    {t("agenda.actions.recordExperience")}
+                  </Button>
+                )}
+              </div>
+            </TooltipProvider>
           </div>
         </CardContent>
       </Card>
