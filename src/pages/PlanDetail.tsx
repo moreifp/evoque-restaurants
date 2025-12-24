@@ -177,6 +177,34 @@ export default function PlanDetail() {
 
       const rec = recs.find(r => r.name === slot.restaurant);
 
+      // Enrich restaurant data with Google Places API
+      let enrichedData = {
+        google_place_id: rec?.google_place_id || null,
+        location_address: null as string | null,
+        phone: null as string | null,
+        website: null as string | null,
+        maps_url: null as string | null,
+      };
+
+      try {
+        const { data: enrichResult, error: enrichError } = await supabase.functions.invoke('enrich-restaurant-data', {
+          body: {
+            restaurant_name: slot.restaurant,
+            city: plan.city,
+            google_place_id: rec?.google_place_id,
+          }
+        });
+
+        if (!enrichError && enrichResult?.success && enrichResult?.data) {
+          enrichedData = enrichResult.data;
+          console.log('Enriched restaurant data:', enrichedData);
+        } else {
+          console.warn('Could not enrich restaurant data:', enrichError || enrichResult?.error);
+        }
+      } catch (enrichErr) {
+        console.warn('Error enriching restaurant data:', enrichErr);
+      }
+
       const { error } = await supabase.from('scheduled_visits').insert({
         user_id: user.id,
         restaurant_name: slot.restaurant,
@@ -188,7 +216,11 @@ export default function PlanDetail() {
         source: 'ai',
         ai_plan_id: plan.id,
         notes: slot.notes || null,
-        google_place_id: rec?.google_place_id || null,
+        google_place_id: enrichedData.google_place_id,
+        location_address: enrichedData.location_address,
+        phone: enrichedData.phone,
+        website: enrichedData.website,
+        maps_url: enrichedData.maps_url,
         party_size: slot.reservation_people || null,
         timezone: planTimezone,
       });
@@ -219,7 +251,36 @@ export default function PlanDetail() {
       // Get timezone from plan intake_json (default to UTC)
       const planTimezone = plan?.intake_json?.timezone || 'UTC';
 
-      const scheduledVisits = schedule.map((slot) => {
+      // Enrich all restaurants in parallel
+      const enrichmentPromises = schedule.map(async (slot) => {
+        const rec = recs.find(r => r.name === slot.restaurant);
+        try {
+          const { data: enrichResult, error: enrichError } = await supabase.functions.invoke('enrich-restaurant-data', {
+            body: {
+              restaurant_name: slot.restaurant,
+              city: plan.city,
+              google_place_id: rec?.google_place_id,
+            }
+          });
+
+          if (!enrichError && enrichResult?.success && enrichResult?.data) {
+            return enrichResult.data;
+          }
+        } catch (err) {
+          console.warn(`Error enriching ${slot.restaurant}:`, err);
+        }
+        return {
+          google_place_id: rec?.google_place_id || null,
+          location_address: null,
+          phone: null,
+          website: null,
+          maps_url: null,
+        };
+      });
+
+      const enrichedDataArray = await Promise.all(enrichmentPromises);
+
+      const scheduledVisits = schedule.map((slot, index) => {
         // Parse the day to get a proper date
         let scheduledDate: Date;
         const dayStr = slot.day;
@@ -250,7 +311,7 @@ export default function PlanDetail() {
         scheduledDate.setHours(mealHour, 30, 0, 0);
 
         const endDate = new Date(scheduledDate.getTime() + 90 * 60000);
-        const rec = recs.find(r => r.name === slot.restaurant);
+        const enrichedData = enrichedDataArray[index];
 
         return {
           user_id: user.id,
@@ -263,7 +324,11 @@ export default function PlanDetail() {
           source: 'ai',
           ai_plan_id: plan.id,
           notes: slot.notes || null,
-          google_place_id: rec?.google_place_id || null,
+          google_place_id: enrichedData.google_place_id,
+          location_address: enrichedData.location_address,
+          phone: enrichedData.phone,
+          website: enrichedData.website,
+          maps_url: enrichedData.maps_url,
           party_size: slot.reservation_people || null,
           timezone: planTimezone,
         };
