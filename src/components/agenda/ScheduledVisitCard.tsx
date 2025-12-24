@@ -13,7 +13,8 @@ import {
   ExternalLink,
   CheckCircle,
   Bookmark,
-  Utensils
+  Utensils,
+  Globe
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -247,6 +248,17 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
                   >
                     <Phone className="h-4 w-4 shrink-0" />
                     <span>{visit.phone}</span>
+                  </a>
+                )}
+                {visit.website && (
+                  <a 
+                    href={visit.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 hover:text-primary transition-colors"
+                  >
+                    <Globe className="h-4 w-4 shrink-0" />
+                    <span className="truncate max-w-[200px]">{new URL(visit.website).hostname}</span>
                   </a>
                 )}
               </div>
