@@ -17,31 +17,16 @@ const SharedByToken = () => {
       try {
         console.log('Validating token:', token);
 
-        // Look up the token in the database
-        const { data, error } = await supabase
-          .from('share_tokens')
-          .select('entry_id, expires_at, clicks')
-          .eq('token', token)
-          .single();
+        // Use secure edge function to validate token
+        const { data, error } = await supabase.functions.invoke('validate-share-token', {
+          body: { token: token.trim().toLowerCase() }
+        });
 
-        if (error || !data) {
-          console.log('Token not found, redirecting to manual input');
+        if (error || !data?.valid) {
+          console.log('Token validation failed:', error?.message || data?.error);
           navigate("/token");
           return;
         }
-
-        // Check if token has expired
-        if (data.expires_at && new Date(data.expires_at) < new Date()) {
-          console.log('Token expired');
-          navigate("/token");
-          return;
-        }
-
-        // Increment click counter
-        await supabase
-          .from('share_tokens')
-          .update({ clicks: (data.clicks || 0) + 1 })
-          .eq('token', token);
 
         // Redirect to the shared restaurant page
         console.log('Token valid, redirecting to entry:', data.entry_id);
