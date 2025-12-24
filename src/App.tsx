@@ -20,6 +20,7 @@ import UserPublicAlbums from "./pages/UserPublicAlbums";
 import WineCellar from "./pages/WineCellar";
 import Account from "./pages/Account";
 import RestaurantPlanner from "./pages/RestaurantPlanner";
+import Agenda from "./pages/Agenda";
 import PlanDetail from "./pages/PlanDetail";
 import NotFound from "./pages/NotFound";
 
@@ -134,7 +135,8 @@ const App = () => {
                 <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
                 <Route path="/wine-cellar" element={<WineCellar />} />
                 <Route path="/account" element={<Account />} />
-                <Route path="/planner" element={<RestaurantPlanner />} />
+                <Route path="/planner" element={<Navigate to="/agenda?tab=aiPlan" replace />} />
+                <Route path="/agenda" element={<Agenda />} />
                 <Route path="/plans/:id" element={<PlanDetail />} />
                 <Route path="*" element={<NotFound />} />
               </>

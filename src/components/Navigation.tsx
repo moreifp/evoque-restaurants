@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, UtensilsCrossed, Wine, Sparkles, Settings, Globe } from "lucide-react";
+import { Home, UtensilsCrossed, Wine, Calendar, Settings, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
@@ -18,7 +18,7 @@ export const Navigation = () => {
   const navItems = [
     { path: "/", icon: Home, label: t("navigation.home"), mobileLabel: t("navigation.home") },
     { path: "/dining", icon: UtensilsCrossed, label: t("navigation.dining"), mobileLabel: t("navigation.dining") },
-    { path: "/planner", icon: Sparkles, label: t("navigation.planner"), mobileLabel: "AI" },
+    { path: "/agenda", icon: Calendar, label: t("navigation.agenda"), mobileLabel: "Agenda" },
     { path: "/wine-cellar", icon: Wine, label: t("navigation.wineCellar"), mobileLabel: t("navigation.wine") },
     { path: "/account", icon: Settings, label: t("navigation.account"), mobileLabel: "" },
   ];

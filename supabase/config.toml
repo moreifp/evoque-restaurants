@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.generate-share-token]
 verify_jwt = true
+
+[functions.generate-ics]
+verify_jwt = true

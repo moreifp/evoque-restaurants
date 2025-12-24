@@ -158,6 +158,7 @@ export type Database = {
           created_at: string
           end_date: string | null
           id: string
+          instructions: string | null
           intake_json: Json | null
           recommendations_json: Json | null
           schedule_json: Json | null
@@ -171,6 +172,7 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          instructions?: string | null
           intake_json?: Json | null
           recommendations_json?: Json | null
           schedule_json?: Json | null
@@ -184,6 +186,7 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          instructions?: string | null
           intake_json?: Json | null
           recommendations_json?: Json | null
           schedule_json?: Json | null
@@ -318,6 +321,7 @@ export type Database = {
           location_lat: number | null
           location_lng: number | null
           notes: string | null
+          origin_scheduled_visit_id: string | null
           rating: number | null
           restaurant_name: string
           updated_at: string | null
@@ -337,6 +341,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           notes?: string | null
+          origin_scheduled_visit_id?: string | null
           rating?: number | null
           restaurant_name: string
           updated_at?: string | null
@@ -356,6 +361,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           notes?: string | null
+          origin_scheduled_visit_id?: string | null
           rating?: number | null
           restaurant_name?: string
           updated_at?: string | null
@@ -364,7 +370,15 @@ export type Database = {
           voice_note_url?: string | null
           voice_transcription?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_entries_origin_scheduled_visit_id_fkey"
+            columns: ["origin_scheduled_visit_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       restaurant_notes: {
         Row: {
@@ -468,6 +482,86 @@ export type Database = {
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "restaurant_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_visits: {
+        Row: {
+          ai_plan_id: string | null
+          booking_ref: string | null
+          city: string
+          created_at: string | null
+          end_datetime: string
+          google_place_id: string | null
+          id: string
+          location_address: string | null
+          maps_url: string | null
+          meal_type: string
+          notes: string | null
+          party_size: number | null
+          phone: string | null
+          restaurant_name: string
+          source: string
+          start_datetime: string
+          status: string
+          timezone: string | null
+          updated_at: string | null
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          ai_plan_id?: string | null
+          booking_ref?: string | null
+          city: string
+          created_at?: string | null
+          end_datetime: string
+          google_place_id?: string | null
+          id?: string
+          location_address?: string | null
+          maps_url?: string | null
+          meal_type?: string
+          notes?: string | null
+          party_size?: number | null
+          phone?: string | null
+          restaurant_name: string
+          source?: string
+          start_datetime: string
+          status?: string
+          timezone?: string | null
+          updated_at?: string | null
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          ai_plan_id?: string | null
+          booking_ref?: string | null
+          city?: string
+          created_at?: string | null
+          end_datetime?: string
+          google_place_id?: string | null
+          id?: string
+          location_address?: string | null
+          maps_url?: string | null
+          meal_type?: string
+          notes?: string | null
+          party_size?: number | null
+          phone?: string | null
+          restaurant_name?: string
+          source?: string
+          start_datetime?: string
+          status?: string
+          timezone?: string | null
+          updated_at?: string | null
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_visits_ai_plan_id_fkey"
+            columns: ["ai_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
         ]
