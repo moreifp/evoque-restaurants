@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Edit, Plus, Sparkles, X } from "lucide-react";
+import { Edit, CalendarPlus, Sparkles, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -129,12 +129,65 @@ export default function PlanDetail() {
     }
   };
 
-  const handleAddToDiningList = (restaurantName: string, googlePlaceId?: string) => {
-    const params = new URLSearchParams({
-      name: restaurantName,
-      ...(googlePlaceId && { google_place_id: googlePlaceId }),
-    });
-    navigate(`/add?${params.toString()}`);
+  const handleAddToAgenda = async (slot: ScheduleItem) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Faça login para adicionar reservas");
+        return;
+      }
+
+      // Parse the day to get a proper date
+      let scheduledDate: Date;
+      const dayStr = slot.day;
+      
+      // Check if it's a date format (YYYY-MM-DD)
+      if (/^\d{4}-\d{2}-\d{2}/.test(dayStr)) {
+        scheduledDate = new Date(dayStr);
+      } else if (plan?.start_date) {
+        // Use plan start date as base for relative days (D1, D2, etc.)
+        const dayMatch = dayStr.match(/D(\d+)/i);
+        if (dayMatch) {
+          const dayOffset = parseInt(dayMatch[1]) - 1;
+          scheduledDate = new Date(plan.start_date);
+          scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
+        } else {
+          scheduledDate = new Date();
+        }
+      } else {
+        scheduledDate = new Date();
+      }
+
+      // Set meal time
+      const mealHour = slot.meal.toLowerCase().includes('almoco') || slot.meal.toLowerCase().includes('lunch') ? 12 : 19;
+      scheduledDate.setHours(mealHour, 30, 0, 0);
+
+      const endDate = new Date(scheduledDate.getTime() + 90 * 60000); // 1.5 hours later
+
+      const rec = recs.find(r => r.name === slot.restaurant);
+
+      const { error } = await supabase.from('scheduled_visits').insert({
+        user_id: user.id,
+        restaurant_name: slot.restaurant,
+        city: plan.city,
+        start_datetime: scheduledDate.toISOString(),
+        end_datetime: endDate.toISOString(),
+        meal_type: slot.meal.toLowerCase().includes('almoco') || slot.meal.toLowerCase().includes('lunch') ? 'lunch' : 'dinner',
+        status: 'planned',
+        source: 'ai',
+        ai_plan_id: plan.id,
+        notes: slot.notes || null,
+        google_place_id: rec?.google_place_id || null,
+        party_size: slot.reservation_people || null,
+      });
+
+      if (error) throw error;
+
+      toast.success(`${slot.restaurant} adicionado às reservas!`);
+    } catch (error: any) {
+      console.error('Error adding to agenda:', error);
+      toast.error("Erro ao adicionar à agenda");
+    }
   };
 
   const handleRefineRecommendations = async () => {
@@ -404,9 +457,10 @@ export default function PlanDetail() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleAddToDiningList(s.restaurant, rec?.google_place_id)}
+                                onClick={() => handleAddToAgenda(s)}
+                                title="Adicionar às reservas"
                               >
-                                <Plus className="h-4 w-4" />
+                                <CalendarPlus className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
