@@ -244,6 +244,20 @@ serve(async (req) => {
 function buildMainPrompt(data: any, userTopRated: any[]) {
   const { city, startDate, endDate, language = 'en-US' } = data;
   
+  // Calculate number of days and generate explicit date list
+  let dateList: string[] = [];
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dateList.push(d.toISOString().split('T')[0]);
+    }
+  }
+  
+  const datesInfo = dateList.length > 0 
+    ? `Dates to plan (use EXACTLY these dates in YYYY-MM-DD format): ${dateList.join(', ')}`
+    : `Plan for 5-7 generic days using D1, D2, D3, etc.`;
+  
   return `You are Évoque's trip dining concierge. Create a restaurant dining plan for ${city}.
 
 Respond in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : 'English (US)'} language only.
@@ -252,8 +266,15 @@ IMPORTANT: You must return structured data using the create_restaurant_plan func
 
 Context:
 - City: ${city}
-- Trip dates: ${startDate || 'not provided'} to ${endDate || 'not provided'}
+- ${datesInfo}
 - User's taste profile from top-rated restaurants: ${JSON.stringify(userTopRated)}
+
+CRITICAL RULES FOR PROPOSED SCHEDULE:
+1. The "day" field MUST be in YYYY-MM-DD format (e.g., "2025-12-27") if dates are provided
+2. Each date MUST have BOTH Almoço (lunch) AND Jantar (dinner) slots
+3. You MUST include ALL dates provided - do not skip any date
+4. For each date: first Almoço, then Jantar
+5. "meal" field should be "Almoço" or "Jantar" in Portuguese, "Lunch" or "Dinner" in English
 
 Create a comprehensive dining plan with:
 
@@ -263,9 +284,9 @@ Create a comprehensive dining plan with:
    - Typical price range (€, €€, €€€, €€€€)
    - Must-try dishes they enjoyed before
    - Any constraints to consider
-   - Plan for 6-8 meals
+   - meals_to_plan should be ${dateList.length > 0 ? dateList.length * 2 : 10} (lunch + dinner for each day)
 
-2. Restaurant recommendations (8-12 total):
+2. Restaurant recommendations (${dateList.length > 0 ? Math.max(dateList.length * 2, 8) : 8}-12 total):
    - Use your knowledge of ${city} restaurants
    - Match the user's inferred taste profile
    - Provide: name, cuisine, vibe keywords, price level, one-line highlight (≤140 chars), why it fits their profile, reservation likelihood
@@ -273,9 +294,10 @@ Create a comprehensive dining plan with:
    - Include google_place_id when possible and area_hint for location
 
 3. Proposed schedule:
-   - Create a balanced 5-7 day meal plan with lunch/dinner slots
-   - Use actual dates if provided, otherwise use day labels (D1, D2, etc.)
-   - Space out heavy dinners appropriately
+   - MUST include EXACTLY ${dateList.length > 0 ? dateList.length * 2 : 10} slots (lunch AND dinner for EACH day)
+   - Use the EXACT dates provided: ${dateList.join(', ') || 'D1, D2, D3...'}
+   - Order: first all lunches and dinners for first date, then second date, etc.
+   - Example for 2025-12-27: first {"day": "2025-12-27", "meal": "Almoço", ...}, then {"day": "2025-12-27", "meal": "Jantar", ...}
    - Mark which meals need reservations
    - Add helpful notes for timing or logistics
 
