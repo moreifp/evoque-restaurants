@@ -327,6 +327,26 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
                   </Tooltip>
                 )}
 
+                {visit.website && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a 
+                        href={visit.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex"
+                      >
+                        <Button variant="outline" size="sm" type="button">
+                          <Globe className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("agenda.tooltips.visitWebsite") || "Visit website"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="sm" onClick={onEdit}>
