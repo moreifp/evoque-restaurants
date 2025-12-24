@@ -490,6 +490,12 @@ export const pt = {
       markAsBooked: "Marcar como Reservada",
       markAsCompleted: "Marcar como Concluída",
     },
+    tooltips: {
+      downloadCalendar: "Baixar evento para calendário",
+      openMaps: "Abrir no Google Maps",
+      callRestaurant: "Ligar para o restaurante",
+      editReservation: "Editar reserva",
+    },
     modal: {
       addTitle: "Adicionar Reserva",
       editTitle: "Editar Reserva",
