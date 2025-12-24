@@ -86,6 +86,7 @@ export default function AddRestaurant() {
     const locationAddress = searchParams.get("location_address");
     const googlePlaceId = searchParams.get("google_place_id");
     const visitId = searchParams.get("origin_scheduled_visit_id");
+    const visitDate = searchParams.get("visit_date");
 
     if (restaurantName || visitId) {
       // Prefill from URL params (Agenda flow)
@@ -96,6 +97,7 @@ export default function AddRestaurant() {
         restaurant_name: restaurantName || prev.restaurant_name,
         location_address: locationAddress || city || prev.location_address,
         google_place_id: googlePlaceId || prev.google_place_id,
+        visit_date: visitDate || prev.visit_date,
       }));
       // Don't load autosave when coming from Agenda
       return;

@@ -495,6 +495,7 @@ export const en = {
       openMaps: "Open in Google Maps",
       callRestaurant: "Call restaurant",
       editReservation: "Edit reservation",
+      recordExperience: "Record experience and add photos",
     },
     modal: {
       addTitle: "Add Reservation",

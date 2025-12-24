@@ -12,7 +12,8 @@ import {
   Download, 
   ExternalLink,
   CheckCircle,
-  Bookmark
+  Bookmark,
+  Utensils
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -128,15 +129,15 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
     }
   };
 
-  const handleOpenMaps = () => {
+  const getMapsUrl = () => {
     if (visit.maps_url) {
-      window.open(visit.maps_url, '_blank');
+      return visit.maps_url;
     } else if (visit.location_address) {
       const query = encodeURIComponent(`${visit.restaurant_name} ${visit.location_address}`);
-      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+      return `https://www.google.com/maps/search/?api=1&query=${query}`;
     } else {
       const query = encodeURIComponent(`${visit.restaurant_name} ${visit.city}`);
-      window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+      return `https://www.google.com/maps/search/?api=1&query=${query}`;
     }
   };
 
@@ -182,11 +183,13 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
     if (existingEntry) {
       navigate(`/dining/${existingEntry.id}`);
     } else {
-      // Navigate to add restaurant with prefilled data
+      // Navigate to add restaurant with prefilled data including visit_date
+      const visitDate = new Date(visit.start_datetime).toISOString().split('T')[0];
       const params = new URLSearchParams({
         restaurant_name: visit.restaurant_name,
         city: visit.city,
         origin_scheduled_visit_id: visit.id,
+        visit_date: visitDate,
         ...(visit.location_address && { location_address: visit.location_address }),
         ...(visit.google_place_id && { google_place_id: visit.google_place_id }),
       });
@@ -232,11 +235,19 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <MapPin className="h-4 w-4" />
-                <span>{visit.city}</span>
-                {visit.location_address && (
-                  <span className="text-xs">• {visit.location_address}</span>
+              <div className="flex flex-col gap-1 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  <span>{visit.location_address || visit.city}</span>
+                </div>
+                {visit.phone && (
+                  <a 
+                    href={`tel:${visit.phone}`}
+                    className="flex items-center gap-2 hover:text-primary transition-colors"
+                  >
+                    <Phone className="h-4 w-4 shrink-0" />
+                    <span>{visit.phone}</span>
+                  </a>
                 )}
               </div>
 
@@ -275,9 +286,16 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" onClick={handleOpenMaps}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
+                    <a 
+                      href={getMapsUrl()} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex"
+                    >
+                      <Button variant="outline" size="sm" type="button">
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </a>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{t("agenda.tooltips.openMaps")}</p>
@@ -308,6 +326,19 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
                   </TooltipContent>
                 </Tooltip>
                 
+                {/* Record experience button - always visible */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="default" size="sm" onClick={handleRecordExperience}>
+                      <Utensils className="h-4 w-4 mr-1" />
+                      {t("agenda.actions.recordExperience")}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("agenda.tooltips.recordExperience")}</p>
+                  </TooltipContent>
+                </Tooltip>
+
                 {/* Status-based actions */}
                 {visit.status === "planned" && !isPast && (
                   <Button variant="secondary" size="sm" onClick={handleMarkAsBooked}>
@@ -320,13 +351,6 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
                   <Button variant="secondary" size="sm" onClick={handleMarkAsCompleted}>
                     <CheckCircle className="h-4 w-4 mr-1" />
                     {t("agenda.actions.markAsCompleted")}
-                  </Button>
-                )}
-                
-                {(isPast || visit.status === "completed") && (
-                  <Button variant="default" size="sm" onClick={handleRecordExperience}>
-                    <Star className="h-4 w-4 mr-1" />
-                    {t("agenda.actions.recordExperience")}
                   </Button>
                 )}
               </div>
