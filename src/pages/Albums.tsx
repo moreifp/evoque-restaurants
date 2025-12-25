@@ -1,34 +1,19 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, BookImage, Map } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
 import { useI18n } from "@/i18n/i18n";
 import { format } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
+import { useAlbums } from "@/hooks/useAlbums";
+import { GridSkeleton } from "@/components/ui/skeletons";
 
 export default function Albums() {
   const navigate = useNavigate();
   const { t, language } = useI18n();
-  const [albums, setAlbums] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAlbums();
-  }, []);
-
-  const fetchAlbums = async () => {
-    const { data } = await supabase
-      .from("albums")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (data) setAlbums(data);
-    setLoading(false);
-  };
+  const { data: albums = [], isLoading: loading } = useAlbums();
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -52,9 +37,7 @@ export default function Albums() {
 
         {/* Albums Grid */}
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">{t("albums.loading")}</p>
-          </div>
+          <GridSkeleton count={6} type="album" />
         ) : albums.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {albums.map((album) => (
@@ -76,7 +59,7 @@ export default function Albums() {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-3">
-                    {format(new Date(album.created_at), "PPP", {
+                    {format(new Date(album.created_at || new Date()), "PPP", {
                       locale: language === "pt" ? ptBR : enUS,
                     })}
                   </p>

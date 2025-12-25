@@ -1,148 +1,124 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthProfile } from "@/hooks/useAuthProfile";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
+import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { Auth } from "./components/Auth";
-import Index from "./pages/Index";
-import Dining from "./pages/Dining";
-import RestaurantDetail from "./pages/RestaurantDetail";
-import SharedRestaurant from "./pages/SharedRestaurant";
-import SharedByToken from "./pages/SharedByToken";
-import TokenInput from "./pages/TokenInput";
-import AddRestaurant from "./pages/AddRestaurant";
-import AlbumsMap from "./pages/AlbumsMap";
-import CreateAlbum from "./pages/CreateAlbum";
-import AlbumDetail from "./pages/AlbumDetail";
-import UserPublicAlbums from "./pages/UserPublicAlbums";
-import WineCellar from "./pages/WineCellar";
-import Account from "./pages/Account";
-import RestaurantPlanner from "./pages/RestaurantPlanner";
-import Agenda from "./pages/Agenda";
-import PlanDetail from "./pages/PlanDetail";
-import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Lazy load pages for better performance
+const Index = lazy(() => import("./pages/Index"));
+const Dining = lazy(() => import("./pages/Dining"));
+const RestaurantDetail = lazy(() => import("./pages/RestaurantDetail"));
+const SharedRestaurant = lazy(() => import("./pages/SharedRestaurant"));
+const SharedByToken = lazy(() => import("./pages/SharedByToken"));
+const TokenInput = lazy(() => import("./pages/TokenInput"));
+const AddRestaurant = lazy(() => import("./pages/AddRestaurant"));
+const AlbumsMap = lazy(() => import("./pages/AlbumsMap"));
+const CreateAlbum = lazy(() => import("./pages/CreateAlbum"));
+const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
+const UserPublicAlbums = lazy(() => import("./pages/UserPublicAlbums"));
+const WineCellar = lazy(() => import("./pages/WineCellar"));
+const Account = lazy(() => import("./pages/Account"));
+const Agenda = lazy(() => import("./pages/Agenda"));
+const PlanDetail = lazy(() => import("./pages/PlanDetail"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Create QueryClient outside component to prevent re-creation on renders
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+    },
+  },
+});
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-lg bg-gradient-olive-teal mx-auto mb-4 animate-pulse" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+function AppRoutes() {
+  const { session, loading } = useAuthProfile();
+
+  if (loading) {
+    return (
+      <Routes>
+        <Route path="*" element={<LoadingFallback />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* Public routes - specific routes FIRST */}
+        <Route path="/share/:id" element={<SharedRestaurant />} />
+        <Route path="/s/:token" element={<SharedByToken />} />
+        <Route path="/token" element={<TokenInput />} />
+
+        {/* Redirects for old routes */}
+        <Route
+          path="/albums"
+          element={<Navigate to="/dining?tab=albums" replace />}
+        />
+
+        {/* Legacy token route - LAST to avoid conflicts with other routes */}
+        <Route path="/:token" element={<SharedByToken />} />
+
+        {/* Protected routes */}
+        {!session ? (
+          <Route path="*" element={<Auth />} />
+        ) : (
+          <>
+            <Route path="/" element={<Index />} />
+            <Route path="/dining" element={<Dining />} />
+            <Route path="/dining/:id" element={<RestaurantDetail />} />
+            <Route path="/dining/add" element={<AddRestaurant />} />
+            <Route path="/albums/map" element={<AlbumsMap />} />
+            <Route path="/albums/create" element={<CreateAlbum />} />
+            <Route path="/albums/:id" element={<AlbumDetail />} />
+            <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
+            <Route path="/wine-cellar" element={<WineCellar />} />
+            <Route path="/account" element={<Account />} />
+            <Route
+              path="/planner"
+              element={<Navigate to="/agenda?tab=aiPlan" replace />}
+            />
+            <Route path="/agenda" element={<Agenda />} />
+            <Route path="/plans/:id" element={<PlanDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </>
+        )}
+      </Routes>
+    </Suspense>
+  );
+}
 
 const App = () => {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-      
-      // Create profile if it doesn't exist (for Google sign-in)
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data, error }) => {
-            if (error && error.code === 'PGRST116') {
-              // Profile doesn't exist, create one
-              const displayName = session.user.user_metadata?.full_name || 
-                                session.user.user_metadata?.name || 
-                                session.user.email?.split('@')[0] || 
-                                'User';
-              
-              supabase.from('profiles').insert({
-                id: session.user.id,
-                display_name: displayName,
-              });
-            }
-          });
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-      
-      // Create profile for new OAuth users
-      if (session?.user) {
-        setTimeout(() => {
-          supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', session.user.id)
-            .single()
-            .then(({ data, error }) => {
-              if (error && error.code === 'PGRST116') {
-                const displayName = session.user.user_metadata?.full_name || 
-                                  session.user.user_metadata?.name || 
-                                  session.user.email?.split('@')[0] || 
-                                  'User';
-                
-                supabase.from('profiles').insert({
-                  id: session.user.id,
-                  display_name: displayName,
-                });
-              }
-            });
-        }, 0);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes - specific routes FIRST */}
-            <Route path="/share/:id" element={<SharedRestaurant />} />
-            <Route path="/s/:token" element={<SharedByToken />} />
-            <Route path="/token" element={<TokenInput />} />
-            
-            {/* Redirects for old routes */}
-            <Route path="/albums" element={<Navigate to="/dining?tab=albums" replace />} />
-            
-            {/* Legacy token route - LAST to avoid conflicts with other routes */}
-            <Route path="/:token" element={<SharedByToken />} />
-            
-            {/* Protected routes */}
-            {loading ? (
-              <Route path="*" element={
-                <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-lg bg-gradient-olive-teal mx-auto mb-4 animate-pulse" />
-                    <p className="text-muted-foreground">Loading Evoque...</p>
-                  </div>
-                </div>
-              } />
-            ) : !session ? (
-              <Route path="*" element={<Auth />} />
-            ) : (
-              <>
-                <Route path="/" element={<Index />} />
-                <Route path="/dining" element={<Dining />} />
-                <Route path="/dining/:id" element={<RestaurantDetail />} />
-                <Route path="/dining/add" element={<AddRestaurant />} />
-                <Route path="/albums/map" element={<AlbumsMap />} />
-                <Route path="/albums/create" element={<CreateAlbum />} />
-                <Route path="/albums/:id" element={<AlbumDetail />} />
-                <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
-                <Route path="/wine-cellar" element={<WineCellar />} />
-                <Route path="/account" element={<Account />} />
-                <Route path="/planner" element={<Navigate to="/agenda?tab=aiPlan" replace />} />
-                <Route path="/agenda" element={<Agenda />} />
-                <Route path="/plans/:id" element={<PlanDetail />} />
-                <Route path="*" element={<NotFound />} />
-              </>
-            )}
-          </Routes>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+            <PWAInstallPrompt />
+            <PWAUpdatePrompt />
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );
