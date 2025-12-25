@@ -25,90 +25,93 @@ export const Navigation = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border pt-safe pl-safe pr-safe">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <img src={evoqueLogo} alt="Evoque" className="w-8 h-8" />
-            <span className="text-xl font-semibold text-foreground">Evoque</span>
-          </Link>
+    <>
+      {/* Top Navigation Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border pt-safe pl-safe pr-safe">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2">
+              <img src={evoqueLogo} alt="Evoque" className="w-8 h-8" />
+              <span className="text-xl font-semibold text-foreground">Evoque</span>
+            </Link>
 
-          {/* Navigation Links - Desktop */}
-          <div className="hidden lg:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              // Check if current path starts with the nav item path (for parent route highlighting)
-              const isActive = item.path === "/" 
-                ? location.pathname === "/" 
-                : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
-              return (
-                <Link key={item.path} to={item.path}>
-                  <Button variant="ghost" className={cn("flex items-center space-x-2", isActive && "bg-secondary")}>
-                    <Icon className="h-4 w-4" />
-                    <span>{item.label}</span>
+            {/* Navigation Links - Desktop */}
+            <div className="hidden lg:flex items-center space-x-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                // Check if current path starts with the nav item path (for parent route highlighting)
+                const isActive = item.path === "/" 
+                  ? location.pathname === "/" 
+                  : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                return (
+                  <Link key={item.path} to={item.path}>
+                    <Button variant="ghost" className={cn("flex items-center space-x-2", isActive && "bg-secondary")}>
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+              
+              {/* Language Switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="ml-2">
+                    <Globe className="h-4 w-4 mr-2" />
+                    {language.toUpperCase()}
                   </Button>
-                </Link>
-              );
-            })}
-            
-            {/* Language Switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="ml-2">
-                  <Globe className="h-4 w-4 mr-2" />
-                  {language.toUpperCase()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
-                <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
-                  🇺🇸 English
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
-                  🇧🇷 Português
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
+                  <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
+                    🇺🇸 English
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
+                    🇧🇷 Português
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-          {/* Navigation Links - Tablet (icons only) */}
-          <div className="hidden md:flex lg:hidden items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.path === "/" 
-                ? location.pathname === "/" 
-                : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
-              return (
-                <Link key={item.path} to={item.path}>
-                  <Button variant="ghost" size="icon" className={cn(isActive && "bg-secondary")}>
-                    <Icon className="h-4 w-4" />
+            {/* Navigation Links - Tablet (icons only) */}
+            <div className="hidden md:flex lg:hidden items-center space-x-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.path === "/" 
+                  ? location.pathname === "/" 
+                  : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                return (
+                  <Link key={item.path} to={item.path}>
+                    <Button variant="ghost" size="icon" className={cn(isActive && "bg-secondary")}>
+                      <Icon className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                );
+              })}
+              
+              {/* Language Switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Globe className="h-4 w-4" />
                   </Button>
-                </Link>
-              );
-            })}
-            
-            {/* Language Switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Globe className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
-                <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
-                  🇺🇸 English
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
-                  🇧🇷 Português
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
+                  <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
+                    🇺🇸 English
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
+                    🇧🇷 Português
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border pb-safe pl-safe pr-safe">
+      {/* Mobile Bottom Navigation - Separate from header to avoid blur nesting issues */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border pb-safe pl-safe pr-safe">
         <div className="flex items-center justify-around h-14">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -145,7 +148,7 @@ export const Navigation = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 };

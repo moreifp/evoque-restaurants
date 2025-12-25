@@ -116,9 +116,18 @@ All colors MUST be HSL.
   }
 }
 
+/* Extra offset for PWA standalone mode (Dynamic Island devices) */
+:root {
+  --safe-top-extra: 0px;
+}
+
+body.standalone-mode {
+  --safe-top-extra: 12px;
+}
+
 /* Safe area utilities for PWA - apply to fixed elements */
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--safe-top-extra));
 }
 
 .pb-safe {
@@ -135,7 +144,7 @@ All colors MUST be HSL.
 
 /* Top position accounting for safe area */
 .top-safe {
-  top: env(safe-area-inset-top, 0px);
+  top: calc(env(safe-area-inset-top, 0px) + var(--safe-top-extra));
 }
 
 /* Bottom position accounting for safe area */
@@ -145,7 +154,7 @@ All colors MUST be HSL.
 
 /* Main content padding that accounts for fixed nav + safe area */
 .main-content-padding {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem + var(--safe-top-extra));
 }
 
 /* Bottom padding for mobile that accounts for bottom nav + safe area */
