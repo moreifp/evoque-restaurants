@@ -37,7 +37,10 @@ export const Navigation = () => {
           <div className="hidden lg:flex items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              // Check if current path starts with the nav item path (for parent route highlighting)
+              const isActive = item.path === "/" 
+                ? location.pathname === "/" 
+                : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
               return (
                 <Link key={item.path} to={item.path}>
                   <Button variant="ghost" className={cn("flex items-center space-x-2", isActive && "bg-secondary")}>
@@ -71,7 +74,9 @@ export const Navigation = () => {
           <div className="hidden md:flex lg:hidden items-center space-x-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === "/" 
+                ? location.pathname === "/" 
+                : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
               return (
                 <Link key={item.path} to={item.path}>
                   <Button variant="ghost" size="icon" className={cn(isActive && "bg-secondary")}>
@@ -106,7 +111,9 @@ export const Navigation = () => {
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+            const isActive = item.path === "/" 
+              ? location.pathname === "/" 
+              : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
             return (
               <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center flex-1 h-full">
                 <Icon className={cn("h-5 w-5", item.mobileLabel && "mb-1", isActive ? "text-accent" : "text-muted-foreground")} />

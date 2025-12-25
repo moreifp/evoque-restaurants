@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, MapPin, Star, X, Map, BookImage } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
+import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
+import { useAlbums } from "@/hooks/useAlbums";
+import { useTags } from "@/hooks/useTags";
+import { GridSkeleton } from "@/components/ui/skeletons";
+import type { RestaurantEntry } from "@/types";
 
 export default function Dining() {
   const navigate = useNavigate();
@@ -20,72 +24,27 @@ export default function Dining() {
   const activeTab = searchParams.get("tab") || "restaurants";
   const tagFilter = searchParams.get("tag");
 
-  // Restaurants state
-  const [entries, setEntries] = useState<any[]>([]);
-  const [filteredEntries, setFilteredEntries] = useState<any[]>([]);
+  // Use TanStack Query hooks
+  const { data: entries = [], isLoading: entriesLoading } = useRestaurantEntries();
+  const { data: albums = [], isLoading: albumsLoading } = useAlbums();
+  const { data: tags = [] } = useTags();
+
+  // Local filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRating, setSelectedRating] = useState<string>("all");
-  const [tags, setTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>(tagFilter ? [tagFilter] : []);
-  const [entriesLoading, setEntriesLoading] = useState(true);
 
-  // Albums state
-  const [albums, setAlbums] = useState<any[]>([]);
-  const [albumsLoading, setAlbumsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchEntries();
-    fetchTags();
-    fetchAlbums();
-  }, []);
-
-  useEffect(() => {
-    filterEntries();
-  }, [entries, searchQuery, selectedTags, selectedRating]);
-
-  const fetchEntries = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setEntriesLoading(false);
-      return;
-    }
-
-    const { data } = await supabase
-      .from("restaurant_entries")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("visit_date", { ascending: false });
-    
-    if (data) {
-      setEntries(data);
-    }
-    setEntriesLoading(false);
-  };
-
-  const fetchTags = async () => {
-    const { data } = await supabase.from("tags").select("*");
-    if (data) setTags(data);
-  };
-
-  const fetchAlbums = async () => {
-    const { data } = await supabase
-      .from("albums")
-      .select("*")
-      .order("created_at", { ascending: false });
-    
-    if (data) setAlbums(data);
-    setAlbumsLoading(false);
-  };
-
-  const filterEntries = () => {
+  // Memoized filtered entries
+  const filteredEntries = useMemo(() => {
     let filtered = [...entries];
 
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (entry) =>
-          entry.restaurant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          entry.location_address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          entry.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+          entry.restaurant_name.toLowerCase().includes(query) ||
+          entry.location_address?.toLowerCase().includes(query) ||
+          entry.notes?.toLowerCase().includes(query)
       );
     }
 
@@ -94,8 +53,8 @@ export default function Dining() {
       filtered = filtered.filter((entry) => entry.rating === targetRating);
     }
 
-    setFilteredEntries(filtered);
-  };
+    return filtered;
+  }, [entries, searchQuery, selectedRating]);
 
   const toggleTag = (tagId: string) => {
     setSelectedTags((prev) =>
@@ -186,46 +145,11 @@ export default function Dining() {
 
             {/* Restaurant Entries Grid */}
             {entriesLoading ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Loading restaurants...</p>
-              </div>
+              <GridSkeleton count={6} type="restaurant" />
             ) : filteredEntries.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEntries.map((entry) => (
-                  <Card
-                    key={entry.id}
-                    className="hover:shadow-large transition-all cursor-pointer"
-                    onClick={() => navigate(`/dining/${entry.id}`)}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-semibold text-lg">{entry.restaurant_name}</h3>
-                        {entry.rating && (
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-accent text-accent" />
-                            <span className="text-sm font-medium">{entry.rating}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {entry.location_address && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <span className="line-clamp-2">{entry.location_address}</span>
-                        </div>
-                      )}
-                      
-                      {entry.notes && (
-                        <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-                          {entry.notes}
-                        </p>
-                      )}
-                      
-                      <p className="text-xs text-muted-foreground">
-                        Visited: {new Date(entry.visit_date).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <RestaurantCard key={entry.id} entry={entry} onClick={() => navigate(`/dining/${entry.id}`)} />
                 ))}
               </div>
             ) : (
@@ -245,9 +169,7 @@ export default function Dining() {
 
           <TabsContent value="albums" className="mt-0">
             {albumsLoading ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">{t("albums.loading")}</p>
-              </div>
+              <GridSkeleton count={6} type="album" />
             ) : albums.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {albums.map((album) => (
@@ -292,5 +214,44 @@ export default function Dining() {
         </Tabs>
       </main>
     </div>
+  );
+}
+
+// Extracted card component for better performance
+function RestaurantCard({ entry, onClick }: { entry: RestaurantEntry; onClick: () => void }) {
+  return (
+    <Card
+      className="hover:shadow-large transition-all cursor-pointer"
+      onClick={onClick}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-3">
+          <h3 className="font-semibold text-lg">{entry.restaurant_name}</h3>
+          {entry.rating && (
+            <div className="flex items-center gap-1">
+              <Star className="h-4 w-4 fill-accent text-accent" />
+              <span className="text-sm font-medium">{entry.rating}</span>
+            </div>
+          )}
+        </div>
+        
+        {entry.location_address && (
+          <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3">
+            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span className="line-clamp-2">{entry.location_address}</span>
+          </div>
+        )}
+        
+        {entry.notes && (
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+            {entry.notes}
+          </p>
+        )}
+        
+        <p className="text-xs text-muted-foreground">
+          Visited: {new Date(entry.visit_date).toLocaleDateString()}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
