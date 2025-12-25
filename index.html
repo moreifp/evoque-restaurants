@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <title>Evoque - Keep the taste alive</title>
     <meta
       name="description"
@@ -12,14 +12,25 @@
 
     <!-- Favicon and App Icons -->
     <link rel="icon" type="image/png" href="/app-icon.png" />
+    
+    <!-- Apple Touch Icons -->
     <link rel="apple-touch-icon" href="/app-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/app-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/app-icon.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/app-icon.png" />
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS PWA Meta Tags -->
     <meta name="theme-color" content="#1a1a1a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Evoque" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Prevent phone number detection on iOS -->
+    <meta name="format-detection" content="telephone=no" />
 
     <meta property="og:type" content="website" />
     <meta

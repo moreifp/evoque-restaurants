@@ -535,4 +535,16 @@ export const en = {
     instructionsPlaceholder: "e.g., I already have reservations, avoid time conflicts, specific preferences.",
     promptRecordExperience: "Would you like to record this experience now?",
   },
+  iosInstall: {
+    title: "Add Evoque to Home Screen",
+    subtitle: "Get the full app experience",
+    benefits: "Install for a better experience:",
+    benefit1: "Works offline",
+    benefit2: "Faster loading",
+    benefit3: "No browser tabs",
+    step1: "Tap the Share button",
+    step2: "Tap \"Add to Home Screen\"",
+    step2Hint: "Scroll down in the share menu if needed",
+    maybeLater: "Maybe Later",
+  },
 };

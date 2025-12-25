@@ -535,4 +535,16 @@ export const pt = {
     instructionsPlaceholder: "ex: já tenho reservas, evitar conflito de horários, preferências específicas.",
     promptRecordExperience: "Deseja registrar esta experiência agora?",
   },
+  iosInstall: {
+    title: "Adicionar Evoque à Tela Inicial",
+    subtitle: "Tenha a experiência completa",
+    benefits: "Instale para uma melhor experiência:",
+    benefit1: "Funciona offline",
+    benefit2: "Carregamento mais rápido",
+    benefit3: "Sem abas do navegador",
+    step1: "Toque no botão Compartilhar",
+    step2: "Toque em \"Adicionar à Tela de Início\"",
+    step2Hint: "Role para baixo no menu de compartilhamento se necessário",
+    maybeLater: "Talvez Depois",
+  },
 };
