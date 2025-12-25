@@ -31,6 +31,31 @@ serve(async (req) => {
 
     console.log('Generating token for entry_id:', entry_id);
 
+    // Verify that the authenticated user owns this entry
+    const { data: entry, error: entryError } = await supabase
+      .from('restaurant_entries')
+      .select('id, user_id')
+      .eq('id', entry_id)
+      .maybeSingle();
+
+    if (entryError) {
+      console.error('Error checking entry ownership:', entryError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify entry ownership' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!entry) {
+      console.log('Entry not found or user does not own it:', entry_id);
+      return new Response(
+        JSON.stringify({ error: 'Entry not found or access denied' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Ownership verified for entry:', entry_id);
+
     // Check if token already exists for this entry
     const { data: existing, error: existingError } = await supabase
       .from('share_tokens')
