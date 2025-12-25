@@ -242,7 +242,7 @@ serve(async (req) => {
 });
 
 function buildMainPrompt(data: any, userTopRated: any[]) {
-  const { city, startDate, endDate, language = 'en-US' } = data;
+  const { city, startDate, endDate, language = 'en-US', instructions } = data;
   
   // Calculate number of days and generate explicit date list
   let dateList: string[] = [];
@@ -257,13 +257,40 @@ function buildMainPrompt(data: any, userTopRated: any[]) {
   const datesInfo = dateList.length > 0 
     ? `Dates to plan (use EXACTLY these dates in YYYY-MM-DD format): ${dateList.join(', ')}`
     : `Plan for 5-7 generic days using D1, D2, D3, etc.`;
+
+  // Build user instructions section if provided
+  const userInstructionsSection = instructions && instructions.trim()
+    ? `
+
+═══════════════════════════════════════════════════════════════
+🚨 CRITICAL: USER'S SPECIFIC RESTAURANT INSTRUCTIONS 🚨
+═══════════════════════════════════════════════════════════════
+
+The user has provided SPECIFIC restaurant recommendations and instructions below.
+You MUST prioritize these restaurants in your plan. Extract restaurant names,
+dates, and meal types from these instructions and use them EXACTLY as specified.
+
+USER INSTRUCTIONS:
+${instructions}
+
+═══════════════════════════════════════════════════════════════
+
+MANDATORY RULES FOR USER INSTRUCTIONS:
+1. If the user mentions a restaurant for a specific date/meal, USE THAT RESTAURANT
+2. Extract ALL restaurant names mentioned and include them in recommendations
+3. Respect the user's categorization (lunch options, dinner options, etc.)
+4. Only add your own suggestions for slots NOT covered by user instructions
+5. If user mentions "Reserva Confirmada" for a restaurant, mark reservation_required: false (already done)
+6. Preserve user's notes about restaurants (why to go, what to order, etc.)
+`
+    : '';
   
   return `You are Évoque's trip dining concierge. Create a restaurant dining plan for ${city}.
 
 Respond in ${language === 'pt-BR' ? 'Portuguese (Brazil)' : 'English (US)'} language only.
 
 IMPORTANT: You must return structured data using the create_restaurant_plan function. Do not ask questions or return text - provide a complete plan immediately.
-
+${userInstructionsSection}
 Context:
 - City: ${city}
 - ${datesInfo}
@@ -275,19 +302,21 @@ CRITICAL RULES FOR PROPOSED SCHEDULE:
 3. You MUST include ALL dates provided - do not skip any date
 4. For each date: first Almoço, then Jantar
 5. "meal" field should be "Almoço" or "Jantar" in Portuguese, "Lunch" or "Dinner" in English
+6. IF USER INSTRUCTIONS mention specific restaurants for specific dates/meals, USE THOSE EXACTLY
 
 Create a comprehensive dining plan with:
 
-1. Intake summary - infer preferences from the user's top-rated restaurants:
+1. Intake summary - infer preferences from the user's top-rated restaurants AND user instructions:
    - Popular cuisines from their history
    - Common vibes (romantic, trendy, classic, view, hidden gem)
    - Typical price range (€, €€, €€€, €€€€)
-   - Must-try dishes they enjoyed before
+   - Must-try dishes they enjoyed before or mentioned in instructions
    - Any constraints to consider
    - meals_to_plan should be ${dateList.length > 0 ? dateList.length * 2 : 10} (lunch + dinner for each day)
 
 2. Restaurant recommendations (${dateList.length > 0 ? Math.max(dateList.length * 2, 8) : 8}-12 total):
-   - Use your knowledge of ${city} restaurants
+   - PRIORITY: Include ALL restaurants mentioned in user instructions first
+   - Then add your own suggestions using your knowledge of ${city} restaurants
    - Match the user's inferred taste profile
    - Provide: name, cuisine, vibe keywords, price level, one-line highlight (≤140 chars), why it fits their profile, reservation likelihood
    - Group into 3 buckets: "Sure bets" (safe choices), "On-trend now" (popular spots), "Wildcards" (unique finds)
@@ -296,10 +325,11 @@ Create a comprehensive dining plan with:
 3. Proposed schedule:
    - MUST include EXACTLY ${dateList.length > 0 ? dateList.length * 2 : 10} slots (lunch AND dinner for EACH day)
    - Use the EXACT dates provided: ${dateList.join(', ') || 'D1, D2, D3...'}
+   - PRIORITY: Use restaurants from user instructions for the dates/meals they specified
    - Order: first all lunches and dinners for first date, then second date, etc.
    - Example for 2025-12-27: first {"day": "2025-12-27", "meal": "Almoço", ...}, then {"day": "2025-12-27", "meal": "Jantar", ...}
-   - Mark which meals need reservations
-   - Add helpful notes for timing or logistics
+   - Mark which meals need reservations (unless user says "Reserva Confirmada")
+   - Add helpful notes from user instructions or for timing/logistics
 
 4. Next actions:
    - Suggest 2-3 helpful next steps (e.g., "Confirm slots", "Request reservations", "Adjust schedule")`;
