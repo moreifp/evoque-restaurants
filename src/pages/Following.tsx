@@ -124,7 +124,7 @@ export default function Following() {
     return (
       <div className="min-h-screen bg-gradient-subtle">
         <Navigation />
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
           <p className="text-center text-muted-foreground">Loading...</p>
         </main>
       </div>
@@ -135,7 +135,7 @@ export default function Following() {
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
       
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Social</h1>
 

@@ -46,7 +46,7 @@ export default function UserPublicAlbums() {
     return (
       <div className="min-h-screen bg-gradient-subtle">
         <Navigation />
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
           <p className="text-center text-muted-foreground">Loading...</p>
         </main>
       </div>
@@ -57,7 +57,7 @@ export default function UserPublicAlbums() {
     return (
       <div className="min-h-screen bg-gradient-subtle">
         <Navigation />
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
           <p className="text-center text-muted-foreground">User not found</p>
         </main>
       </div>
@@ -68,7 +68,7 @@ export default function UserPublicAlbums() {
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
       
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-8">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">
           <Button

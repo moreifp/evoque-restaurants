@@ -25,9 +25,9 @@ export const Navigation = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border pt-safe pl-safe pr-safe">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <img src={evoqueLogo} alt="Evoque" className="w-8 h-8" />
@@ -108,8 +108,8 @@ export const Navigation = () => {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border pb-safe">
-        <div className="flex items-center justify-around h-16">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border pb-safe pl-safe pr-safe">
+        <div className="flex items-center justify-around h-14">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.path === "/" 
