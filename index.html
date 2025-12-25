@@ -120,19 +120,25 @@
     
     <script>
       // Hide splash screen once React app is ready
+      function hideSplash() {
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.classList.add('hidden');
+          setTimeout(function() {
+            splash.remove();
+          }, 300);
+        }
+      }
+      
+      // Hide splash on load
       window.addEventListener('load', function() {
-        setTimeout(function() {
-          var splash = document.getElementById('splash-screen');
-          if (splash) {
-            splash.classList.add('hidden');
-            setTimeout(function() {
-              splash.remove();
-            }, 300);
-          }
-        }, 500);
+        setTimeout(hideSplash, 500);
       });
+      
+      // Fallback: hide splash after 3 seconds regardless
+      setTimeout(hideSplash, 3000);
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgqV4uE7YTZzNsziBOFqIHD1aMmPASjlI&libraries=places&callback=Function.prototype"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgqV4uE7YTZzNsziBOFqIHD1aMmPASjlI&libraries=places&callback=Function.prototype"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -16,6 +16,30 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function usePWAInstall(): PWAInstallState {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  // Detect standalone mode with useEffect to avoid hydration issues
+  useEffect(() => {
+    const checkStandalone = () => {
+      const standalone = 
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://');
+      
+      console.log('[PWA] Standalone check:', standalone);
+      setIsStandalone(standalone);
+    };
+
+    checkStandalone();
+
+    // Listen for display mode changes
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    mediaQuery.addEventListener('change', checkStandalone);
+
+    return () => {
+      mediaQuery.removeEventListener('change', checkStandalone);
+    };
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -40,12 +64,6 @@ export function usePWAInstall(): PWAInstallState {
   
   // Detect Android
   const isAndroid = /Android/.test(userAgent);
-  
-  // Detect if running as standalone PWA
-  const isStandalone = 
-    (window.matchMedia('(display-mode: standalone)').matches) ||
-    ((window.navigator as any).standalone === true) ||
-    document.referrer.includes('android-app://');
   
   // Can install via beforeinstallprompt (Android/Desktop Chrome)
   const canInstall = deferredPrompt !== null && !isStandalone;
