@@ -266,7 +266,7 @@ export default function AlbumDetail() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/albums")}
+              onClick={() => navigate("/dining?tab=albums")}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

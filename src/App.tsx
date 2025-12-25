@@ -26,6 +26,7 @@ const WineCellar = lazy(() => import("./pages/WineCellar"));
 const Account = lazy(() => import("./pages/Account"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const PlanDetail = lazy(() => import("./pages/PlanDetail"));
+const Following = lazy(() => import("./pages/Following"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Create QueryClient outside component to prevent re-creation on renders
@@ -98,6 +99,7 @@ function AppRoutes() {
             />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/plans/:id" element={<PlanDetail />} />
+            <Route path="/social" element={<Following />} />
             <Route path="*" element={<NotFound />} />
           </>
         )}
