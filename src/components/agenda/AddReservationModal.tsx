@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Dialog,
-  DialogContent,
+  DialogContentOpen,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -590,7 +590,7 @@ export function AddReservationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }} modal={false}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContentOpen className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>
@@ -924,7 +924,7 @@ export function AddReservationModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </DialogContentOpen>
     </Dialog>
   );
 }
