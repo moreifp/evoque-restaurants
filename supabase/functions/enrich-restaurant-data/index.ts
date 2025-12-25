@@ -6,8 +6,8 @@ const corsHeaders = {
 };
 
 interface EnrichRequest {
-  restaurant_name: string;
-  city: string;
+  restaurant_name?: string;
+  city?: string;
   google_place_id?: string;
 }
 
@@ -17,6 +17,22 @@ interface EnrichedData {
   phone: string | null;
   website: string | null;
   maps_url: string | null;
+  city: string | null;
+}
+
+// Extract city from address components
+function extractCity(addressComponents: any[]): string | null {
+  if (!addressComponents) return null;
+  
+  const cityTypes = ['locality', 'administrative_area_level_2', 'administrative_area_level_1'];
+  
+  for (const type of cityTypes) {
+    const component = addressComponents.find((c: any) => c.types?.includes(type));
+    if (component) {
+      return component.long_name;
+    }
+  }
+  return null;
 }
 
 serve(async (req) => {
@@ -36,41 +52,47 @@ serve(async (req) => {
 
     const { restaurant_name, city, google_place_id }: EnrichRequest = await req.json();
     
-    if (!restaurant_name || !city) {
+    // Allow either google_place_id alone OR restaurant_name + city
+    if (!google_place_id && (!restaurant_name || !city)) {
       return new Response(
-        JSON.stringify({ error: 'restaurant_name and city are required' }),
+        JSON.stringify({ error: 'Either google_place_id or (restaurant_name and city) are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Enriching data for: ${restaurant_name} in ${city}, place_id: ${google_place_id || 'none'}`);
+    console.log(`Enriching data for: ${restaurant_name || 'N/A'} in ${city || 'N/A'}, place_id: ${google_place_id || 'none'}`);
 
-    let placeId: string | null = google_place_id || null;
     let enrichedData: EnrichedData = {
       google_place_id: null,
       location_address: null,
       phone: null,
       website: null,
       maps_url: null,
+      city: null,
     };
 
-    // Step 1: If we have a place_id, try to validate it with Place Details
-    if (placeId) {
-      console.log(`Validating existing place_id: ${placeId}`);
-      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=place_id,formatted_address,formatted_phone_number,website,url,name&key=${GOOGLE_PLACES_API_KEY}`;
+    // Step 1: If we have a place_id, get details directly
+    if (google_place_id) {
+      console.log(`Fetching details for place_id: ${google_place_id}`);
+      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(google_place_id)}&fields=place_id,formatted_address,formatted_phone_number,website,url,name,address_components&key=${GOOGLE_PLACES_API_KEY}`;
       
       const detailsResponse = await fetch(detailsUrl);
       const detailsData = await detailsResponse.json();
       
+      console.log(`Place Details API response status: ${detailsData.status}`);
+      
       if (detailsData.status === 'OK' && detailsData.result) {
         const result = detailsData.result;
-        console.log(`Place Details found: ${result.name}`);
+        const extractedCity = extractCity(result.address_components);
+        console.log(`Place Details found: ${result.name}, city: ${extractedCity}`);
+        
         enrichedData = {
           google_place_id: result.place_id,
           location_address: result.formatted_address || null,
           phone: result.formatted_phone_number || null,
           website: result.website || null,
           maps_url: result.url || null,
+          city: extractedCity,
         };
         
         return new Response(
@@ -78,55 +100,67 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
-        console.log(`Place Details failed for place_id ${placeId}: ${detailsData.status}`);
-        // Place ID invalid, try text search
-        placeId = null;
+        console.log(`Place Details failed for place_id ${google_place_id}: ${detailsData.status}, error: ${detailsData.error_message || 'none'}`);
+        // If place_id lookup failed but we have name/city, try text search
+        if (!restaurant_name || !city) {
+          return new Response(
+            JSON.stringify({ success: false, error: `Place not found: ${detailsData.status}`, data: enrichedData }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
     }
 
-    // Step 2: Use Text Search to find the restaurant
-    const searchQuery = `${restaurant_name} restaurant ${city}`;
-    console.log(`Searching with query: ${searchQuery}`);
-    
-    const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&type=restaurant&key=${GOOGLE_PLACES_API_KEY}`;
-    
-    const searchResponse = await fetch(searchUrl);
-    const searchData = await searchResponse.json();
-    
-    if (searchData.status === 'OK' && searchData.results && searchData.results.length > 0) {
-      // Get the first result's place_id
-      const firstResult = searchData.results[0];
-      const foundPlaceId: string = firstResult.place_id;
-      console.log(`Text Search found: ${firstResult.name} (${placeId})`);
+    // Step 2: Use Text Search to find the restaurant (fallback or primary if no place_id)
+    if (restaurant_name && city) {
+      const searchQuery = `${restaurant_name} restaurant ${city}`;
+      console.log(`Searching with query: ${searchQuery}`);
       
-      // Step 3: Get detailed info using Place Details
-      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(foundPlaceId)}&fields=place_id,formatted_address,formatted_phone_number,website,url,name&key=${GOOGLE_PLACES_API_KEY}`;
+      const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&type=restaurant&key=${GOOGLE_PLACES_API_KEY}`;
       
-      const detailsResponse = await fetch(detailsUrl);
-      const detailsData = await detailsResponse.json();
+      const searchResponse = await fetch(searchUrl);
+      const searchData = await searchResponse.json();
       
-      if (detailsData.status === 'OK' && detailsData.result) {
-        const result = detailsData.result;
-        console.log(`Place Details enriched: ${result.formatted_address}`);
-        enrichedData = {
-          google_place_id: result.place_id,
-          location_address: result.formatted_address || null,
-          phone: result.formatted_phone_number || null,
-          website: result.website || null,
-          maps_url: result.url || null,
-        };
+      console.log(`Text Search API response status: ${searchData.status}, results: ${searchData.results?.length || 0}`);
+      
+      if (searchData.status === 'OK' && searchData.results && searchData.results.length > 0) {
+        const firstResult = searchData.results[0];
+        const foundPlaceId: string = firstResult.place_id;
+        console.log(`Text Search found: ${firstResult.name} (${foundPlaceId})`);
+        
+        // Step 3: Get detailed info using Place Details
+        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(foundPlaceId)}&fields=place_id,formatted_address,formatted_phone_number,website,url,name,address_components&key=${GOOGLE_PLACES_API_KEY}`;
+        
+        const detailsResponse = await fetch(detailsUrl);
+        const detailsData = await detailsResponse.json();
+        
+        if (detailsData.status === 'OK' && detailsData.result) {
+          const result = detailsData.result;
+          const extractedCity = extractCity(result.address_components);
+          console.log(`Place Details enriched: ${result.formatted_address}, city: ${extractedCity}`);
+          
+          enrichedData = {
+            google_place_id: result.place_id,
+            location_address: result.formatted_address || null,
+            phone: result.formatted_phone_number || null,
+            website: result.website || null,
+            maps_url: result.url || null,
+            city: extractedCity || city,
+          };
+        } else {
+          // Use basic info from text search
+          enrichedData = {
+            google_place_id: foundPlaceId,
+            location_address: firstResult.formatted_address || null,
+            phone: null,
+            website: null,
+            maps_url: `https://www.google.com/maps/place/?q=place_id:${foundPlaceId}`,
+            city: city,
+          };
+        }
       } else {
-        // Use basic info from text search
-        enrichedData = {
-          google_place_id: foundPlaceId,
-          location_address: firstResult.formatted_address || null,
-          phone: null,
-          website: null,
-          maps_url: `https://www.google.com/maps/place/?q=place_id:${foundPlaceId}`,
-        };
+        console.log(`No results found for: ${searchQuery}, status: ${searchData.status}`);
       }
-    } else {
-      console.log(`No results found for: ${searchQuery}, status: ${searchData.status}`);
     }
 
     return new Response(
