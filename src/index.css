@@ -111,3 +111,19 @@ All colors MUST be HSL.
     @apply transition-all duration-200;
   }
 }
+
+/* Animation for auto-filled fields */
+@keyframes field-highlight {
+  0% {
+    background-color: hsl(142 76% 90%);
+    transform: scale(1.01);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+.animate-field-highlight {
+  animation: field-highlight 0.8s ease-out;
+}

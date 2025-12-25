@@ -87,6 +87,8 @@ export function AddReservationModal({
   
   // Track which fields were auto-filled by Google Places
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
+  // Track which fields are currently animating
+  const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
 
   // Reset form when modal opens/closes or editing visit changes
   useEffect(() => {
@@ -128,6 +130,7 @@ export function AddReservationModal({
       setAddress("");
       setPlaceSelected(false);
       setAutoFilledFields(new Set());
+      setAnimatingFields(new Set());
     }
   }, [editingVisit, isOpen]);
 
@@ -171,7 +174,13 @@ export function AddReservationModal({
     }
     
     setAutoFilledFields(filledFields);
+    setAnimatingFields(new Set(filledFields)); // Trigger animation
     setPlaceSelected(true);
+    
+    // Clear animation state after animation completes
+    setTimeout(() => {
+      setAnimatingFields(new Set());
+    }, 800);
   };
 
   // Helper to render Google Places badge
@@ -336,6 +345,7 @@ export function AddReservationModal({
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder={t("agenda.modal.cityPlaceholder")}
+              className={animatingFields.has('city') ? 'animate-field-highlight' : ''}
             />
           </div>
 
@@ -464,6 +474,7 @@ export function AddReservationModal({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder={t("agenda.modal.addressPlaceholder")}
+              className={animatingFields.has('address') ? 'animate-field-highlight' : ''}
             />
           </div>
 
@@ -479,6 +490,7 @@ export function AddReservationModal({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t("agenda.modal.phonePlaceholder")}
+                className={animatingFields.has('phone') ? 'animate-field-highlight' : ''}
               />
             </div>
             <div className="space-y-2">
@@ -491,6 +503,7 @@ export function AddReservationModal({
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
                 placeholder={t("agenda.modal.websitePlaceholder")}
+                className={animatingFields.has('website') ? 'animate-field-highlight' : ''}
               />
             </div>
           </div>
