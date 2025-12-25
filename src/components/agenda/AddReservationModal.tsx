@@ -19,7 +19,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, addMinutes } from "date-fns";
-import { CalendarIcon, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, Loader2, RefreshCw, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +97,92 @@ export function AddReservationModal({
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   // Track if user attempted to submit
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  // Track if draft was restored
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  const DRAFT_KEY = 'reservation-draft';
+
+  // Draft interface
+  interface ReservationDraft {
+    restaurantName: string;
+    googlePlaceId: string | null;
+    city: string;
+    date: string | null;
+    time: string;
+    duration: number;
+    mealType: string;
+    status: string;
+    partySize: string;
+    bookingRef: string;
+    notes: string;
+    phone: string;
+    website: string;
+    address: string;
+    savedAt: number;
+  }
+
+  // Save draft to localStorage
+  const saveDraft = () => {
+    if (editingVisit) return; // Don't save draft when editing
+    
+    const draft: ReservationDraft = {
+      restaurantName,
+      googlePlaceId,
+      city,
+      date: date?.toISOString() || null,
+      time,
+      duration,
+      mealType,
+      status,
+      partySize,
+      bookingRef,
+      notes,
+      phone,
+      website,
+      address,
+      savedAt: Date.now(),
+    };
+    
+    // Only save if there's meaningful data
+    if (restaurantName || city || notes || address) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    }
+  };
+
+  // Load draft from localStorage
+  const loadDraft = (): ReservationDraft | null => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (!saved) return null;
+      
+      const draft: ReservationDraft = JSON.parse(saved);
+      
+      // Check if draft is less than 24 hours old
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+      if (Date.now() - draft.savedAt > ONE_DAY) {
+        localStorage.removeItem(DRAFT_KEY);
+        return null;
+      }
+      
+      return draft;
+    } catch {
+      return null;
+    }
+  };
+
+  // Clear draft from localStorage
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftRestored(false);
+  };
+
+  // Auto-save draft when form changes
+  useEffect(() => {
+    if (!editingVisit && isOpen) {
+      const timeoutId = setTimeout(saveDraft, 500); // Debounce 500ms
+      return () => clearTimeout(timeoutId);
+    }
+  }, [restaurantName, city, date, time, duration, mealType, status, partySize, bookingRef, notes, phone, website, address, editingVisit, isOpen]);
 
   // Reset form when modal opens/closes or editing visit changes
   useEffect(() => {
@@ -121,21 +207,48 @@ export function AddReservationModal({
       setWebsite(editingVisit.website || "");
       setAddress(editingVisit.location_address || "");
       setPlaceSelected(!!editingVisit.google_place_id);
-    } else {
-      setRestaurantName("");
-      setGooglePlaceId(null);
-      setCity("");
-      setDate(undefined);
-      setTime("19:00");
-      setDuration(90);
-      setMealType("dinner");
-      setStatus("planned");
-      setPartySize("");
-      setBookingRef("");
-      setNotes("");
-      setPhone("");
-      setWebsite("");
-      setAddress("");
+    } else if (isOpen) {
+      // Try to restore draft when opening new reservation
+      const draft = loadDraft();
+      if (draft && (draft.restaurantName || draft.city || draft.notes)) {
+        setRestaurantName(draft.restaurantName);
+        setGooglePlaceId(draft.googlePlaceId);
+        setCity(draft.city);
+        setDate(draft.date ? new Date(draft.date) : undefined);
+        setTime(draft.time);
+        setDuration(draft.duration);
+        setMealType(draft.mealType);
+        setStatus(draft.status);
+        setPartySize(draft.partySize);
+        setBookingRef(draft.bookingRef);
+        setNotes(draft.notes);
+        setPhone(draft.phone);
+        setWebsite(draft.website);
+        setAddress(draft.address);
+        setDraftRestored(true);
+        
+        toast({
+          title: "Rascunho restaurado",
+          description: "Seus dados anteriores foram recuperados",
+        });
+      } else {
+        // Reset to defaults
+        setRestaurantName("");
+        setGooglePlaceId(null);
+        setCity("");
+        setDate(undefined);
+        setTime("19:00");
+        setDuration(90);
+        setMealType("dinner");
+        setStatus("planned");
+        setPartySize("");
+        setBookingRef("");
+        setNotes("");
+        setPhone("");
+        setWebsite("");
+        setAddress("");
+        setDraftRestored(false);
+      }
       setPlaceSelected(false);
       setAutoFilledFields(new Set());
       setAnimatingFields(new Set());
@@ -458,6 +571,9 @@ export function AddReservationModal({
         enrichVisitData(savedVisitId, restaurantName.trim(), city.trim());
       }
 
+      // Clear draft after successful save
+      clearDraft();
+      
       toast({ title: t("agenda.toasts.saved") });
       onSave();
     } catch (error: any) {
@@ -476,10 +592,48 @@ export function AddReservationModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {editingVisit ? t("agenda.modal.editTitle") : t("agenda.modal.addTitle")}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {editingVisit ? t("agenda.modal.editTitle") : t("agenda.modal.addTitle")}
+            </DialogTitle>
+            {!editingVisit && draftRestored && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  clearDraft();
+                  setRestaurantName("");
+                  setGooglePlaceId(null);
+                  setCity("");
+                  setDate(undefined);
+                  setTime("19:00");
+                  setDuration(90);
+                  setMealType("dinner");
+                  setStatus("planned");
+                  setPartySize("");
+                  setBookingRef("");
+                  setNotes("");
+                  setPhone("");
+                  setWebsite("");
+                  setAddress("");
+                  toast({ title: "Rascunho descartado" });
+                }}
+                className="text-xs text-muted-foreground hover:text-destructive"
+              >
+                Descartar rascunho
+              </Button>
+            )}
+          </div>
         </DialogHeader>
+
+        {/* Draft saved indicator */}
+        {!editingVisit && (restaurantName || city || notes) && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Save className="h-3 w-3" />
+            <span>Rascunho salvo automaticamente</span>
+          </div>
+        )}
 
         <div className="space-y-4 mt-4">
           {/* Restaurant Name */}
