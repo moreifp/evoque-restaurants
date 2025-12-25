@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
+import { SplashScreen } from "@/components/pwa/SplashScreen";
 import { useStandaloneMode } from "@/hooks/useStandaloneMode";
 import { Auth } from "./components/Auth";
 
@@ -118,6 +119,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ErrorBoundary>
+          <SplashScreen />
           <Toaster />
           <Sonner />
           <BrowserRouter>
