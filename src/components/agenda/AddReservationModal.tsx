@@ -19,7 +19,8 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, addMinutes } from "date-fns";
-import { CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon, Clock, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
@@ -83,6 +84,9 @@ export function AddReservationModal({
   const [website, setWebsite] = useState("");
   const [address, setAddress] = useState("");
   const [placeSelected, setPlaceSelected] = useState(false);
+  
+  // Track which fields were auto-filled by Google Places
+  const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
 
   // Reset form when modal opens/closes or editing visit changes
   useEffect(() => {
@@ -123,6 +127,7 @@ export function AddReservationModal({
       setWebsite("");
       setAddress("");
       setPlaceSelected(false);
+      setAutoFilledFields(new Set());
     }
   }, [editingVisit, isOpen]);
 
@@ -134,23 +139,50 @@ export function AddReservationModal({
     website?: string;
     city?: string;
   }) => {
+    const filledFields = new Set<string>();
+    
     setRestaurantName(place.name);
     setGooglePlaceId(place.placeId);
-    setAddress(place.address);
-    if (place.phone) setPhone(place.phone);
-    if (place.website) setWebsite(place.website);
-    setPlaceSelected(true);
+    
+    if (place.address) {
+      setAddress(place.address);
+      filledFields.add('address');
+    }
+    if (place.phone) {
+      setPhone(place.phone);
+      filledFields.add('phone');
+    }
+    if (place.website) {
+      setWebsite(place.website);
+      filledFields.add('website');
+    }
     
     // Use city from Google Places if available
     if (place.city) {
       setCity(place.city);
+      filledFields.add('city');
     } else if (!city) {
       // Fallback: try to extract city from address
       const addressParts = place.address.split(",").map(s => s.trim());
       if (addressParts.length >= 2) {
         setCity(addressParts[addressParts.length - 2] || "");
+        filledFields.add('city');
       }
     }
+    
+    setAutoFilledFields(filledFields);
+    setPlaceSelected(true);
+  };
+
+  // Helper to render Google Places badge
+  const GooglePlacesBadge = ({ field }: { field: string }) => {
+    if (!autoFilledFields.has(field)) return null;
+    return (
+      <Badge variant="secondary" className="ml-2 text-xs bg-green-100 text-green-700 hover:bg-green-100">
+        <MapPin className="w-3 h-3 mr-1" />
+        Google
+      </Badge>
+    );
   };
 
   const enrichVisitData = async (visitId: string, restaurantName: string, city: string) => {
@@ -296,7 +328,10 @@ export function AddReservationModal({
 
           {/* City */}
           <div className="space-y-2">
-            <Label>{t("agenda.modal.city")} *</Label>
+            <div className="flex items-center">
+              <Label>{t("agenda.modal.city")} *</Label>
+              <GooglePlacesBadge field="city" />
+            </div>
             <Input
               value={city}
               onChange={(e) => setCity(e.target.value)}
@@ -421,7 +456,10 @@ export function AddReservationModal({
 
           {/* Address */}
           <div className="space-y-2">
-            <Label>{t("agenda.modal.address")}</Label>
+            <div className="flex items-center">
+              <Label>{t("agenda.modal.address")}</Label>
+              <GooglePlacesBadge field="address" />
+            </div>
             <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -432,7 +470,10 @@ export function AddReservationModal({
           {/* Phone and Website */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>{t("agenda.modal.phone")}</Label>
+              <div className="flex items-center">
+                <Label>{t("agenda.modal.phone")}</Label>
+                <GooglePlacesBadge field="phone" />
+              </div>
               <Input
                 type="tel"
                 value={phone}
@@ -441,7 +482,10 @@ export function AddReservationModal({
               />
             </div>
             <div className="space-y-2">
-              <Label>{t("agenda.modal.website")}</Label>
+              <div className="flex items-center">
+                <Label>{t("agenda.modal.website")}</Label>
+                <GooglePlacesBadge field="website" />
+              </div>
               <Input
                 type="url"
                 value={website}
