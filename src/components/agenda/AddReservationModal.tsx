@@ -19,7 +19,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, addMinutes } from "date-fns";
-import { CalendarIcon, Clock, MapPin } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +89,10 @@ export function AddReservationModal({
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
   // Track which fields are currently animating
   const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
+  // Loading state for fetching Google details
+  const [fetchingDetails, setFetchingDetails] = useState(false);
+  // Error state for failed fetch
+  const [fetchError, setFetchError] = useState(false);
 
   // Reset form when modal opens/closes or editing visit changes
   useEffect(() => {
@@ -131,10 +135,73 @@ export function AddReservationModal({
       setPlaceSelected(false);
       setAutoFilledFields(new Set());
       setAnimatingFields(new Set());
+      setFetchingDetails(false);
+      setFetchError(false);
     }
   }, [editingVisit, isOpen]);
 
-  const handlePlaceSelect = (place: {
+  // Fetch details from backend using place_id
+  const fetchDetailsFromBackend = async (placeId: string, name: string) => {
+    console.log(`[AddReservationModal] Fetching details from backend for place_id: ${placeId}`);
+    setFetchingDetails(true);
+    setFetchError(false);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('enrich-restaurant-data', {
+        body: { google_place_id: placeId, restaurant_name: name }
+      });
+
+      console.log(`[AddReservationModal] Backend response:`, data, error);
+
+      if (error) {
+        console.error('[AddReservationModal] Backend error:', error);
+        setFetchError(true);
+        return;
+      }
+
+      if (data?.success && data?.data) {
+        const enriched = data.data;
+        const filledFields = new Set<string>();
+        
+        if (enriched.city && !city) {
+          setCity(enriched.city);
+          filledFields.add('city');
+        }
+        if (enriched.location_address && !address) {
+          setAddress(enriched.location_address);
+          filledFields.add('address');
+        }
+        if (enriched.phone && !phone) {
+          setPhone(enriched.phone);
+          filledFields.add('phone');
+        }
+        if (enriched.website && !website) {
+          setWebsite(enriched.website);
+          filledFields.add('website');
+        }
+        
+        if (filledFields.size > 0) {
+          setAutoFilledFields(prev => new Set([...prev, ...filledFields]));
+          setAnimatingFields(new Set(filledFields));
+          setTimeout(() => setAnimatingFields(new Set()), 800);
+          
+          toast({
+            title: "Dados encontrados",
+            description: `Preenchemos ${filledFields.size} campo(s) automaticamente`,
+          });
+        }
+        
+        console.log(`[AddReservationModal] Filled fields from backend:`, [...filledFields]);
+      }
+    } catch (err) {
+      console.error('[AddReservationModal] Error fetching from backend:', err);
+      setFetchError(true);
+    } finally {
+      setFetchingDetails(false);
+    }
+  };
+
+  const handlePlaceSelect = async (place: {
     name: string;
     address: string;
     placeId: string;
@@ -142,10 +209,15 @@ export function AddReservationModal({
     website?: string;
     city?: string;
   }) => {
+    console.log(`[AddReservationModal] Place selected:`, place);
+    
     const filledFields = new Set<string>();
     
     setRestaurantName(place.name);
     setGooglePlaceId(place.placeId);
+    
+    // Check if we got complete data from client-side
+    const hasCompleteData = place.city && place.address && (place.phone || place.website);
     
     if (place.address) {
       setAddress(place.address);
@@ -159,28 +231,89 @@ export function AddReservationModal({
       setWebsite(place.website);
       filledFields.add('website');
     }
-    
-    // Use city from Google Places if available
     if (place.city) {
       setCity(place.city);
       filledFields.add('city');
-    } else if (!city) {
-      // Fallback: try to extract city from address
-      const addressParts = place.address.split(",").map(s => s.trim());
-      if (addressParts.length >= 2) {
-        setCity(addressParts[addressParts.length - 2] || "");
-        filledFields.add('city');
-      }
     }
     
     setAutoFilledFields(filledFields);
-    setAnimatingFields(new Set(filledFields)); // Trigger animation
+    setAnimatingFields(new Set(filledFields));
     setPlaceSelected(true);
     
     // Clear animation state after animation completes
     setTimeout(() => {
       setAnimatingFields(new Set());
     }, 800);
+    
+    // If client-side data is incomplete, fetch from backend
+    if (!hasCompleteData && place.placeId) {
+      console.log(`[AddReservationModal] Incomplete data from client, fetching from backend...`);
+      await fetchDetailsFromBackend(place.placeId, place.name);
+    }
+  };
+
+  // Manual retry button handler
+  const handleRetryFetch = async () => {
+    if (googlePlaceId && restaurantName) {
+      await fetchDetailsFromBackend(googlePlaceId, restaurantName);
+    } else if (restaurantName && city) {
+      // Try text search if we don't have place_id
+      setFetchingDetails(true);
+      setFetchError(false);
+      try {
+        const { data, error } = await supabase.functions.invoke('enrich-restaurant-data', {
+          body: { restaurant_name: restaurantName, city }
+        });
+        
+        if (error) {
+          setFetchError(true);
+          return;
+        }
+        
+        if (data?.success && data?.data) {
+          const enriched = data.data;
+          const filledFields = new Set<string>();
+          
+          if (enriched.google_place_id) {
+            setGooglePlaceId(enriched.google_place_id);
+          }
+          if (enriched.location_address && !address) {
+            setAddress(enriched.location_address);
+            filledFields.add('address');
+          }
+          if (enriched.phone && !phone) {
+            setPhone(enriched.phone);
+            filledFields.add('phone');
+          }
+          if (enriched.website && !website) {
+            setWebsite(enriched.website);
+            filledFields.add('website');
+          }
+          
+          if (filledFields.size > 0) {
+            setAutoFilledFields(prev => new Set([...prev, ...filledFields]));
+            setAnimatingFields(new Set(filledFields));
+            setTimeout(() => setAnimatingFields(new Set()), 800);
+            setPlaceSelected(true);
+            
+            toast({
+              title: "Dados encontrados",
+              description: `Preenchemos ${filledFields.size} campo(s) automaticamente`,
+            });
+          } else {
+            toast({
+              title: "Nenhum dado encontrado",
+              description: "Preencha os campos manualmente",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (err) {
+        setFetchError(true);
+      } finally {
+        setFetchingDetails(false);
+      }
+    }
   };
 
   // Helper to render Google Places badge
@@ -328,11 +461,50 @@ export function AddReservationModal({
                 if (placeSelected) {
                   setPlaceSelected(false);
                   setGooglePlaceId(null);
+                  setAutoFilledFields(new Set());
                 }
               }}
               onPlaceSelect={handlePlaceSelect}
               placeholder={t("agenda.modal.restaurantPlaceholder")}
             />
+            
+            {/* Loading indicator for fetching details */}
+            {fetchingDetails && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground animate-fade-in">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Buscando dados do Google...</span>
+              </div>
+            )}
+            
+            {/* Retry button if fetch failed or user wants to search */}
+            {!fetchingDetails && restaurantName && city && !placeSelected && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleRetryFetch}
+                className="text-sm text-primary hover:text-primary/80"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Buscar detalhes do Google
+              </Button>
+            )}
+            
+            {/* Error message */}
+            {fetchError && !fetchingDetails && (
+              <div className="flex items-center gap-2 text-sm text-amber-600">
+                <span>Não conseguimos buscar os detalhes automaticamente.</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRetryFetch}
+                  className="text-amber-600 hover:text-amber-700 p-0 h-auto"
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* City */}
