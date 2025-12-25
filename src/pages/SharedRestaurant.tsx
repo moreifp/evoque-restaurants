@@ -136,7 +136,7 @@ export default function SharedRestaurant() {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b pt-safe pl-safe pr-safe">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-gradient-olive-teal" />
