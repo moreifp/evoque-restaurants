@@ -132,6 +132,7 @@ export function AddReservationModal({
     placeId: string;
     phone?: string;
     website?: string;
+    city?: string;
   }) => {
     setRestaurantName(place.name);
     setGooglePlaceId(place.placeId);
@@ -140,11 +141,15 @@ export function AddReservationModal({
     if (place.website) setWebsite(place.website);
     setPlaceSelected(true);
     
-    // Try to extract city from address (usually last part before country)
-    const addressParts = place.address.split(",").map(s => s.trim());
-    if (addressParts.length >= 2 && !city) {
-      // Usually city is second to last (before country)
-      setCity(addressParts[addressParts.length - 2] || "");
+    // Use city from Google Places if available
+    if (place.city) {
+      setCity(place.city);
+    } else if (!city) {
+      // Fallback: try to extract city from address
+      const addressParts = place.address.split(",").map(s => s.trim());
+      if (addressParts.length >= 2) {
+        setCity(addressParts[addressParts.length - 2] || "");
+      }
     }
   };
 
