@@ -8,6 +8,8 @@ import { useAuthProfile } from "@/hooks/useAuthProfile";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
+import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
+import { useStandaloneMode } from "@/hooks/useStandaloneMode";
 import { Auth } from "./components/Auth";
 
 // Lazy load pages for better performance
@@ -109,6 +111,9 @@ function AppRoutes() {
 }
 
 const App = () => {
+  // Initialize standalone mode detection (adds class to body)
+  useStandaloneMode();
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -118,6 +123,7 @@ const App = () => {
           <BrowserRouter>
             <AppRoutes />
             <PWAInstallPrompt />
+            <IOSInstallPrompt />
             <PWAUpdatePrompt />
           </BrowserRouter>
         </ErrorBoundary>

@@ -104,12 +104,32 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* Safe area insets for iOS notch and home indicator */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Standalone mode adjustments */
+  body.standalone-mode {
+    /* Additional top padding for status bar in standalone */
+    padding-top: max(env(safe-area-inset-top), 20px);
   }
   
   /* Smooth transitions for interactive elements */
   button, a, [role="button"] {
     @apply transition-all duration-200;
   }
+}
+
+/* Safe area utilities for PWA */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Animation for auto-filled fields */

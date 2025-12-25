@@ -3,19 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Download, X } from "lucide-react";
 import { useI18n } from "@/i18n/i18n";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 export function PWAInstallPrompt() {
   const { t } = useI18n();
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const { isIOS, isStandalone, canInstall, deferredPrompt } = usePWAInstall();
   const [showPrompt, setShowPrompt] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    // Don't show on iOS (handled by IOSInstallPrompt) or if already installed
+    if (isIOS || isStandalone) {
+      return;
+    }
+
     // Check if user previously dismissed
     const wasDismissed = localStorage.getItem("pwa-install-dismissed");
     if (wasDismissed) {
@@ -23,17 +24,11 @@ export function PWAInstallPrompt() {
       return;
     }
 
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Show prompt after a delay (not immediately on page load)
+    // Show prompt when we can install
+    if (canInstall) {
       setTimeout(() => setShowPrompt(true), 3000);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+    }
+  }, [isIOS, isStandalone, canInstall]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -44,8 +39,6 @@ export function PWAInstallPrompt() {
     if (outcome === "accepted") {
       setShowPrompt(false);
     }
-
-    setDeferredPrompt(null);
   };
 
   const handleDismiss = () => {
@@ -54,7 +47,7 @@ export function PWAInstallPrompt() {
     localStorage.setItem("pwa-install-dismissed", "true");
   };
 
-  if (!showPrompt || dismissed || !deferredPrompt) return null;
+  if (!showPrompt || dismissed || !canInstall) return null;
 
   return (
     <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm z-50 animate-in slide-in-from-bottom-4">
