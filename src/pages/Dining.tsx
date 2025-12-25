@@ -68,32 +68,35 @@ export default function Dining() {
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
         <Tabs value={activeTab} onValueChange={(value) => setSearchParams({ tab: value })}>
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold">{t("dining.title")}</h1>
-            <div className="flex items-center gap-2">
-              <TabsList>
+          {/* Header - stacks on mobile, row on desktop */}
+          <div className="flex flex-col gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h1 className="text-3xl font-bold">{t("dining.title")}</h1>
+              <TabsList className="w-fit">
                 <TabsTrigger value="restaurants">{t("dining.restaurants")}</TabsTrigger>
                 <TabsTrigger value="albums">{t("dining.albums")}</TabsTrigger>
               </TabsList>
-              {activeTab === "restaurants" && (
-                <Button onClick={() => navigate("/dining/add")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("dining.addRestaurant")}
-                </Button>
-              )}
-              {activeTab === "albums" && (
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => navigate("/albums/map")}>
-                    <Map className="h-4 w-4 mr-2" />
-                    {t("albums.map")}
-                  </Button>
-                  <Button onClick={() => navigate("/albums/create")}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t("albums.createAlbum")}
-                  </Button>
-                </div>
-              )}
             </div>
+            
+            {/* Action buttons - always full width on mobile */}
+            {activeTab === "restaurants" && (
+              <Button onClick={() => navigate("/dining/add")} className="w-full sm:w-auto sm:self-end">
+                <Plus className="h-4 w-4 mr-2" />
+                {t("dining.addRestaurant")}
+              </Button>
+            )}
+            {activeTab === "albums" && (
+              <div className="flex flex-col sm:flex-row gap-2 sm:self-end">
+                <Button variant="outline" onClick={() => navigate("/albums/map")} className="w-full sm:w-auto">
+                  <Map className="h-4 w-4 mr-2" />
+                  {t("albums.map")}
+                </Button>
+                <Button onClick={() => navigate("/albums/create")} className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("albums.createAlbum")}
+                </Button>
+              </div>
+            )}
           </div>
 
           <TabsContent value="restaurants" className="mt-0">
