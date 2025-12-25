@@ -458,7 +458,7 @@ export default function PlanDetail() {
               {plan?.city ? `City: ${plan.city}` : 'Loading...'}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => navigate('/planner')}>New Plan</Button>
+          <Button variant="secondary" onClick={() => navigate('/agenda?tab=aiPlan')}>New Plan</Button>
         </div>
 
         {loading ? (
@@ -466,7 +466,7 @@ export default function PlanDetail() {
         ) : !plan ? (
           <Card className="p-8 text-center">
             <p className="text-muted-foreground mb-4">Plan not found.</p>
-            <Button onClick={() => navigate('/planner')}>Create a Plan</Button>
+            <Button onClick={() => navigate('/agenda?tab=aiPlan')}>Create a Plan</Button>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

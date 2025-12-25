@@ -24,6 +24,7 @@ export const pt = {
     dining: "Restaurantes",
     planner: "Planejador IA",
     agenda: "Agenda",
+    social: "Social",
     wineCellar: "Adega",
     wine: "Vinho",
     account: "Conta",
