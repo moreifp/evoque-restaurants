@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { cn } from "@/lib/utils";
+import { RestaurantAutocomplete } from "@/components/RestaurantAutocomplete";
 
 interface ScheduledVisit {
   id: string;
@@ -68,6 +69,7 @@ export function AddReservationModal({
 
   // Form state
   const [restaurantName, setRestaurantName] = useState("");
+  const [googlePlaceId, setGooglePlaceId] = useState<string | null>(null);
   const [city, setCity] = useState("");
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState("19:00");
@@ -80,11 +82,13 @@ export function AddReservationModal({
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [address, setAddress] = useState("");
+  const [placeSelected, setPlaceSelected] = useState(false);
 
   // Reset form when modal opens/closes or editing visit changes
   useEffect(() => {
     if (editingVisit) {
       setRestaurantName(editingVisit.restaurant_name);
+      setGooglePlaceId(editingVisit.google_place_id);
       setCity(editingVisit.city);
       setDate(new Date(editingVisit.start_datetime));
       setTime(format(new Date(editingVisit.start_datetime), "HH:mm"));
@@ -102,8 +106,10 @@ export function AddReservationModal({
       setPhone(editingVisit.phone || "");
       setWebsite(editingVisit.website || "");
       setAddress(editingVisit.location_address || "");
+      setPlaceSelected(!!editingVisit.google_place_id);
     } else {
       setRestaurantName("");
+      setGooglePlaceId(null);
       setCity("");
       setDate(undefined);
       setTime("19:00");
@@ -116,8 +122,31 @@ export function AddReservationModal({
       setPhone("");
       setWebsite("");
       setAddress("");
+      setPlaceSelected(false);
     }
   }, [editingVisit, isOpen]);
+
+  const handlePlaceSelect = (place: {
+    name: string;
+    address: string;
+    placeId: string;
+    phone?: string;
+    website?: string;
+  }) => {
+    setRestaurantName(place.name);
+    setGooglePlaceId(place.placeId);
+    setAddress(place.address);
+    if (place.phone) setPhone(place.phone);
+    if (place.website) setWebsite(place.website);
+    setPlaceSelected(true);
+    
+    // Try to extract city from address (usually last part before country)
+    const addressParts = place.address.split(",").map(s => s.trim());
+    if (addressParts.length >= 2 && !city) {
+      // Usually city is second to last (before country)
+      setCity(addressParts[addressParts.length - 2] || "");
+    }
+  };
 
   const enrichVisitData = async (visitId: string, restaurantName: string, city: string) => {
     try {
@@ -179,6 +208,7 @@ export function AddReservationModal({
       const visitData = {
         user_id: user.id,
         restaurant_name: restaurantName.trim(),
+        google_place_id: googlePlaceId,
         city: city.trim(),
         start_datetime: startDateTime.toISOString(),
         end_datetime: endDateTime.toISOString(),
@@ -212,8 +242,8 @@ export function AddReservationModal({
         savedVisitId = insertedData?.id || null;
       }
 
-      // Auto-enrich with Google Places data if user didn't provide address/phone/website
-      if (savedVisitId && !address && !phone && !website) {
+      // Auto-enrich with Google Places data only if user didn't select from autocomplete
+      if (savedVisitId && !placeSelected && !address && !phone && !website) {
         // Run enrichment in background (don't block UI)
         enrichVisitData(savedVisitId, restaurantName.trim(), city.trim());
       }
@@ -245,9 +275,16 @@ export function AddReservationModal({
           {/* Restaurant Name */}
           <div className="space-y-2">
             <Label>{t("agenda.modal.restaurant")} *</Label>
-            <Input
+            <RestaurantAutocomplete
               value={restaurantName}
-              onChange={(e) => setRestaurantName(e.target.value)}
+              onChange={(val) => {
+                setRestaurantName(val);
+                if (placeSelected) {
+                  setPlaceSelected(false);
+                  setGooglePlaceId(null);
+                }
+              }}
+              onPlaceSelect={handlePlaceSelect}
               placeholder={t("agenda.modal.restaurantPlaceholder")}
             />
           </div>
