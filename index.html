@@ -138,7 +138,16 @@
       // Fallback: hide splash after 3 seconds regardless
       setTimeout(hideSplash, 3000);
     </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCgqV4uE7YTZzNsziBOFqIHD1aMmPASjlI&libraries=places&callback=Function.prototype"></script>
+    <script>
+      // Load Google Maps dynamically with environment variable
+      (function() {
+        var script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + (window.__GOOGLE_MAPS_API_KEY__ || '') + '&libraries=places&callback=Function.prototype';
+        script.async = true;
+        script.defer = true;
+        document.body.appendChild(script);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
