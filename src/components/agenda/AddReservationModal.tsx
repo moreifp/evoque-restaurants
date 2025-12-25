@@ -93,6 +93,10 @@ export function AddReservationModal({
   const [fetchingDetails, setFetchingDetails] = useState(false);
   // Error state for failed fetch
   const [fetchError, setFetchError] = useState(false);
+  // Validation errors for required fields
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
+  // Track if user attempted to submit
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   // Reset form when modal opens/closes or editing visit changes
   useEffect(() => {
@@ -137,6 +141,8 @@ export function AddReservationModal({
       setAnimatingFields(new Set());
       setFetchingDetails(false);
       setFetchError(false);
+      setValidationErrors(new Set());
+      setAttemptedSubmit(false);
     }
   }, [editingVisit, isOpen]);
 
@@ -363,11 +369,36 @@ export function AddReservationModal({
     }
   };
 
+  // Validate required fields
+  const validateForm = (): boolean => {
+    const errors = new Set<string>();
+    
+    if (!restaurantName.trim()) errors.add('restaurant');
+    if (!city.trim()) errors.add('city');
+    if (!date) errors.add('date');
+    
+    setValidationErrors(errors);
+    setAttemptedSubmit(true);
+    
+    return errors.size === 0;
+  };
+
+  // Clear validation error when field is filled
+  const clearValidationError = (field: string) => {
+    if (validationErrors.has(field)) {
+      setValidationErrors(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(field);
+        return newSet;
+      });
+    }
+  };
+
   const handleSave = async () => {
-    if (!restaurantName.trim() || !city.trim() || !date) {
+    if (!validateForm()) {
       toast({
         title: t("common.required"),
-        description: "Please fill in restaurant name, city, and date",
+        description: "Preencha os campos obrigatórios destacados em vermelho",
         variant: "destructive",
       });
       return;
@@ -453,20 +484,33 @@ export function AddReservationModal({
         <div className="space-y-4 mt-4">
           {/* Restaurant Name */}
           <div className="space-y-2">
-            <Label>{t("agenda.modal.restaurant")} *</Label>
-            <RestaurantAutocomplete
-              value={restaurantName}
-              onChange={(val) => {
-                setRestaurantName(val);
-                if (placeSelected) {
-                  setPlaceSelected(false);
-                  setGooglePlaceId(null);
-                  setAutoFilledFields(new Set());
-                }
-              }}
-              onPlaceSelect={handlePlaceSelect}
-              placeholder={t("agenda.modal.restaurantPlaceholder")}
-            />
+            <div className="flex items-center justify-between">
+              <Label className={cn(validationErrors.has('restaurant') && "text-destructive")}>
+                {t("agenda.modal.restaurant")} *
+              </Label>
+              {validationErrors.has('restaurant') && (
+                <span className="text-xs text-destructive">Campo obrigatório</span>
+              )}
+            </div>
+            <div className={cn(
+              "rounded-md",
+              validationErrors.has('restaurant') && "ring-2 ring-destructive ring-offset-1"
+            )}>
+              <RestaurantAutocomplete
+                value={restaurantName}
+                onChange={(val) => {
+                  setRestaurantName(val);
+                  clearValidationError('restaurant');
+                  if (placeSelected) {
+                    setPlaceSelected(false);
+                    setGooglePlaceId(null);
+                    setAutoFilledFields(new Set());
+                  }
+                }}
+                onPlaceSelect={handlePlaceSelect}
+                placeholder={t("agenda.modal.restaurantPlaceholder")}
+              />
+            </div>
             
             {/* Loading indicator for fetching details */}
             {fetchingDetails && (
@@ -509,30 +553,52 @@ export function AddReservationModal({
 
           {/* City */}
           <div className="space-y-2">
-            <div className="flex items-center">
-              <Label>{t("agenda.modal.city")} *</Label>
-              <GooglePlacesBadge field="city" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Label className={cn(validationErrors.has('city') && "text-destructive")}>
+                  {t("agenda.modal.city")} *
+                </Label>
+                <GooglePlacesBadge field="city" />
+              </div>
+              {validationErrors.has('city') && (
+                <span className="text-xs text-destructive">Campo obrigatório</span>
+              )}
             </div>
             <Input
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => {
+                setCity(e.target.value);
+                clearValidationError('city');
+              }}
               placeholder={t("agenda.modal.cityPlaceholder")}
-              className={animatingFields.has('city') ? 'animate-field-highlight' : ''}
+              className={cn(
+                animatingFields.has('city') && 'animate-field-highlight',
+                validationErrors.has('city') && 'border-destructive ring-1 ring-destructive'
+              )}
             />
           </div>
 
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>{t("agenda.modal.dateTime")} *</Label>
+              <div className="flex items-center justify-between">
+                <Label className={cn(validationErrors.has('date') && "text-destructive")}>
+                  {t("agenda.modal.dateTime")} *
+                </Label>
+                {validationErrors.has('date') && (
+                  <span className="text-xs text-destructive">Obrigatório</span>
+                )}
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
+                      !date && "text-muted-foreground",
+                      validationErrors.has('date') && "border-destructive ring-1 ring-destructive"
                     )}
+                    onClick={() => clearValidationError('date')}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "PP") : "Select date"}
@@ -542,7 +608,10 @@ export function AddReservationModal({
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={(d) => {
+                      setDate(d);
+                      clearValidationError('date');
+                    }}
                     initialFocus
                     className="pointer-events-auto"
                   />
