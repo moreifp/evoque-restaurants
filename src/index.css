@@ -187,6 +187,8 @@ body.standalone-mode {
   box-shadow: var(--shadow-large) !important;
   font-family: inherit !important;
   margin-top: 4px !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
 }
 
 .pac-item {
@@ -200,6 +202,8 @@ body.standalone-mode {
   min-height: 44px !important;
   display: flex !important;
   align-items: center !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
 }
 
 .pac-item:first-child {
