@@ -407,7 +407,16 @@ export default function AddRestaurant() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Description generation error:', error);
+        throw new Error(error.message || 'Failed to generate description');
+      }
+      
+      // Check if response contains an error field
+      if (data?.error) {
+        console.error('AI error:', data.error);
+        throw new Error(data.error);
+      }
 
       if (data?.description) {
         setFormData(prev => ({ ...prev, description: data.description }));
@@ -415,12 +424,14 @@ export default function AddRestaurant() {
           title: t("addRestaurant.descriptionGenerated"),
           description: t("addRestaurant.descriptionSuccess"),
         });
+      } else {
+        throw new Error('No description returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating description:', error);
       toast({
         title: t("addRestaurant.error"),
-        description: t("addRestaurant.failedGenerate"),
+        description: error.message || t("addRestaurant.failedGenerate"),
         variant: "destructive",
       });
     } finally {

@@ -260,7 +260,17 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         { body: { imageUrl: publicUrl } }
       );
 
-      if (functionError) throw functionError;
+      // Check for errors in response body (edge function may return error in data)
+      if (functionError) {
+        console.error('Receipt function error:', functionError);
+        throw new Error(functionError.message || 'Failed to process receipt');
+      }
+      
+      // Check if response contains an error field
+      if (resp?.error) {
+        console.error('Receipt processing error:', resp.error);
+        throw new Error(resp.error);
+      }
 
       const extracted = resp?.data ?? resp; // normalize shape from edge function
 
@@ -368,7 +378,17 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         { body: { imageUrl: publicUrl } }
       );
 
-      if (functionError) throw functionError;
+      // Check for errors in response body
+      if (functionError) {
+        console.error('Wine analysis function error:', functionError);
+        throw new Error(functionError.message || 'Failed to analyze wine label');
+      }
+      
+      // Check if response contains an error field
+      if (resp?.error) {
+        console.error('Wine analysis error:', resp.error);
+        throw new Error(resp.error);
+      }
 
       const extractedWineInfo = resp?.wineInfo ?? null; // normalize shape
       const wineCaption = extractedWineInfo ? `${extractedWineInfo.name || ''} ${extractedWineInfo.vintage || ''}`.trim() : '';
