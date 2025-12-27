@@ -142,6 +142,7 @@ export const pt = {
     menu: "Cardápio",
     wine: "Vinho",
     food: "Comida",
+    addDishName: "Adicionar nome do prato...",
     friends: "Amigos",
     friendsPhoto: "Foto dos Amigos",
     receipt: "Recibo",
