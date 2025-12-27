@@ -18,6 +18,10 @@ export const pt = {
     no: "Não",
     all: "Todos",
     none: "Nenhum",
+    menu: "Cardápio",
+    wine: "Vinho",
+    food: "Comida",
+    friends: "Amigos",
   },
   navigation: {
     home: "Início",

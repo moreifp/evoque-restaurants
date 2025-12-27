@@ -269,6 +269,11 @@ export default function AddRestaurant() {
           photo_url: url,
           type: url.includes('video') ? 'video' : 'restaurant_photo',
         })),
+        ...uploadData.food.map(url => ({
+          entry_id: entry.id,
+          photo_url: url,
+          type: 'food',
+        })),
         ...uploadData.menu.map(url => ({
           entry_id: entry.id,
           photo_url: url,
