@@ -52,6 +52,7 @@ export default function RestaurantDetail() {
     location_address: "",
     location_lat: null as number | null,
     location_lng: null as number | null,
+    google_place_id: "" as string | null,
     rating: 0,
     companions: "",
     notes: "",
@@ -157,6 +158,7 @@ export default function RestaurantDetail() {
       location_address: data.location_address || "",
       location_lat: data.location_lat,
       location_lng: data.location_lng,
+      google_place_id: data.google_place_id || null,
       rating: data.rating || 0,
       companions: data.companions || "",
       notes: data.notes || "",
@@ -202,6 +204,7 @@ export default function RestaurantDetail() {
           location_address: formData.location_address,
           location_lat: formData.location_lat,
           location_lng: formData.location_lng,
+          google_place_id: formData.google_place_id,
           rating: formData.rating || null,
           companions: formData.companions,
           notes: formData.notes,
@@ -585,11 +588,13 @@ export default function RestaurantDetail() {
     return null;
   }
 
-  const placePhotos = photos.filter(p => p.type === 'restaurant_photo' || !p.type);
+  // Include 'place' type for backward compatibility with older records
+  const placePhotos = photos.filter(p => p.type === 'restaurant_photo' || p.type === 'place' || !p.type);
   const foodPhotos = photos.filter(p => p.type === 'food');
   const menuPhotos = photos.filter(p => p.type === 'menu');
   const winePhotos = photos.filter(p => p.type === 'wine');
   const friendsPhotos = photos.filter(p => p.type === 'friends');
+  const videoPhotos = photos.filter(p => p.type === 'video');
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -861,7 +866,7 @@ export default function RestaurantDetail() {
               </Card>
 
               {/* Photos Section */}
-              {(placePhotos.length > 0 || foodPhotos.length > 0 || menuPhotos.length > 0 || winePhotos.length > 0 || friendsPhotos.length > 0) && (
+              {(placePhotos.length > 0 || foodPhotos.length > 0 || menuPhotos.length > 0 || winePhotos.length > 0 || friendsPhotos.length > 0 || videoPhotos.length > 0) && (
                 <Card>
                   <CardHeader>
                     <CardTitle>{t("restaurantDetail.photos")}</CardTitle>
@@ -1100,6 +1105,27 @@ export default function RestaurantDetail() {
                         </div>
                       </div>
                     )}
+
+                    {/* Video Section */}
+                    {videoPhotos.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                          <Video className="h-5 w-5" />
+                          {t("common.video") || "Videos"}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {videoPhotos.map((photo) => (
+                            <div key={photo.id} className="aspect-video rounded-lg overflow-hidden">
+                              <video
+                                src={photo.photo_url}
+                                controls
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -1244,6 +1270,9 @@ export default function RestaurantDetail() {
                 <div className="space-y-6">
                   {/* Location Picker */}
                   <LocationPicker
+                    initialValue={entry.location_address || entry.restaurant_name}
+                    initialLatLng={entry.location_lat && entry.location_lng ? { lat: entry.location_lat, lng: entry.location_lng } : undefined}
+                    initialPlaceId={entry.google_place_id || undefined}
                     onLocationSelect={(location) => {
                       setFormData({
                         ...formData,
@@ -1251,6 +1280,7 @@ export default function RestaurantDetail() {
                         location_address: location.address,
                         location_lat: location.lat,
                         location_lng: location.lng,
+                        google_place_id: location.placeId || null,
                       });
                     }}
                   />
@@ -1288,6 +1318,27 @@ export default function RestaurantDetail() {
                   {/* Unified Media Upload */}
                   <UnifiedMediaUpload
                     entryId={id}
+                    initialUploadData={{
+                      place: photos.filter(p => p.type === 'restaurant_photo' || p.type === 'place' || !p.type).map(p => p.photo_url),
+                      food: photos.filter(p => p.type === 'food').map(p => p.photo_url),
+                      friends: photos.filter(p => p.type === 'friends').map(p => p.photo_url),
+                      wine: photos.filter(p => p.type === 'wine').map(p => ({
+                        url: p.photo_url,
+                        caption: p.caption || '',
+                        rating: p.rating,
+                        wineInfo: null,
+                      })),
+                      menu: photos.filter(p => p.type === 'menu').map(p => p.photo_url),
+                      receipt: receipt ? {
+                        photo_url: receipt.photo_url,
+                        subtotal: receipt.subtotal,
+                        tax: receipt.tax,
+                        service_fee: receipt.service_fee,
+                        total: receipt.total,
+                        currency: receipt.currency,
+                        items: receiptItems,
+                      } : null,
+                    }}
                     onUploadsChange={setUploadData}
                     onLocationExtracted={(location) => {
                       setFormData({
@@ -1404,6 +1455,7 @@ export default function RestaurantDetail() {
                           location_address: entry.location_address || "",
                           location_lat: entry.location_lat,
                           location_lng: entry.location_lng,
+                          google_place_id: entry.google_place_id || null,
                           rating: entry.rating || 0,
                           companions: entry.companions || "",
                           notes: entry.notes || "",

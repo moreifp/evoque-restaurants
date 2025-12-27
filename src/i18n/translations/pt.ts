@@ -22,6 +22,7 @@ export const pt = {
     wine: "Vinho",
     food: "Comida",
     friends: "Amigos",
+    video: "Vídeos",
   },
   navigation: {
     home: "Início",

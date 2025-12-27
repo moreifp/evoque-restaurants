@@ -22,6 +22,7 @@ export const en = {
     wine: "Wine",
     food: "Food",
     friends: "Friends",
+    video: "Videos",
   },
   navigation: {
     home: "Home",
