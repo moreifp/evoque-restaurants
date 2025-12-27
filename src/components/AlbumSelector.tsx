@@ -63,8 +63,8 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
       if (error) throw error;
 
       toast({
-        title: t("albumSelector.toasts.created"),
-        description: t("albumSelector.toasts.ready"),
+        title: t("albumSelector.albumCreated"),
+        description: t("albumSelector.albumCreatedDesc"),
       });
 
       // Add to list and select it
@@ -90,11 +90,11 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
 
   return (
     <div className="space-y-2">
-      <Label className="text-lg">{t("albumSelector.label")}</Label>
+      <Label className="text-lg">{t("albumSelector.title")}</Label>
       <div className="flex gap-2">
         <Select value={selectedAlbumId || "none"} onValueChange={(value) => onAlbumSelect(value === "none" ? undefined : value)}>
           <SelectTrigger className="flex-1 h-12 text-lg">
-            <SelectValue placeholder={loading ? t("albumSelector.loading") : t("albumSelector.selectAlbum")} />
+            <SelectValue placeholder={loading ? t("albumSelector.loading") : t("albumSelector.selectPlaceholder")} />
           </SelectTrigger>
           <SelectContent className="text-lg">
             <SelectItem value="none">{t("albumSelector.noAlbum")}</SelectItem>
@@ -119,14 +119,14 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t("albumSelector.createAlbum")}</DialogTitle>
+              <DialogTitle>{t("albumSelector.dialogTitle")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateAlbum} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="album-title" className="text-lg">{t("albumSelector.titleLabel")}</Label>
+                <Label htmlFor="album-title" className="text-lg">{t("albumSelector.albumTitleLabel")}</Label>
                 <Input
                   id="album-title"
-                  placeholder={t("albumSelector.titlePlaceholder")}
+                  placeholder={t("albumSelector.albumTitlePlaceholder")}
                   value={newAlbum.title}
                   onChange={(e) =>
                     setNewAlbum({ ...newAlbum, title: e.target.value })
