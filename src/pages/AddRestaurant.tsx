@@ -125,6 +125,36 @@ export default function AddRestaurant() {
     }
   }, [searchParams]);
 
+  // Fetch complete place details when prefilled from Agenda with google_place_id but no coordinates
+  useEffect(() => {
+    if (!prefilledFromAgenda || !formData.google_place_id || formData.location_lat) {
+      return;
+    }
+
+    // Wait for Google Maps API to be available
+    if (!window.google?.maps?.places) {
+      return;
+    }
+
+    const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+    service.getDetails(
+      { 
+        placeId: formData.google_place_id, 
+        fields: ['geometry', 'formatted_address', 'name'] 
+      },
+      (result, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && result?.geometry?.location) {
+          setFormData(prev => ({
+            ...prev,
+            location_lat: result.geometry!.location!.lat(),
+            location_lng: result.geometry!.location!.lng(),
+            location_address: result.formatted_address || prev.location_address,
+          }));
+        }
+      }
+    );
+  }, [prefilledFromAgenda, formData.google_place_id, formData.location_lat]);
+
   // Autosave to localStorage (debounced)
   useEffect(() => {
     if (saveTimeoutRef.current) {
