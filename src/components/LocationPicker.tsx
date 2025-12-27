@@ -14,16 +14,25 @@ interface LocationPickerProps {
     lng: number;
     placeId?: string;
   }) => void;
+  initialValue?: string;
+  initialLatLng?: { lat: number; lng: number };
+  initialPlaceId?: string;
 }
 
-export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
+export const LocationPicker = ({ 
+  onLocationSelect, 
+  initialValue, 
+  initialLatLng,
+  initialPlaceId 
+}: LocationPickerProps) => {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(initialValue || "");
   const [map, setMap] = useState<any>(null);
   const [marker, setMarker] = useState<any>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const onSelectRef = useRef(onLocationSelect);
   const { toast } = useToast();
 
@@ -37,12 +46,27 @@ export const LocationPicker = ({ onLocationSelect }: LocationPickerProps) => {
     if (!mapRef.current || !(window as any).google) return;
 
     const google = (window as any).google;
+    
+    // Use initial coordinates if provided, otherwise default
+    const initialCenter = initialLatLng || { lat: 0, lng: 0 };
+    const initialZoom = initialLatLng ? 15 : 2;
+    
     const initialMap = new google.maps.Map(mapRef.current, {
-      center: { lat: 0, lng: 0 },
-      zoom: 15,
+      center: initialCenter,
+      zoom: initialZoom,
     });
 
     setMap(initialMap);
+
+    // If we have initial coordinates, add a marker
+    if (initialLatLng && !initialized) {
+      const newMarker = new google.maps.Marker({
+        position: initialLatLng,
+        map: initialMap,
+      });
+      setMarker(newMarker);
+      setInitialized(true);
+    }
 
     // Add click listener to map
     initialMap.addListener("click", (e: any) => {
