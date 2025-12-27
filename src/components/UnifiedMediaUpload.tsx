@@ -241,8 +241,10 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const processReceipt = async (fileData: UploadedFile) => {
     setProcessingReceipt(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
+      const user = session.user;
 
       const fileName = `receipts/${user.id}/${Date.now()}_${fileData.file.name}`;
       const { error: uploadError } = await supabase.storage
@@ -257,7 +259,12 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
 
       const { data: resp, error: functionError } = await supabase.functions.invoke(
         "process-receipt",
-        { body: { imageUrl: publicUrl } }
+        {
+          body: { imageUrl: publicUrl },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       );
 
       // Check for errors in response body (edge function may return error in data)
@@ -359,8 +366,10 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const analyzeWineLabel = async (fileData: UploadedFile) => {
     setProcessingWine(fileData.preview);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
+      const user = session.user;
 
       const fileName = `wines/${user.id}/${Date.now()}_${fileData.file.name}`;
       const { error: uploadError } = await supabase.storage
@@ -375,7 +384,12 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
 
       const { data: resp, error: functionError } = await supabase.functions.invoke(
         "analyze-wine-label",
-        { body: { imageUrl: publicUrl } }
+        {
+          body: { imageUrl: publicUrl },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       );
 
       // Check for errors in response body

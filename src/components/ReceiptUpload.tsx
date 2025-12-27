@@ -73,14 +73,16 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
 
     setProcessing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
+      const user = session.user;
 
       // Upload to storage first
       const fileExt = file.name.split(".").pop();
       const fileName = `${user.id}/receipt-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("restaurant-photos")
         .upload(fileName, file);
 
@@ -100,6 +102,9 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
         "process-receipt",
         {
           body: { imageUrl: publicUrl },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
       );
 

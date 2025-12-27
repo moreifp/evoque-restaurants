@@ -531,6 +531,9 @@ export default function RestaurantDetail() {
   const handleGenerateNote = async () => {
     setGeneratingNote(true);
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
       const { data, error } = await supabase.functions.invoke("generate-restaurant-note", {
         body: {
           restaurantName: formData.restaurant_name,
@@ -539,6 +542,9 @@ export default function RestaurantDetail() {
           companions: formData.companions,
           visitDate: formData.visit_date,
           language,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
