@@ -389,7 +389,7 @@ export const en = {
     descriptionPlaceholder: "A collection of memorable dining experiences...",
     cancel: "Cancel",
     creating: "Creating...",
-    create: "Create Album",
+    createAlbum: "Create Album",
     albumCreated: "Album created!",
     albumCreatedDesc: "Your new album is ready",
     error: "Error",
