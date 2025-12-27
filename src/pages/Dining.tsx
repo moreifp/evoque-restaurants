@@ -222,6 +222,7 @@ export default function Dining() {
 
 // Extracted card component for better performance
 function RestaurantCard({ entry, onClick }: { entry: RestaurantEntry; onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <Card
       className="hover:shadow-large transition-all cursor-pointer"
@@ -252,7 +253,7 @@ function RestaurantCard({ entry, onClick }: { entry: RestaurantEntry; onClick: (
         )}
         
         <p className="text-xs text-muted-foreground">
-          Visited: {new Date(entry.visit_date).toLocaleDateString()}
+          {t("home.visitedOn")}: {new Date(entry.visit_date).toLocaleDateString()}
         </p>
       </CardContent>
     </Card>

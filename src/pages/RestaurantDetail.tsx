@@ -967,7 +967,7 @@ export default function RestaurantDetail() {
                       <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
                           <UtensilsCrossed className="h-5 w-5" />
-                          Menu
+                          {t("common.menu")}
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {menuPhotos.map((photo) => (
@@ -976,14 +976,14 @@ export default function RestaurantDetail() {
                                 <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
                                   <img
                                     src={photo.photo_url}
-                                    alt="Menu"
+                                    alt={t("common.menu")}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                               </DialogTrigger>
                               <DialogContent className="max-w-4xl">
                                 <DialogHeader>
-                                  <DialogTitle>Menu</DialogTitle>
+                                  <DialogTitle>{t("common.menu")}</DialogTitle>
                                 </DialogHeader>
                                 <div className="max-h-[80vh] overflow-auto">
                                   <img
@@ -1004,7 +1004,7 @@ export default function RestaurantDetail() {
                       <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
                           <Wine className="h-5 w-5" />
-                          Wine
+                          {t("common.wine")}
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {winePhotos.map((photo) => (
@@ -1014,14 +1014,14 @@ export default function RestaurantDetail() {
                                   <div className="aspect-[3/4] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
                                     <img
                                       src={photo.photo_url}
-                                      alt="Wine"
+                                      alt={t("common.wine")}
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                 </DialogTrigger>
                                 <DialogContent className="max-w-4xl">
                                   <DialogHeader>
-                                    <DialogTitle>Wine</DialogTitle>
+                                    <DialogTitle>{t("common.wine")}</DialogTitle>
                                   </DialogHeader>
                                   <div className="max-h-[80vh] overflow-auto">
                                     <img
@@ -1038,7 +1038,7 @@ export default function RestaurantDetail() {
                                     )}
                                     {photo.caption && (
                                       <div className="mt-4">
-                                        <p className="font-medium mb-2">Tasting Notes:</p>
+                                        <p className="font-medium mb-2">{t("restaurantDetail.tastingNotes")}</p>
                                         <p className="text-muted-foreground">{photo.caption}</p>
                                       </div>
                                     )}
@@ -1054,7 +1054,7 @@ export default function RestaurantDetail() {
                               )}
                               {photo.caption && (
                                 <div>
-                                  <p className="text-sm font-medium mb-1">Tasting Notes:</p>
+                                  <p className="text-sm font-medium mb-1">{t("restaurantDetail.tastingNotes")}</p>
                                   <p className="text-sm text-muted-foreground">{photo.caption}</p>
                                 </div>
                               )}
@@ -1069,7 +1069,7 @@ export default function RestaurantDetail() {
                       <div>
                         <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
                           <UserCircle2 className="h-5 w-5" />
-                          Friends
+                          {t("common.friends")}
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {friendsPhotos.map((photo) => (
@@ -1078,14 +1078,14 @@ export default function RestaurantDetail() {
                                 <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
                                   <img
                                     src={photo.photo_url}
-                                    alt="Friends"
+                                    alt={t("common.friends")}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                               </DialogTrigger>
                               <DialogContent className="max-w-4xl">
                                 <DialogHeader>
-                                  <DialogTitle>Friends Photo</DialogTitle>
+                                  <DialogTitle>{t("restaurantDetail.friendsPhoto")}</DialogTitle>
                                 </DialogHeader>
                                 <div className="max-h-[80vh] overflow-auto">
                                   <img
@@ -1110,7 +1110,7 @@ export default function RestaurantDetail() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Sparkles className="h-5 w-5" />
-                      AI Generated Description
+                      {t("restaurantDetail.aiDescription")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
