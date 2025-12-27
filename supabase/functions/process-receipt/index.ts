@@ -57,10 +57,13 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // Restrict to Supabase storage for security
-      if (!url.hostname.includes('supabase.co')) {
+      // Restrict to trusted storage domains for security
+      const trustedDomains = ['supabase.co', 'supabase.in', 'lovableproject.com'];
+      const isTrusted = trustedDomains.some(domain => url.hostname.includes(domain));
+      if (!isTrusted) {
+        console.error('Untrusted domain:', url.hostname);
         return new Response(
-          JSON.stringify({ error: 'URL must be from trusted storage' }),
+          JSON.stringify({ error: `URL must be from trusted storage. Got: ${url.hostname}` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

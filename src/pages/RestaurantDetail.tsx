@@ -539,7 +539,16 @@ export default function RestaurantDetail() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Note generation error:', error);
+        throw new Error(error.message || 'Failed to generate note');
+      }
+      
+      // Check if response contains an error field
+      if (data?.error) {
+        console.error('AI error:', data.error);
+        throw new Error(data.error);
+      }
 
       if (data?.note) {
         setFormData((prev) => ({ ...prev, notes: data.note }));
@@ -547,6 +556,8 @@ export default function RestaurantDetail() {
           title: t("restaurantDetail.noteGenerated"),
           description: t("restaurantDetail.noteGeneratedDesc"),
         });
+      } else {
+        throw new Error('No note returned');
       }
     } catch (error: any) {
       toast({
