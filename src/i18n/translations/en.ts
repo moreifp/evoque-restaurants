@@ -142,6 +142,7 @@ export const en = {
     menu: "Menu",
     wine: "Wine",
     food: "Food",
+    addDishName: "Add dish name...",
     friends: "Friends",
     friendsPhoto: "Friends Photo",
     receipt: "Receipt",

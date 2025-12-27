@@ -902,29 +902,50 @@ export default function RestaurantDetail() {
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {foodPhotos.map((photo) => (
-                            <Dialog key={photo.id}>
-                              <DialogTrigger asChild>
-                                <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                  <img
-                                    src={photo.photo_url}
-                                    alt="Food"
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-4xl">
-                                <DialogHeader>
-                                  <DialogTitle>{t("restaurantDetail.food")}</DialogTitle>
-                                </DialogHeader>
-                                <div className="max-h-[80vh] overflow-auto">
-                                  <img
-                                    src={photo.photo_url}
-                                    alt="Food full size"
-                                    className="w-full rounded-lg"
-                                  />
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                            <div key={photo.id} className="space-y-2">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                    <img
+                                      src={photo.photo_url}
+                                      alt={photo.caption || "Food"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl">
+                                  <DialogHeader>
+                                    <DialogTitle>{photo.caption || t("restaurantDetail.food")}</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="max-h-[80vh] overflow-auto">
+                                    <img
+                                      src={photo.photo_url}
+                                      alt={photo.caption || "Food full size"}
+                                      className="w-full rounded-lg"
+                                    />
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                              {editMode ? (
+                                <Input
+                                  placeholder={t("restaurantDetail.addDishName")}
+                                  value={photo.caption || ""}
+                                  onChange={async (e) => {
+                                    const newCaption = e.target.value;
+                                    setPhotos(prev => prev.map(p => 
+                                      p.id === photo.id ? { ...p, caption: newCaption } : p
+                                    ));
+                                    await supabase
+                                      .from("restaurant_photos")
+                                      .update({ caption: newCaption })
+                                      .eq("id", photo.id);
+                                  }}
+                                  className="text-sm"
+                                />
+                              ) : photo.caption ? (
+                                <p className="text-sm text-muted-foreground text-center">{photo.caption}</p>
+                              ) : null}
+                            </div>
                           ))}
                         </div>
                       </div>
