@@ -19,7 +19,16 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const jwt = authHeader.replace(/^Bearer\s+/i, '');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -27,7 +36,10 @@ serve(async (req) => {
     );
 
     // Get user's top-rated restaurants
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
+    if (userError) {
+      console.warn('Auth error in restaurant-planner:', userError.message);
+    }
     let userTopRated: any[] = [];
     
     if (user) {
