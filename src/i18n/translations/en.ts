@@ -18,6 +18,10 @@ export const en = {
     no: "No",
     all: "All",
     none: "None",
+    menu: "Menu",
+    wine: "Wine",
+    food: "Food",
+    friends: "Friends",
   },
   navigation: {
     home: "Home",
