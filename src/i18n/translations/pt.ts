@@ -141,6 +141,7 @@ export const pt = {
     placePhoto: "Foto do Lugar",
     menu: "Cardápio",
     wine: "Vinho",
+    food: "Comida",
     friends: "Amigos",
     friendsPhoto: "Foto dos Amigos",
     receipt: "Recibo",

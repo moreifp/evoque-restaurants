@@ -575,6 +575,7 @@ export default function RestaurantDetail() {
   }
 
   const placePhotos = photos.filter(p => p.type === 'restaurant_photo' || !p.type);
+  const foodPhotos = photos.filter(p => p.type === 'food');
   const menuPhotos = photos.filter(p => p.type === 'menu');
   const winePhotos = photos.filter(p => p.type === 'wine');
   const friendsPhotos = photos.filter(p => p.type === 'friends');
@@ -849,7 +850,7 @@ export default function RestaurantDetail() {
               </Card>
 
               {/* Photos Section */}
-              {(placePhotos.length > 0 || menuPhotos.length > 0 || winePhotos.length > 0 || friendsPhotos.length > 0) && (
+              {(placePhotos.length > 0 || foodPhotos.length > 0 || menuPhotos.length > 0 || winePhotos.length > 0 || friendsPhotos.length > 0) && (
                 <Card>
                   <CardHeader>
                     <CardTitle>{t("restaurantDetail.photos")}</CardTitle>
@@ -882,6 +883,43 @@ export default function RestaurantDetail() {
                                   <img
                                     src={photo.photo_url}
                                     alt="Place full size"
+                                    className="w-full rounded-lg"
+                                  />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Food Photos */}
+                    {foodPhotos.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                          <UtensilsCrossed className="h-5 w-5" />
+                          {t("restaurantDetail.food")}
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {foodPhotos.map((photo) => (
+                            <Dialog key={photo.id}>
+                              <DialogTrigger asChild>
+                                <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Food"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                  <DialogTitle>{t("restaurantDetail.food")}</DialogTitle>
+                                </DialogHeader>
+                                <div className="max-h-[80vh] overflow-auto">
+                                  <img
+                                    src={photo.photo_url}
+                                    alt="Food full size"
                                     className="w-full rounded-lg"
                                   />
                                 </div>
