@@ -199,6 +199,9 @@ export const en = {
     deleteTranslation: "Delete Translation",
     deleteTranslationConfirm: "This will permanently remove the translation. You can always re-translate the menu later.",
     translated: "Translated",
+    shareRestaurant: "Share Restaurant",
+    copied: "Copied!",
+    copy: "Copy",
   },
   dining: {
     title: "My Dining Experiences",

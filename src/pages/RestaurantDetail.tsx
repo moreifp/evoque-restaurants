@@ -48,6 +48,9 @@ export default function RestaurantDetail() {
   const [translatingMenuId, setTranslatingMenuId] = useState<string | null>(null);
   const [editingTranslationId, setEditingTranslationId] = useState<string | null>(null);
   const [editedTranslation, setEditedTranslation] = useState<string>("");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string>("");
+  const [shareUrlLoading, setShareUrlLoading] = useState(false);
 
   const languageOptions = [
     { code: "Portuguese", name: "Português", flag: "🇧🇷" },
@@ -386,30 +389,18 @@ export default function RestaurantDetail() {
     navigate("/dining");
   };
 
-  const copyToClipboard = async (text: string) => {
-    // Try Web Share API first (works great on iOS)
-    if (navigator.share) {
-      try {
-        await navigator.share({ url: text });
-        return true;
-      } catch (err) {
-        // User cancelled or share failed, fall through to clipboard
-        if ((err as Error).name === 'AbortError') {
-          return false;
-        }
-      }
-    }
-
-    // Fallback for iOS Safari - use textarea method
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    // Try modern clipboard API first
     try {
       await navigator.clipboard.writeText(text);
       return true;
     } catch (err) {
-      // Final fallback using textarea (works on iOS)
+      // Fallback using textarea (works on iOS)
       const textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
+      textarea.style.left = '-9999px';
       document.body.appendChild(textarea);
       textarea.focus();
       textarea.select();
@@ -425,7 +416,7 @@ export default function RestaurantDetail() {
     }
   };
 
-  const handleShare = async () => {
+  const openShareDialog = async () => {
     if (!entry.is_public) {
       toast({
         title: t("restaurantDetail.restaurantPrivate"),
@@ -435,9 +426,13 @@ export default function RestaurantDetail() {
       return;
     }
 
-    setShareLoading(true);
+    // Open dialog immediately - no async before this
+    setShareDialogOpen(true);
+    setShareUrlLoading(true);
+    setCopied(false);
+    
+    // Generate token in background
     try {
-      // Generate short token via edge function
       const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
         "generate-share-token",
         { body: { entry_id: id } }
@@ -446,44 +441,59 @@ export default function RestaurantDetail() {
       if (tokenError) throw tokenError;
 
       const token = tokenData?.token;
-      const shareUrl = token 
+      const url = token 
         ? `https://food.evoque.guru/s/${token}`
         : `https://food.evoque.guru/share/${id}`;
       
-      const copied = await copyToClipboard(shareUrl);
-      
-      if (copied !== false) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        
-        toast({
-          title: t("restaurantDetail.linkCopied"),
-          description: `${t("restaurantDetail.shareLink")}: ${token || id}`,
-        });
-      }
+      setShareUrl(url);
     } catch (error) {
       console.error('Error generating share token:', error);
-      // Fallback to old share URL
-      const shareUrl = `https://food.evoque.guru/s/${id}`;
-      const copied = await copyToClipboard(shareUrl);
-      
-      if (copied !== false) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        toast({
-          title: t("restaurantDetail.linkCopied"),
-          description: t("restaurantDetail.shareLinkCopied"),
-        });
-      } else {
-        toast({
-          title: "Could not copy link",
-          description: "Please try again",
-          variant: "destructive",
-        });
-      }
+      // Fallback to full share URL (not short token URL)
+      setShareUrl(`https://food.evoque.guru/share/${id}`);
     } finally {
-      setShareLoading(false);
+      setShareUrlLoading(false);
     }
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    
+    const success = await copyToClipboard(shareUrl);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({
+        title: t("restaurantDetail.linkCopied"),
+        description: t("restaurantDetail.shareLinkCopied"),
+      });
+    } else {
+      toast({
+        title: "Could not copy link",
+        description: "Please select and copy the link manually",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!shareUrl || !navigator.share) return;
+    
+    try {
+      await navigator.share({
+        title: entry.restaurant_name,
+        url: shareUrl,
+      });
+    } catch (err) {
+      // User cancelled - this is fine
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Share failed:', err);
+      }
+    }
+  };
+
+  const handleShare = async () => {
+    // Keep for backwards compat - now just opens dialog
+    openShareDialog();
   };
 
   const handleMakePublic = async () => {
@@ -787,7 +797,7 @@ export default function RestaurantDetail() {
                     <DropdownMenuContent align="end" className="w-56 bg-background border shadow-lg z-50">
                       {entry.is_public ? (
                           <>
-                            <DropdownMenuItem onClick={handleShare} className="cursor-pointer">
+                            <DropdownMenuItem onClick={openShareDialog} className="cursor-pointer">
                               <LinkIcon className="h-4 w-4 mr-2" />
                               {t("restaurantDetail.copyLink")}
                             </DropdownMenuItem>
@@ -805,6 +815,65 @@ export default function RestaurantDetail() {
                         )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  
+                  {/* Share Dialog */}
+                  <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Share2 className="h-5 w-5" />
+                          {t("restaurantDetail.shareRestaurant")}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        {shareUrlLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Input 
+                                readOnly 
+                                value={shareUrl} 
+                                className="flex-1 text-sm"
+                                onClick={(e) => (e.target as HTMLInputElement).select()}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                className="flex-1" 
+                                onClick={handleCopyShareUrl}
+                                disabled={!shareUrl}
+                              >
+                                {copied ? (
+                                  <>
+                                    <Check className="h-4 w-4 mr-2" />
+                                    {t("restaurantDetail.copied")}
+                                  </>
+                                ) : (
+                                  <>
+                                    <LinkIcon className="h-4 w-4 mr-2" />
+                                    {t("restaurantDetail.copy")}
+                                  </>
+                                )}
+                              </Button>
+                              {typeof navigator !== 'undefined' && navigator.share && (
+                                <Button 
+                                  variant="outline"
+                                  onClick={handleNativeShare}
+                                  disabled={!shareUrl}
+                                >
+                                  <Share2 className="h-4 w-4 mr-2" />
+                                  {t("restaurantDetail.share")}
+                                </Button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Dialog open={albumDialogOpen} onOpenChange={setAlbumDialogOpen}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="icon">
