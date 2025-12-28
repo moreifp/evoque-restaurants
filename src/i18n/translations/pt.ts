@@ -195,6 +195,9 @@ export const pt = {
     selectLanguage: "Selecionar Idioma",
     editTranslation: "Editar Tradução",
     translationUpdated: "Tradução atualizada!",
+    translationDeleted: "Tradução excluída",
+    deleteTranslation: "Excluir Tradução",
+    deleteTranslationConfirm: "Isso removerá permanentemente a tradução. Você pode traduzir o menu novamente depois.",
   },
   dining: {
     title: "Minhas Experiências Gastronômicas",
