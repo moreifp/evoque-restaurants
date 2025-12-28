@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook, Sparkles, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function SharedRestaurant() {
   const { id } = useParams();
@@ -17,6 +18,8 @@ export default function SharedRestaurant() {
   const [notFound, setNotFound] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [translationDialogOpen, setTranslationDialogOpen] = useState(false);
+  const [selectedTranslation, setSelectedTranslation] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -452,16 +455,32 @@ export default function SharedRestaurant() {
                   {photos.filter(p => p.type === 'menu').map((photo) => {
                     const photoIndex = photos.findIndex(p => p.id === photo.id);
                     return (
-                      <div
-                        key={photo.id}
-                        className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => openLightbox(photoIndex)}
-                      >
-                        <img
-                          src={photo.photo_url}
-                          alt="Menu"
-                          className="w-full h-full object-cover"
-                        />
+                      <div key={photo.id} className="relative">
+                        <div
+                          className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => openLightbox(photoIndex)}
+                        >
+                          <img
+                            src={photo.photo_url}
+                            alt="Menu"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {photo.menu_translation && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="absolute bottom-2 right-2 gap-1.5 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTranslation(photo.menu_translation);
+                              setTranslationDialogOpen(true);
+                            }}
+                          >
+                            <Languages className="h-3.5 w-3.5" />
+                            Translated
+                          </Button>
+                        )}
                       </div>
                     );
                   })}
@@ -517,7 +536,7 @@ export default function SharedRestaurant() {
                 />
                 
                 {/* Photo metadata */}
-                {(photos[selectedPhotoIndex].rating > 0 || photos[selectedPhotoIndex].caption) && (
+                {(photos[selectedPhotoIndex].rating > 0 || photos[selectedPhotoIndex].caption || photos[selectedPhotoIndex].menu_translation) && (
                   <div className="mt-4 max-w-2xl text-center space-y-2">
                     {photos[selectedPhotoIndex].rating > 0 && (
                       <div className="flex items-center justify-center space-x-1">
@@ -529,11 +548,45 @@ export default function SharedRestaurant() {
                     {photos[selectedPhotoIndex].caption && (
                       <p className="text-white/90 text-sm">{photos[selectedPhotoIndex].caption}</p>
                     )}
+                    {photos[selectedPhotoIndex].menu_translation && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setSelectedTranslation(photos[selectedPhotoIndex].menu_translation);
+                          setTranslationDialogOpen(true);
+                        }}
+                      >
+                        <Languages className="h-4 w-4" />
+                        View Translation
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Menu Translation Dialog */}
+      <Dialog open={translationDialogOpen} onOpenChange={setTranslationDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Languages className="h-5 w-5" />
+              Menu Translation
+            </DialogTitle>
+            <DialogDescription>
+              AI-powered translation of the menu
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            <div className="whitespace-pre-wrap text-sm text-muted-foreground pr-4">
+              {selectedTranslation}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
