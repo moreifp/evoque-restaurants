@@ -54,6 +54,59 @@ interface UnifiedMediaUploadProps {
   onPhotoSaved?: (photoData: { url: string; type: string }) => void; // Callback when photo is saved to DB
 }
 
+// File size limits
+const FILE_LIMITS = {
+  IMAGE_MAX_SIZE_MB: 10,      // 10 MB per image
+  VIDEO_MAX_SIZE_MB: 50,      // 50 MB per video
+  TOTAL_BATCH_SIZE_MB: 100,   // 100 MB total per upload batch
+};
+
+interface RejectedFile {
+  name: string;
+  reason: string;
+}
+
+interface ValidationResult {
+  validFiles: File[];
+  rejectedFiles: RejectedFile[];
+  totalValidSize: number;
+}
+
+const validateFiles = (files: File[], t: (key: string, params?: Record<string, string | number>) => string): ValidationResult => {
+  const validFiles: File[] = [];
+  const rejectedFiles: RejectedFile[] = [];
+  let totalValidSize = 0;
+
+  for (const file of files) {
+    const sizeMB = file.size / (1024 * 1024);
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    const maxSize = isVideo ? FILE_LIMITS.VIDEO_MAX_SIZE_MB : FILE_LIMITS.IMAGE_MAX_SIZE_MB;
+
+    if (isVideo && sizeMB > FILE_LIMITS.VIDEO_MAX_SIZE_MB) {
+      rejectedFiles.push({
+        name: file.name,
+        reason: t('unifiedMediaUpload.fileLimits.videoTooLarge', { size: FILE_LIMITS.VIDEO_MAX_SIZE_MB }),
+      });
+    } else if (isImage && sizeMB > FILE_LIMITS.IMAGE_MAX_SIZE_MB) {
+      rejectedFiles.push({
+        name: file.name,
+        reason: t('unifiedMediaUpload.fileLimits.imageTooLarge', { size: FILE_LIMITS.IMAGE_MAX_SIZE_MB }),
+      });
+    } else if (totalValidSize + sizeMB > FILE_LIMITS.TOTAL_BATCH_SIZE_MB) {
+      rejectedFiles.push({
+        name: file.name,
+        reason: t('unifiedMediaUpload.fileLimits.batchLimitExceeded', { size: FILE_LIMITS.TOTAL_BATCH_SIZE_MB }),
+      });
+    } else {
+      validFiles.push(file);
+      totalValidSize += sizeMB;
+    }
+  }
+
+  return { validFiles, rejectedFiles, totalValidSize };
+};
+
 export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -62,6 +115,9 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [lastCategory, setLastCategory] = useState<keyof typeof categoryConfig | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [rejectedFiles, setRejectedFiles] = useState<RejectedFile[]>([]);
+  const [pendingValidFiles, setPendingValidFiles] = useState<{ files: UploadedFile[]; category: keyof typeof categoryConfig; useCamera: boolean } | null>(null);
   const { toast } = useToast();
   const { t } = useI18n();
 
@@ -194,50 +250,98 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       const selectedFiles = Array.from((e.target as HTMLInputElement).files || []);
       
       if (selectedFiles.length === 0) return;
-      
-      const newFiles: UploadedFile[] = selectedFiles.map(file => ({
+
+      // Validate file sizes
+      const { validFiles, rejectedFiles: rejected, totalValidSize } = validateFiles(selectedFiles, t);
+
+      // If some files were rejected, show dialog
+      if (rejected.length > 0) {
+        setRejectedFiles(rejected);
+        
+        if (validFiles.length > 0) {
+          // Some files are valid, prepare them for pending upload
+          const newFiles: UploadedFile[] = validFiles.map(file => ({
+            file,
+            preview: URL.createObjectURL(file),
+            category,
+          }));
+          setPendingValidFiles({ files: newFiles, category, useCamera });
+          setShowRejectionDialog(true);
+        } else {
+          // No valid files at all
+          setShowRejectionDialog(true);
+          setPendingValidFiles(null);
+        }
+        return;
+      }
+
+      // All files are valid, proceed normally
+      const newFiles: UploadedFile[] = validFiles.map(file => ({
         file,
         preview: URL.createObjectURL(file),
         category,
       }));
       
-      setFiles(prev => [...prev, ...newFiles]);
-      
-      // Show immediate visual confirmation when photo is captured from camera
-      if (useCamera && newFiles.length > 0) {
-        const firstFile = newFiles[0];
-        toast({
-          title: "📸 Foto capturada!",
-          description: (
-            <div className="flex items-center gap-3 mt-2">
-              <img 
-                src={firstFile.preview} 
-                alt="Preview" 
-                className="w-16 h-16 rounded-lg object-cover border border-border shadow-sm"
-              />
-              <span className="text-sm text-muted-foreground">
-                Enviando {categoryConfig[category].label.toLowerCase()}...
-              </span>
-            </div>
-          ),
-        });
-      }
-      
-      // Show dialog only when using camera (library already allows multiple selection)
-      if (useCamera) {
-        setLastCategory(category);
-        setShowAddMoreDialog(true);
-      }
-      
-      // Process in background
-      if (category === 'receipt' && newFiles.length > 0) {
-        processReceipt(newFiles[0]);
-      } else {
-        autoUploadFiles(newFiles);
-      }
+      proceedWithUpload(newFiles, category, useCamera);
     };
     
     input.click();
+  };
+
+  const proceedWithUpload = (newFiles: UploadedFile[], category: keyof typeof categoryConfig, useCamera: boolean) => {
+    setFiles(prev => [...prev, ...newFiles]);
+    
+    // Show immediate visual confirmation when photo is captured from camera
+    if (useCamera && newFiles.length > 0) {
+      const firstFile = newFiles[0];
+      toast({
+        title: "📸 Foto capturada!",
+        description: (
+          <div className="flex items-center gap-3 mt-2">
+            <img 
+              src={firstFile.preview} 
+              alt="Preview" 
+              className="w-16 h-16 rounded-lg object-cover border border-border shadow-sm"
+            />
+            <span className="text-sm text-muted-foreground">
+              Enviando {categoryConfig[category].label.toLowerCase()}...
+            </span>
+          </div>
+        ),
+      });
+    }
+    
+    // Show dialog only when using camera (library already allows multiple selection)
+    if (useCamera) {
+      setLastCategory(category);
+      setShowAddMoreDialog(true);
+    }
+    
+    // Process in background
+    if (category === 'receipt' && newFiles.length > 0) {
+      processReceipt(newFiles[0]);
+    } else {
+      autoUploadFiles(newFiles);
+    }
+  };
+
+  const handleContinueWithValid = () => {
+    setShowRejectionDialog(false);
+    if (pendingValidFiles) {
+      proceedWithUpload(pendingValidFiles.files, pendingValidFiles.category, pendingValidFiles.useCamera);
+      setPendingValidFiles(null);
+    }
+    setRejectedFiles([]);
+  };
+
+  const handleCancelRejection = () => {
+    setShowRejectionDialog(false);
+    // Clean up previews for pending files
+    if (pendingValidFiles) {
+      pendingValidFiles.files.forEach(f => URL.revokeObjectURL(f.preview));
+    }
+    setPendingValidFiles(null);
+    setRejectedFiles([]);
   };
 
   const processReceipt = async (fileData: UploadedFile) => {
@@ -706,6 +810,68 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
               <X className="h-6 w-6 mr-2" />
               {t("unifiedMediaUpload.addMoreDialog.done")}
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* File Size Rejection Dialog */}
+      <AlertDialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl text-destructive">
+              {t("unifiedMediaUpload.fileLimits.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              {t("unifiedMediaUpload.fileLimits.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-3 my-4">
+            {rejectedFiles.map((file, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <X className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">{file.reason}</p>
+                </div>
+              </div>
+            ))}
+            
+            {pendingValidFiles && pendingValidFiles.files.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-sm text-muted-foreground mb-2">
+                  {t("unifiedMediaUpload.fileLimits.validFilesCount").replace("{count}", pendingValidFiles.files.length.toString())}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter className="flex-col sm:flex-col gap-2">
+            {pendingValidFiles && pendingValidFiles.files.length > 0 ? (
+              <>
+                <Button
+                  className="w-full"
+                  onClick={handleContinueWithValid}
+                >
+                  {t("unifiedMediaUpload.fileLimits.continueWithValid")}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleCancelRejection}
+                >
+                  {t("common.cancel")}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleCancelRejection}
+              >
+                {t("common.close")}
+              </Button>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
