@@ -198,6 +198,7 @@ export const en = {
     translationDeleted: "Translation deleted",
     deleteTranslation: "Delete Translation",
     deleteTranslationConfirm: "This will permanently remove the translation. You can always re-translate the menu later.",
+    translated: "Translated",
   },
   dining: {
     title: "My Dining Experiences",

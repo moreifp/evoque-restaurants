@@ -1669,6 +1669,65 @@ export default function RestaurantDetail() {
                     }}
                   />
 
+                  {/* Menu Photos with Translate Option in Edit Mode */}
+                  {photos.filter(p => p.type === 'menu').length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <UtensilsCrossed className="h-5 w-5" />
+                        {t("restaurantDetail.translateMenu")}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {photos.filter(p => p.type === 'menu').map((photo) => (
+                          <div key={photo.id} className="relative rounded-lg overflow-hidden border bg-muted">
+                            <img
+                              src={photo.photo_url}
+                              alt={t("common.menu")}
+                              className="w-full h-32 object-cover"
+                            />
+                            <div className="absolute bottom-2 right-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant={photo.menu_translation ? "secondary" : "default"}
+                                    size="sm"
+                                    disabled={translatingMenuId === photo.id}
+                                    className="shadow-lg"
+                                  >
+                                    <Sparkles className="h-4 w-4 mr-1" />
+                                    {translatingMenuId === photo.id
+                                      ? t("restaurantDetail.translating")
+                                      : photo.menu_translation
+                                        ? t("restaurantDetail.retranslate")
+                                        : t("restaurantDetail.translateMenu")}
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-background border shadow-lg z-50">
+                                  {languageOptions.map((lang) => (
+                                    <DropdownMenuItem
+                                      key={lang.code}
+                                      onClick={() => handleTranslateMenu(photo.id, photo.photo_url, lang.code)}
+                                      className="cursor-pointer"
+                                    >
+                                      {lang.flag} {lang.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {photo.menu_translation && (
+                              <div className="absolute top-2 left-2">
+                                <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  {t("restaurantDetail.translated")}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tags */}
                   <TagInput
                     selectedTags={tags}
