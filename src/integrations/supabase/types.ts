@@ -419,6 +419,7 @@ export type Database = {
           created_at: string | null
           entry_id: string
           id: string
+          menu_translation: string | null
           photo_url: string
           rating: number | null
           type: string | null
@@ -428,6 +429,7 @@ export type Database = {
           created_at?: string | null
           entry_id: string
           id?: string
+          menu_translation?: string | null
           photo_url: string
           rating?: number | null
           type?: string | null
@@ -437,6 +439,7 @@ export type Database = {
           created_at?: string | null
           entry_id?: string
           id?: string
+          menu_translation?: string | null
           photo_url?: string
           rating?: number | null
           type?: string | null

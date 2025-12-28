@@ -45,6 +45,7 @@ export default function RestaurantDetail() {
   const [copied, setCopied] = useState(false);
   const [generatingNote, setGeneratingNote] = useState(false);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [translatingMenuId, setTranslatingMenuId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     restaurant_name: "",
@@ -579,6 +580,60 @@ export default function RestaurantDetail() {
     }
   };
 
+  const handleTranslateMenu = async (photoId: string, photoUrl: string) => {
+    setTranslatingMenuId(photoId);
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
+      const targetLanguage = language === "pt" ? "Portuguese" : "English";
+
+      const { data, error } = await supabase.functions.invoke("translate-menu", {
+        body: {
+          imageUrl: photoUrl,
+          targetLanguage,
+          photoId,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error("Menu translation error:", error);
+        throw new Error(error.message || "Failed to translate menu");
+      }
+
+      if (data?.error) {
+        console.error("AI error:", data.error);
+        throw new Error(data.error);
+      }
+
+      if (data?.translation) {
+        // Update local photos state with the new translation
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === photoId ? { ...p, menu_translation: data.translation } : p
+          )
+        );
+        toast({
+          title: t("restaurantDetail.translationSaved"),
+          description: t("restaurantDetail.menuTranslation"),
+        });
+      } else {
+        throw new Error("No translation returned");
+      }
+    } catch (error: any) {
+      toast({
+        title: t("restaurantDetail.error"),
+        description: error.message || t("restaurantDetail.translationError"),
+        variant: "destructive",
+      });
+    } finally {
+      setTranslatingMenuId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -980,31 +1035,108 @@ export default function RestaurantDetail() {
                           <UtensilsCrossed className="h-5 w-5" />
                           {t("common.menu")}
                         </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="space-y-6">
                           {menuPhotos.map((photo) => (
-                            <Dialog key={photo.id}>
-                              <DialogTrigger asChild>
-                                <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                  <img
-                                    src={photo.photo_url}
-                                    alt={t("common.menu")}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-4xl">
-                                <DialogHeader>
-                                  <DialogTitle>{t("common.menu")}</DialogTitle>
-                                </DialogHeader>
-                                <div className="max-h-[80vh] overflow-auto">
-                                  <img
-                                    src={photo.photo_url}
-                                    alt="Menu full size"
-                                    className="w-full rounded-lg"
-                                  />
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                            <div key={photo.id} className="space-y-4">
+                              {/* Menu Photo with Translate Button */}
+                              <div className="relative">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <div className="aspect-[4/3] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+                                      <img
+                                        src={photo.photo_url}
+                                        alt={t("common.menu")}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-4xl">
+                                    <DialogHeader>
+                                      <DialogTitle>{t("common.menu")}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="max-h-[80vh] overflow-auto space-y-4">
+                                      <img
+                                        src={photo.photo_url}
+                                        alt="Menu full size"
+                                        className="w-full rounded-lg"
+                                      />
+                                      {/* Translate Button in Dialog */}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleTranslateMenu(photo.id, photo.photo_url)}
+                                        disabled={translatingMenuId === photo.id}
+                                        className="w-full"
+                                      >
+                                        {translatingMenuId === photo.id ? (
+                                          <>
+                                            <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
+                                            {t("restaurantDetail.translating")}
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Sparkles className="h-4 w-4 mr-2" />
+                                            {photo.menu_translation 
+                                              ? t("restaurantDetail.retranslate")
+                                              : t("restaurantDetail.translateMenu")}
+                                          </>
+                                        )}
+                                      </Button>
+                                      {/* Translation in Dialog */}
+                                      {photo.menu_translation && (
+                                        <div className="mt-4 p-4 rounded-lg bg-muted/50 border">
+                                          <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                            📋 {t("restaurantDetail.menuTranslation")}
+                                          </h4>
+                                          <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                                            {photo.menu_translation}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+
+                                {/* AI Translate Badge on Photo */}
+                                <Button
+                                  variant={photo.menu_translation ? "secondary" : "default"}
+                                  size="sm"
+                                  onClick={() => handleTranslateMenu(photo.id, photo.photo_url)}
+                                  disabled={translatingMenuId === photo.id}
+                                  className="absolute bottom-2 right-2 shadow-lg"
+                                >
+                                  {translatingMenuId === photo.id ? (
+                                    <>
+                                      <Sparkles className="h-4 w-4 mr-1 animate-pulse" />
+                                      {t("restaurantDetail.translating")}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="h-4 w-4 mr-1" />
+                                      {photo.menu_translation 
+                                        ? t("restaurantDetail.retranslate")
+                                        : t("restaurantDetail.translateMenu")}
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+
+                              {/* Translation Card Below Photo */}
+                              {photo.menu_translation && (
+                                <Card className="border-primary/20 bg-primary/5">
+                                  <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                      📋 {t("restaurantDetail.menuTranslation")}
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                                      {photo.menu_translation}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
