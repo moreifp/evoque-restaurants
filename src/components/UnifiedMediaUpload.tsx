@@ -676,7 +676,11 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
 
         // If entryId exists (editing existing restaurant), save immediately to DB
         if (entryId) {
-          const photoType = fileData.category === 'menu' ? 'menu' :
+          // Detect if file is a video
+          const isVideo = fileData.file.type.startsWith('video/');
+          
+          const photoType = isVideo ? 'video' :
+                           fileData.category === 'menu' ? 'menu' :
                            fileData.category === 'food' ? 'food' :
                            fileData.category === 'wine' ? 'wine' :
                            fileData.category === 'friends' ? 'friends' :

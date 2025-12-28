@@ -262,12 +262,18 @@ export default function AddRestaurant() {
         }
       }
 
+      // Helper function to detect video from URL
+      const isVideoUrl = (url: string) => {
+        const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.m4v'];
+        return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+      };
+
       // Save all photo types
       const allPhotos = [
         ...uploadData.place.map(url => ({
           entry_id: entry.id,
           photo_url: url,
-          type: url.includes('video') ? 'video' : 'restaurant_photo',
+          type: isVideoUrl(url) ? 'video' : 'restaurant_photo',
         })),
         ...uploadData.food.map(url => ({
           entry_id: entry.id,

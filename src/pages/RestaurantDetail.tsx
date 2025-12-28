@@ -727,13 +727,22 @@ export default function RestaurantDetail() {
     return null;
   }
 
-  // Include 'place' type for backward compatibility with older records
-  const placePhotos = photos.filter(p => p.type === 'restaurant_photo' || p.type === 'place' || !p.type);
+  // Helper function to detect video from URL (for backward compatibility)
+  const isVideoUrl = (url: string) => {
+    const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.m4v'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+  };
+
+  // Include 'place' type for backward compatibility with older records, but exclude videos
+  const placePhotos = photos.filter(p => 
+    (p.type === 'restaurant_photo' || p.type === 'place' || !p.type) && !isVideoUrl(p.photo_url)
+  );
   const foodPhotos = photos.filter(p => p.type === 'food');
   const menuPhotos = photos.filter(p => p.type === 'menu');
   const winePhotos = photos.filter(p => p.type === 'wine');
   const friendsPhotos = photos.filter(p => p.type === 'friends');
-  const videoPhotos = photos.filter(p => p.type === 'video');
+  // Include videos from 'video' type OR detected from URL (backward compatibility)
+  const videoPhotos = photos.filter(p => p.type === 'video' || isVideoUrl(p.photo_url));
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
