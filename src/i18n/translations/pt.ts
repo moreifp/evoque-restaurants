@@ -191,6 +191,9 @@ export const pt = {
     retranslate: "Traduzir novamente",
     translationSaved: "Tradução salva!",
     translationError: "Falha ao traduzir cardápio",
+    selectLanguage: "Selecionar Idioma",
+    editTranslation: "Editar Tradução",
+    translationUpdated: "Tradução atualizada!",
   },
   dining: {
     title: "Minhas Experiências Gastronômicas",

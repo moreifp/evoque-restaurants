@@ -191,6 +191,9 @@ export const en = {
     retranslate: "Translate Again",
     translationSaved: "Translation saved!",
     translationError: "Failed to translate menu",
+    selectLanguage: "Select Language",
+    editTranslation: "Edit Translation",
+    translationUpdated: "Translation updated!",
   },
   dining: {
     title: "My Dining Experiences",
