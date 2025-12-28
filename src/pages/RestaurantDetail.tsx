@@ -685,6 +685,33 @@ export default function RestaurantDetail() {
     }
   };
 
+  const deleteTranslation = async (photoId: string) => {
+    try {
+      const { error } = await supabase
+        .from("restaurant_photos")
+        .update({ menu_translation: null })
+        .eq("id", photoId);
+
+      if (error) throw error;
+
+      setPhotos((prev) =>
+        prev.map((p) =>
+          p.id === photoId ? { ...p, menu_translation: null } : p
+        )
+      );
+
+      toast({
+        title: t("restaurantDetail.translationDeleted"),
+      });
+    } catch (error: any) {
+      toast({
+        title: t("restaurantDetail.error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
@@ -1211,13 +1238,40 @@ export default function RestaurantDetail() {
                                         📋 {t("restaurantDetail.menuTranslation")}
                                       </CardTitle>
                                       {editingTranslationId !== photo.id && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => startEditingTranslation(photo.id, photo.menu_translation || "")}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => startEditingTranslation(photo.id, photo.menu_translation || "")}
+                                          >
+                                            <Edit className="h-4 w-4" />
+                                          </Button>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive"
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>{t("restaurantDetail.deleteTranslation")}</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  {t("restaurantDetail.deleteTranslationConfirm")}
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteTranslation(photo.id)}>
+                                                  {t("common.delete")}
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                        </div>
                                       )}
                                     </div>
                                   </CardHeader>
