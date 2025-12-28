@@ -3,6 +3,7 @@ export const pt = {
     save: "Salvar",
     cancel: "Cancelar",
     delete: "Excluir",
+    deleted: "Excluído",
     edit: "Editar",
     share: "Compartilhar",
     loading: "Carregando...",

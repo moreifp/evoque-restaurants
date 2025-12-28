@@ -3,6 +3,7 @@ export const en = {
     save: "Save",
     cancel: "Cancel",
     delete: "Delete",
+    deleted: "Deleted",
     edit: "Edit",
     share: "Share",
     loading: "Loading...",

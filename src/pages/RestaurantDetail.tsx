@@ -1372,10 +1372,11 @@ export default function RestaurantDetail() {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {videoPhotos.map((photo) => (
-                            <div key={photo.id} className="aspect-video rounded-lg overflow-hidden">
+                            <div key={photo.id} className="aspect-video rounded-lg overflow-hidden relative group">
                               <video
                                 src={photo.photo_url}
                                 controls
+                                playsInline
                                 className="w-full h-full object-cover"
                               />
                             </div>

@@ -465,9 +465,69 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
     }
   };
 
-  const removeFile = (preview: string) => {
+  const removeFile = async (preview: string) => {
+    const fileToRemove = files.find(f => f.preview === preview);
+    
+    // If editing existing entry and file has a URL, delete from database
+    if (entryId && fileToRemove?.url) {
+      try {
+        if (fileToRemove.category === 'receipt') {
+          // Delete receipt and its items from database
+          const { error } = await supabase
+            .from("receipts")
+            .delete()
+            .eq("entry_id", entryId)
+            .eq("photo_url", fileToRemove.url);
+          
+          if (error) {
+            console.error('Error deleting receipt:', error);
+            toast({
+              title: t("common.error"),
+              description: "Failed to delete receipt",
+              variant: "destructive",
+            });
+            return;
+          }
+        } else {
+          // Delete photo from restaurant_photos table
+          const { error } = await supabase
+            .from("restaurant_photos")
+            .delete()
+            .eq("entry_id", entryId)
+            .eq("photo_url", fileToRemove.url);
+          
+          if (error) {
+            console.error('Error deleting photo:', error);
+            toast({
+              title: t("common.error"),
+              description: "Failed to delete photo",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+        
+        toast({
+          title: "✅ " + t("common.deleted"),
+          description: t("unifiedMediaUpload.toasts.photoDeleted") || "Photo removed successfully",
+        });
+        
+        // Notify parent to refresh
+        onPhotoSaved?.({ url: fileToRemove.url, type: 'deleted' });
+      } catch (error: any) {
+        console.error('Error deleting file:', error);
+        toast({
+          title: t("common.error"),
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setFiles(prev => prev.filter(f => f.preview !== preview));
     URL.revokeObjectURL(preview);
+    setTimeout(updateParent, 0);
   };
 
   const updateWineRating = (preview: string, rating: number) => {
