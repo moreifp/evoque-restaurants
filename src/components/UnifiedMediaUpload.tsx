@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils } from "lucide-react";
+import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { extractGPSFromImage } from "@/utils/exifExtractor";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
+import { compressVideoSafe, formatFileSize, CompressionProgress } from "@/utils/videoCompressor";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +120,8 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [rejectedFiles, setRejectedFiles] = useState<RejectedFile[]>([]);
   const [pendingValidFiles, setPendingValidFiles] = useState<{ files: UploadedFile[]; category: keyof typeof categoryConfig; useCamera: boolean } | null>(null);
+  const [compressingVideo, setCompressingVideo] = useState<string | null>(null);
+  const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
   const { toast } = useToast();
   const { t } = useI18n();
 
@@ -663,10 +667,40 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       if (!user) throw new Error("Not authenticated");
 
       for (const fileData of newFiles) {
-        const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileData.file.name}`;
+        let fileToUpload = fileData.file;
+        
+        // Compress video files before upload
+        if (fileData.file.type.startsWith('video/')) {
+          setCompressingVideo(fileData.preview);
+          setCompressionProgress({ stage: 'loading', progress: 0 });
+          
+          try {
+            const { file: compressedFile, wasCompressed, stats } = await compressVideoSafe(
+              fileData.file,
+              (progress) => setCompressionProgress(progress)
+            );
+            
+            fileToUpload = compressedFile;
+            
+            if (wasCompressed && stats) {
+              toast({
+                title: "🎬 Video compressed",
+                description: `${formatFileSize(stats.originalSize)} → ${formatFileSize(stats.compressedSize)} (${Math.round((1 - 1/stats.compressionRatio) * 100)}% smaller)`,
+              });
+            }
+          } catch (error) {
+            console.error('Video compression failed:', error);
+            // Continue with original file
+          } finally {
+            setCompressingVideo(null);
+            setCompressionProgress(null);
+          }
+        }
+        
+        const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileToUpload.name}`;
         const { error: uploadError } = await supabase.storage
           .from("restaurant-photos")
-          .upload(fileName, fileData.file);
+          .upload(fileName, fileToUpload);
 
         if (uploadError) throw uploadError;
 
@@ -1107,11 +1141,26 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
                   {file.category}
                 </Badge>
                 
+                {/* Video compression progress overlay */}
+                {compressingVideo === file.preview && compressionProgress && (
+                  <div className="absolute inset-0 bg-background/90 flex flex-col items-center justify-center rounded-lg p-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                    <p className="text-sm font-medium text-center mb-2">
+                      {compressionProgress.stage === 'loading' && 'Loading video...'}
+                      {compressionProgress.stage === 'compressing' && 'Compressing...'}
+                      {compressionProgress.stage === 'finalizing' && 'Finalizing...'}
+                    </p>
+                    <Progress value={compressionProgress.progress} className="w-full h-2" />
+                    <p className="text-xs text-muted-foreground mt-1">{compressionProgress.progress}%</p>
+                  </div>
+                )}
+                
                 <Button
                   variant="destructive"
                   size="icon"
                   className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => removeFile(file.preview)}
+                  disabled={compressingVideo === file.preview}
                 >
                   <X className="h-4 w-4" />
                 </Button>
