@@ -223,9 +223,11 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         });
       }
       
-      // Show dialog immediately
-      setLastCategory(category);
-      setShowAddMoreDialog(true);
+      // Show dialog only when using camera (library already allows multiple selection)
+      if (useCamera) {
+        setLastCategory(category);
+        setShowAddMoreDialog(true);
+      }
       
       // Process in background
       if (category === 'receipt' && newFiles.length > 0) {
