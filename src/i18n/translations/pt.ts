@@ -185,6 +185,12 @@ export const pt = {
     deleteSuccess: "Restaurante excluído com sucesso",
     loadFailed: "Falha ao carregar detalhes do restaurante",
     loading: "Carregando...",
+    translateMenu: "Traduzir AI",
+    translating: "Traduzindo...",
+    menuTranslation: "Tradução do Cardápio",
+    retranslate: "Traduzir novamente",
+    translationSaved: "Tradução salva!",
+    translationError: "Falha ao traduzir cardápio",
   },
   dining: {
     title: "Minhas Experiências Gastronômicas",

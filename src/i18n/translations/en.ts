@@ -185,6 +185,12 @@ export const en = {
     deleteSuccess: "Restaurant deleted successfully",
     loadFailed: "Failed to load restaurant details",
     loading: "Loading...",
+    translateMenu: "AI Translate",
+    translating: "Translating...",
+    menuTranslation: "Menu Translation",
+    retranslate: "Translate Again",
+    translationSaved: "Translation saved!",
+    translationError: "Failed to translate menu",
   },
   dining: {
     title: "My Dining Experiences",
