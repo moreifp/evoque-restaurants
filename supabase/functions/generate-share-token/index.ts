@@ -13,12 +13,17 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const authHeader = req.headers.get('Authorization')!;
     
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    // Use anon key with user's JWT for ownership verification
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    
+    // Use service role for token operations (bypasses RLS after ownership is verified)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const { entry_id } = await req.json();
 
@@ -32,7 +37,7 @@ serve(async (req) => {
     console.log('Generating token for entry_id:', entry_id);
 
     // Verify that the authenticated user owns this entry
-    const { data: entry, error: entryError } = await supabase
+    const { data: entry, error: entryError } = await supabaseUser
       .from('restaurant_entries')
       .select('id, user_id')
       .eq('id', entry_id)
@@ -56,8 +61,8 @@ serve(async (req) => {
 
     console.log('Ownership verified for entry:', entry_id);
 
-    // Check if token already exists for this entry
-    const { data: existing, error: existingError } = await supabase
+    // Check if token already exists for this entry (use admin client)
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from('share_tokens')
       .select('token')
       .eq('entry_id', entry_id)
@@ -88,7 +93,7 @@ serve(async (req) => {
 
     // Ensure token is unique
     while (attempts < maxAttempts) {
-      const { data: existingToken } = await supabase
+      const { data: existingToken } = await supabaseAdmin
         .from('share_tokens')
         .select('id')
         .eq('token', token)
@@ -110,7 +115,7 @@ serve(async (req) => {
     }
 
     // Insert new token
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('share_tokens')
       .insert({ token, entry_id })
       .select('token')
