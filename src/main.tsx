@@ -7,43 +7,26 @@ import "./index.css";
 declare global {
   interface Window {
     __GOOGLE_MAPS_API_KEY__: string;
-    __loadGoogleMaps?: () => void;
+    __loadGoogleMaps?: (apiKey?: string) => void;
     __googleMapsLoaded?: boolean;
   }
 }
 
-// Fetch Google Maps API key from edge function
-async function initGoogleMaps() {
-  try {
-    const response = await fetch(
-      'https://ljrtilsqwzebnbizmvis.supabase.co/functions/v1/get-google-maps-key'
-    );
-    
-    if (!response.ok) {
-      console.error('Failed to fetch Google Maps API key');
-      return;
-    }
-    
-    const data = await response.json();
-    
-    if (data.apiKey) {
-      window.__GOOGLE_MAPS_API_KEY__ = data.apiKey;
-      console.log('Google Maps API key loaded successfully');
-      
-      // Load Google Maps now that the API key is set
-      if (window.__loadGoogleMaps) {
-        window.__loadGoogleMaps();
-      }
-    } else {
-      console.error('No API key in response');
-    }
-  } catch (error) {
-    console.error('Error fetching Google Maps API key:', error);
+// Load Google Maps with API key from environment
+function loadGoogleMaps() {
+  // Try to get API key from Vite environment variable
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  
+  if (apiKey && window.__loadGoogleMaps) {
+    console.log('[Main] Loading Google Maps with VITE_GOOGLE_MAPS_API_KEY');
+    window.__loadGoogleMaps(apiKey);
+  } else if (!apiKey) {
+    console.warn('[Main] VITE_GOOGLE_MAPS_API_KEY not found in environment');
   }
 }
 
-// Initialize Google Maps API key
-initGoogleMaps();
+// Initialize Google Maps
+loadGoogleMaps();
 
 createRoot(document.getElementById("root")!).render(
   <I18nProvider>

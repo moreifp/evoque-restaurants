@@ -136,26 +136,44 @@
       });
       
       // Fallback: hide splash after 3 seconds regardless
-      setTimeout(hideSplash, 3000);
+    setTimeout(hideSplash, 3000);
     </script>
     <script>
+      // Google Maps auth failure handler
+      window.gm_authFailure = function() {
+        console.error('[Google Maps] Authentication failed - check API key restrictions');
+        window.dispatchEvent(new CustomEvent('google-maps-auth-failure'));
+      };
+      
       // Google Maps callback - dispatches event when ready
       window.initGoogleMaps = function() {
         console.log('[Google Maps] API loaded successfully');
+        console.log('[Google Maps] Maps available:', !!window.google?.maps?.Map);
+        console.log('[Google Maps] Places available:', !!window.google?.maps?.places);
         window.dispatchEvent(new Event('google-maps-loaded'));
       };
       
-      // Load Google Maps dynamically after main.tsx sets the API key
-      window.__loadGoogleMaps = function() {
-        if (window.__googleMapsLoaded || !window.__GOOGLE_MAPS_API_KEY__) return;
+      // Load Google Maps dynamically
+      window.__loadGoogleMaps = function(apiKey) {
+        if (window.__googleMapsLoaded) return;
+        
+        var key = apiKey || window.__GOOGLE_MAPS_API_KEY__;
+        if (!key) {
+          console.error('[Google Maps] No API key provided');
+          return;
+        }
+        
         window.__googleMapsLoaded = true;
-        console.log('[Google Maps] Loading script...');
+        window.__GOOGLE_MAPS_API_KEY__ = key;
+        console.log('[Google Maps] Loading script with key...');
+        
         var script = document.createElement('script');
-        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + window.__GOOGLE_MAPS_API_KEY__ + '&libraries=places&callback=initGoogleMaps';
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + key + '&libraries=places&callback=initGoogleMaps';
         script.async = true;
         script.defer = true;
         script.onerror = function() {
           console.error('[Google Maps] Failed to load script');
+          window.__googleMapsLoaded = false;
         };
         document.body.appendChild(script);
       };

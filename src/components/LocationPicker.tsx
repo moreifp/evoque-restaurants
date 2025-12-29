@@ -35,6 +35,7 @@ export const LocationPicker = ({
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [googleMapsReady, setGoogleMapsReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const onSelectRef = useRef(onLocationSelect);
   const { toast } = useToast();
 
@@ -43,10 +44,16 @@ export const LocationPicker = ({
     onSelectRef.current = onLocationSelect;
   }, [onLocationSelect]);
 
-  // Wait for Google Maps to be ready
+  // Wait for Google Maps to be ready (Maps + Places)
   useEffect(() => {
     const checkGoogleMaps = () => {
-      if ((window as any).google?.maps) {
+      const google = (window as any).google;
+      const hasMap = !!google?.maps?.Map;
+      const hasPlaces = !!google?.maps?.places;
+      
+      console.log('[LocationPicker] Checking Google Maps - Map:', hasMap, 'Places:', hasPlaces);
+      
+      if (hasMap && hasPlaces) {
         setGoogleMapsReady(true);
         return true;
       }
@@ -61,21 +68,45 @@ export const LocationPicker = ({
       if (checkGoogleMaps()) {
         clearInterval(interval);
       }
-    }, 200);
+    }, 500);
 
-    // Also listen for the load event
+    // Listen for the load event
     const handleGoogleMapsLoaded = () => {
-      setGoogleMapsReady(true);
+      console.log('[LocationPicker] Received google-maps-loaded event');
+      // Small delay to ensure Places is fully initialized
+      setTimeout(() => {
+        if (checkGoogleMaps()) {
+          clearInterval(interval);
+        }
+      }, 100);
+    };
+
+    // Listen for auth failure
+    const handleAuthFailure = () => {
+      console.error('[LocationPicker] Google Maps auth failure');
+      setLoadError('Google Maps API key error. Please check configuration.');
       clearInterval(interval);
     };
 
     window.addEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+    window.addEventListener('google-maps-auth-failure', handleAuthFailure);
+
+    // Timeout after 15 seconds
+    const timeout = setTimeout(() => {
+      if (!googleMapsReady) {
+        console.error('[LocationPicker] Timeout waiting for Google Maps');
+        setLoadError('Google Maps failed to load. Please refresh the page.');
+        clearInterval(interval);
+      }
+    }, 15000);
 
     return () => {
       clearInterval(interval);
+      clearTimeout(timeout);
       window.removeEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+      window.removeEventListener('google-maps-auth-failure', handleAuthFailure);
     };
-  }, []);
+  }, [googleMapsReady]);
 
   // Initialize map only when Google Maps is ready
   useEffect(() => {
@@ -196,6 +227,7 @@ export const LocationPicker = ({
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
+        console.log('[LocationPicker] Got location:', lat, lng);
 
         if (map) {
           map.setCenter({ lat, lng });
@@ -222,7 +254,8 @@ export const LocationPicker = ({
               radius: 1000,
               type: "restaurant",
             },
-            () => {
+            (results: any, status: any) => {
+              console.log('[LocationPicker] Nearby search status:', status, 'Results:', results?.length);
               toast({
                 title: "Location found",
                 description: "Showing restaurants near you. Click on the map to select one.",
@@ -233,15 +266,42 @@ export const LocationPicker = ({
         setLoadingLocation(false);
       },
       (error) => {
+        // Detailed error for debugging
+        const errorMessages: Record<number, string> = {
+          1: "Location permission denied. Please allow location access in your browser settings.",
+          2: "Location unavailable. Please try again or search manually.",
+          3: "Location request timed out. Please try again.",
+        };
+        const description = errorMessages[error.code] || `Error: ${error.message}`;
+        console.error('[LocationPicker] Geolocation error:', error.code, error.message);
+        
         toast({
           title: "Location error",
-          description: "Could not get your location. Please search manually.",
+          description,
           variant: "destructive",
         });
         setLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
   };
+
+  if (loadError) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="location" className="text-lg">Restaurant Location</Label>
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-destructive">{loadError}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!googleMapsReady) {
     return (
