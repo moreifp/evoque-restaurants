@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -33,6 +34,7 @@ export const LocationPicker = ({
   const [marker, setMarker] = useState<any>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [googleMapsReady, setGoogleMapsReady] = useState(false);
   const onSelectRef = useRef(onLocationSelect);
   const { toast } = useToast();
 
@@ -41,9 +43,43 @@ export const LocationPicker = ({
     onSelectRef.current = onLocationSelect;
   }, [onLocationSelect]);
 
-  // Initialize map
+  // Wait for Google Maps to be ready
   useEffect(() => {
-    if (!mapRef.current || !(window as any).google) return;
+    const checkGoogleMaps = () => {
+      if ((window as any).google?.maps) {
+        setGoogleMapsReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Check immediately
+    if (checkGoogleMaps()) return;
+
+    // Poll for Google Maps to load
+    const interval = setInterval(() => {
+      if (checkGoogleMaps()) {
+        clearInterval(interval);
+      }
+    }, 200);
+
+    // Also listen for the load event
+    const handleGoogleMapsLoaded = () => {
+      setGoogleMapsReady(true);
+      clearInterval(interval);
+    };
+
+    window.addEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+    };
+  }, []);
+
+  // Initialize map only when Google Maps is ready
+  useEffect(() => {
+    if (!mapRef.current || !googleMapsReady) return;
 
     const google = (window as any).google;
     
@@ -100,11 +136,11 @@ export const LocationPicker = ({
         }
       });
     });
-  }, []);
+  }, [googleMapsReady]);
 
   // Setup autocomplete
   useEffect(() => {
-    if (!inputRef.current || !(window as any).google || !map) return;
+    if (!inputRef.current || !googleMapsReady || !map) return;
 
     const google = (window as any).google;
     const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
@@ -143,7 +179,7 @@ export const LocationPicker = ({
         }
       }
     });
-  }, [map]);
+  }, [map, googleMapsReady]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -207,6 +243,24 @@ export const LocationPicker = ({
     );
   };
 
+  if (!googleMapsReady) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="location" className="text-lg">Restaurant Location</Label>
+          <div className="flex space-x-2">
+            <Skeleton className="flex-1 h-12" />
+            <Skeleton className="h-12 w-12" />
+          </div>
+          <p className="text-base text-muted-foreground">
+            Loading Google Maps...
+          </p>
+        </div>
+        <Skeleton className="w-full h-64 rounded-lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -226,7 +280,7 @@ export const LocationPicker = ({
             variant="outline"
             className="h-12 w-12"
             onClick={getCurrentLocation}
-            disabled={loadingLocation}
+            disabled={loadingLocation || !googleMapsReady}
           >
             {loadingLocation ? (
               <Loader2 className="h-5 w-5 animate-spin" />
