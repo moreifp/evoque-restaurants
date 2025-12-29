@@ -139,14 +139,24 @@
       setTimeout(hideSplash, 3000);
     </script>
     <script>
+      // Google Maps callback - dispatches event when ready
+      window.initGoogleMaps = function() {
+        console.log('[Google Maps] API loaded successfully');
+        window.dispatchEvent(new Event('google-maps-loaded'));
+      };
+      
       // Load Google Maps dynamically after main.tsx sets the API key
       window.__loadGoogleMaps = function() {
         if (window.__googleMapsLoaded || !window.__GOOGLE_MAPS_API_KEY__) return;
         window.__googleMapsLoaded = true;
+        console.log('[Google Maps] Loading script...');
         var script = document.createElement('script');
-        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + window.__GOOGLE_MAPS_API_KEY__ + '&libraries=places&callback=Function.prototype';
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + window.__GOOGLE_MAPS_API_KEY__ + '&libraries=places&callback=initGoogleMaps';
         script.async = true;
         script.defer = true;
+        script.onerror = function() {
+          console.error('[Google Maps] Failed to load script');
+        };
         document.body.appendChild(script);
       };
     </script>
