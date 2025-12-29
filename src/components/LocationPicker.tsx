@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
+
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -290,13 +291,36 @@ export const LocationPicker = ({
     );
   };
 
+  const handleRetry = () => {
+    setLoadError(null);
+    setGoogleMapsReady(false);
+    if (window.__retryGoogleMaps) {
+      window.__retryGoogleMaps();
+    } else if (window.__loadGoogleMaps) {
+      window.__googleMapsLoaded = false;
+      window.__loadGoogleMaps();
+    }
+  };
+
   if (loadError) {
     return (
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="location" className="text-lg">Restaurant Location</Label>
-          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-destructive">{loadError}</p>
+          <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-destructive font-medium">{loadError}</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRetry}
+              className="w-full"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
           </div>
         </div>
       </div>

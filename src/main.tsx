@@ -3,12 +3,13 @@ import { I18nProvider } from "./i18n/i18n";
 import App from "./App.tsx";
 import "./index.css";
 
-// Set Google Maps API key for dynamic loading in index.html
+// Google Maps global declarations
 declare global {
   interface Window {
-    __GOOGLE_MAPS_API_KEY__: string;
+    __GOOGLE_MAPS_API_KEY__?: string;
     __loadGoogleMaps?: (apiKey?: string) => void;
     __googleMapsLoaded?: boolean;
+    __retryGoogleMaps?: () => void;
   }
 }
 
