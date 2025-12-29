@@ -15,31 +15,86 @@ const state: LoaderState = {
   error: null,
 };
 
+// Global error capture for Google Maps API errors
+let lastGoogleError: string | null = null;
+
+// Setup global error listener (call once)
+function setupGlobalErrorListener() {
+  if ((window as any).__gmErrorListenerSetup) return;
+  (window as any).__gmErrorListenerSetup = true;
+  
+  // Capture console.error calls from Google Maps
+  const originalConsoleError = console.error;
+  console.error = function(...args: any[]) {
+    const msg = args.join(' ');
+    if (msg.includes('Google Maps JavaScript API error:') || 
+        msg.includes('Google Maps API error:') ||
+        msg.includes('InvalidKeyMapError') ||
+        msg.includes('RefererNotAllowedMapError') ||
+        msg.includes('ApiNotActivatedMapError')) {
+      lastGoogleError = msg;
+      state.error = msg;
+      console.log('[GoogleMapsLoader] Captured API error:', msg);
+    }
+    originalConsoleError.apply(console, args);
+  };
+  
+  // Also listen for window errors
+  window.addEventListener('error', (event) => {
+    if (event.message?.includes('google') || event.message?.includes('maps')) {
+      lastGoogleError = event.message;
+      state.error = event.message;
+    }
+  });
+}
+
 // Check if Google Maps is fully ready (Map + Places)
 export function isGoogleMapsReady(): boolean {
   const google = (window as any).google;
   return !!(google?.maps?.Map && google?.maps?.places);
 }
 
-// Get last error
+// Get last error (from loader or Google API)
 export function getGoogleMapsError(): string | null {
-  return state.error;
+  return lastGoogleError || state.error;
 }
 
-// Reset loader state (for retry)
+// Get current origin for debugging domain restrictions
+export function getCurrentOrigin(): string {
+  return window.location.origin;
+}
+
+// Reset loader state (for retry) - more aggressive cleanup
 export function resetGoogleMapsLoader(): void {
   state.promise = null;
   state.loaded = false;
   state.error = null;
+  lastGoogleError = null;
   
   // Remove existing script
   const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
   if (existingScript) {
     existingScript.remove();
+    console.log('[GoogleMapsLoader] Removed existing script');
   }
   
-  // Reset global flags
-  (window as any).__googleMapsLoaded = false;
+  // Remove all Google Maps related scripts
+  document.querySelectorAll('script[src*="googleapis.com"]').forEach(s => {
+    s.remove();
+    console.log('[GoogleMapsLoader] Removed googleapis script');
+  });
+  
+  // Reset global Google object
+  const win = window as any;
+  if (win.google?.maps) {
+    delete win.google.maps;
+    console.log('[GoogleMapsLoader] Deleted google.maps');
+  }
+  
+  // Reset all global flags
+  win.__googleMapsLoaded = false;
+  delete win.initGoogleMaps;
+  delete win.gm_authFailure;
   
   // Clear PWA cache for Google Maps
   if ('caches' in window) {
@@ -56,10 +111,19 @@ export function resetGoogleMapsLoader(): void {
 
 // Main loader function
 export function loadGoogleMaps(): Promise<void> {
-  // Already loaded
-  if (isGoogleMapsReady()) {
+  // Setup error listener on first call
+  setupGlobalErrorListener();
+  
+  // Already loaded - but verify it's actually working
+  if (isGoogleMapsReady() && !lastGoogleError) {
     console.log('[GoogleMapsLoader] Already ready');
     return Promise.resolve();
+  }
+  
+  // If there was an error, don't reuse - force reset
+  if (lastGoogleError || state.error) {
+    console.log('[GoogleMapsLoader] Previous error detected, resetting...');
+    resetGoogleMapsLoader();
   }
   
   // Already loading
@@ -68,7 +132,7 @@ export function loadGoogleMaps(): Promise<void> {
     return state.promise;
   }
   
-  console.log('[GoogleMapsLoader] Starting load...');
+  console.log('[GoogleMapsLoader] Starting load... Origin:', getCurrentOrigin());
   
   state.promise = new Promise<void>(async (resolve, reject) => {
     try {
@@ -89,9 +153,10 @@ export function loadGoogleMaps(): Promise<void> {
       
       // Setup auth failure handler
       (window as any).gm_authFailure = () => {
-        const errorMsg = 'API key error: check billing, enabled APIs, or domain restrictions';
+        const errorMsg = `API key rejected. Origin: ${getCurrentOrigin()}. Check billing, enabled APIs (Maps JS + Places), or add this domain to allowed referrers.`;
         console.error('[GoogleMapsLoader] Auth failure:', errorMsg);
         state.error = errorMsg;
+        lastGoogleError = errorMsg;
         reject(new Error(errorMsg));
       };
       
@@ -108,7 +173,7 @@ export function loadGoogleMaps(): Promise<void> {
           window.dispatchEvent(new Event('google-maps-loaded'));
           resolve();
         } else {
-          const errorMsg = 'Google Maps loaded but Places API not available';
+          const errorMsg = 'Google Maps loaded but Places API not available. Enable Places API in Google Cloud Console.';
           console.error('[GoogleMapsLoader]', errorMsg);
           state.error = errorMsg;
           reject(new Error(errorMsg));
@@ -129,7 +194,7 @@ export function loadGoogleMaps(): Promise<void> {
       script.defer = true;
       
       script.onerror = () => {
-        const errorMsg = 'Failed to load Google Maps script (network or blocked)';
+        const errorMsg = `Failed to load Google Maps script. Origin: ${getCurrentOrigin()}. Check network/ad-blockers.`;
         console.error('[GoogleMapsLoader]', errorMsg);
         state.error = errorMsg;
         state.promise = null;
@@ -142,7 +207,7 @@ export function loadGoogleMaps(): Promise<void> {
       // Timeout after 20 seconds
       setTimeout(() => {
         if (!state.loaded) {
-          const errorMsg = 'Timeout loading Google Maps';
+          const errorMsg = `Timeout loading Google Maps. Origin: ${getCurrentOrigin()}`;
           console.error('[GoogleMapsLoader]', errorMsg);
           state.error = errorMsg;
           state.promise = null;
