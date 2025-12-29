@@ -31,6 +31,7 @@ const Agenda = lazy(() => import("./pages/Agenda"));
 const PlanDetail = lazy(() => import("./pages/PlanDetail"));
 const Following = lazy(() => import("./pages/Following"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const MapsDebug = lazy(() => import("./pages/MapsDebug"));
 
 // Create QueryClient outside component to prevent re-creation on renders
 const queryClient = new QueryClient({
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="/share/:id" element={<SharedRestaurant />} />
         <Route path="/s/:token" element={<SharedByToken />} />
         <Route path="/token" element={<TokenInput />} />
+        <Route path="/maps-debug" element={<MapsDebug />} />
 
         {/* Redirects for old routes */}
         <Route
