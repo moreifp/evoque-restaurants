@@ -153,29 +153,64 @@
         window.dispatchEvent(new Event('google-maps-loaded'));
       };
       
-      // Load Google Maps dynamically
+      // Load Google Maps dynamically with cache busting
       window.__loadGoogleMaps = function(apiKey) {
-        if (window.__googleMapsLoaded) return;
+        if (window.__googleMapsLoaded && window.google?.maps?.places) {
+          console.log('[Google Maps] Already loaded');
+          window.dispatchEvent(new Event('google-maps-loaded'));
+          return;
+        }
         
         var key = apiKey || window.__GOOGLE_MAPS_API_KEY__;
         if (!key) {
           console.error('[Google Maps] No API key provided');
+          window.dispatchEvent(new CustomEvent('google-maps-load-error', { detail: 'No API key' }));
           return;
         }
         
         window.__googleMapsLoaded = true;
         window.__GOOGLE_MAPS_API_KEY__ = key;
-        console.log('[Google Maps] Loading script with key...');
+        console.log('[Google Maps] Loading script...');
+        
+        // Remove any existing Google Maps script
+        var existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+        if (existingScript) {
+          existingScript.remove();
+        }
         
         var script = document.createElement('script');
-        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + key + '&libraries=places&callback=initGoogleMaps';
+        // Add cache buster to prevent PWA from serving stale version
+        var cacheBuster = Date.now();
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + key + '&libraries=places&callback=initGoogleMaps&v=weekly&_cb=' + cacheBuster;
         script.async = true;
         script.defer = true;
         script.onerror = function() {
           console.error('[Google Maps] Failed to load script');
           window.__googleMapsLoaded = false;
+          window.dispatchEvent(new CustomEvent('google-maps-load-error', { detail: 'Script load failed' }));
         };
         document.body.appendChild(script);
+      };
+      
+      // Retry function for manual reload
+      window.__retryGoogleMaps = function() {
+        console.log('[Google Maps] Retrying...');
+        window.__googleMapsLoaded = false;
+        // Clear PWA cache for Google Maps
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            names.forEach(function(name) {
+              if (name.includes('google') || name.includes('maps')) {
+                caches.delete(name);
+                console.log('[Google Maps] Cleared cache:', name);
+              }
+            });
+          });
+        }
+        // Reload after short delay
+        setTimeout(function() {
+          window.__loadGoogleMaps();
+        }, 100);
       };
     </script>
     <script type="module" src="/src/main.tsx"></script>
