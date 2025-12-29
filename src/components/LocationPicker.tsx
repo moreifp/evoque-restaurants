@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { MapPin, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { MapPin, Loader2, RefreshCw, AlertTriangle, MapPinOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
-import { loadGoogleMaps, resetGoogleMapsLoader, isGoogleMapsReady } from "@/lib/googleMapsLoader";
+import { loadGoogleMaps, resetGoogleMapsLoader, isGoogleMapsReady, getGoogleMapsError, getCurrentOrigin } from "@/lib/googleMapsLoader";
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -302,7 +302,31 @@ export const LocationPicker = ({
     }, 200);
   }, []);
 
+  // Manual address fallback when Maps fails
+  const [useManualFallback, setUseManualFallback] = useState(false);
+  const [manualName, setManualName] = useState(initialValue || "");
+  const [manualAddress, setManualAddress] = useState("");
+
+  const handleManualSubmit = () => {
+    if (manualName.trim()) {
+      onSelectRef.current({
+        name: manualName.trim(),
+        address: manualAddress.trim() || "Address not specified",
+        lat: 0,
+        lng: 0,
+        placeId: undefined,
+      });
+      toast({
+        title: "Location saved",
+        description: "Using manual entry (no map coordinates)",
+      });
+    }
+  };
+
   if (loadError) {
+    const detailedError = getGoogleMapsError() || loadError;
+    const origin = getCurrentOrigin();
+    
     return (
       <div className="space-y-4">
         <div className="space-y-2">
@@ -312,19 +336,62 @@ export const LocationPicker = ({
               <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="text-destructive font-medium">Google Maps failed to load</p>
-                <p className="text-sm text-muted-foreground">{loadError}</p>
+                <p className="text-sm text-muted-foreground break-all">{detailedError}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  <strong>Current origin:</strong> {origin}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Make sure this domain is allowed in your Google Cloud API key restrictions.
+                </p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRetry}
-              className="w-full"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRetry}
+                className="flex-1"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setUseManualFallback(true)}
+                className="flex-1"
+              >
+                <MapPinOff className="h-4 w-4 mr-2" />
+                Enter Manually
+              </Button>
+            </div>
           </div>
+          
+          {/* Manual fallback form */}
+          {useManualFallback && (
+            <div className="p-4 bg-secondary/50 border border-border rounded-lg space-y-3 mt-3">
+              <p className="text-sm font-medium">Manual Entry (no map)</p>
+              <Input
+                placeholder="Restaurant name"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                className="h-12"
+              />
+              <Input
+                placeholder="Address (optional)"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+                className="h-12"
+              />
+              <Button 
+                onClick={handleManualSubmit} 
+                disabled={!manualName.trim()}
+                className="w-full"
+              >
+                Use This Location
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );

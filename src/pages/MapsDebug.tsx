@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, CheckCircle, XCircle, Loader2, MapPin } from "lucide-react";
-import { loadGoogleMaps, resetGoogleMapsLoader, isGoogleMapsReady, getGoogleMapsError } from "@/lib/googleMapsLoader";
+import { RefreshCw, CheckCircle, XCircle, Loader2, MapPin, AlertTriangle, Copy } from "lucide-react";
+import { loadGoogleMaps, resetGoogleMapsLoader, isGoogleMapsReady, getGoogleMapsError, getCurrentOrigin } from "@/lib/googleMapsLoader";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MapsDebug() {
   const [loading, setLoading] = useState(false);
@@ -12,8 +13,12 @@ export default function MapsDebug() {
   const [hasMap, setHasMap] = useState(false);
   const [hasPlaces, setHasPlaces] = useState(false);
   const [tilesLoaded, setTilesLoaded] = useState(false);
+  const [tilesError, setTilesError] = useState(false);
   const [loadTime, setLoadTime] = useState<number | null>(null);
   const [autocompleteWorking, setAutocompleteWorking] = useState(false);
+  const [origin] = useState(getCurrentOrigin());
+  const [userAgent] = useState(navigator.userAgent);
+  const { toast } = useToast();
   
   const mapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,31 +74,54 @@ export default function MapsDebug() {
     });
     mapInstanceRef.current = map;
     
-    // Watch for tiles
+    // Watch for tiles with timeout
+    let tilesTimeout: NodeJS.Timeout;
+    
     map.addListener('tilesloaded', () => {
       console.log('[MapsDebug] Tiles loaded');
       setTilesLoaded(true);
+      setTilesError(false);
+      clearTimeout(tilesTimeout);
     });
+    
+    // If tiles don't load in 10s, mark as error
+    tilesTimeout = setTimeout(() => {
+      if (!tilesLoaded) {
+        console.error('[MapsDebug] Tiles failed to load in 10s');
+        setTilesError(true);
+        setError(prev => prev || `Tiles not loaded. Origin: ${origin}. This usually means billing issues or domain not allowed.`);
+      }
+    }, 10000);
     
     // Setup autocomplete
     if (inputRef.current) {
-      const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-        types: ["establishment"],
-      });
-      
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry) {
-          setAutocompleteWorking(true);
-          map.setCenter(place.geometry.location);
-          map.setZoom(15);
-          new google.maps.Marker({
-            position: place.geometry.location,
-            map,
-          });
-        }
-      });
+      try {
+        const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+          types: ["establishment"],
+        });
+        
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (place.geometry) {
+            setAutocompleteWorking(true);
+            map.setCenter(place.geometry.location);
+            map.setZoom(15);
+            new google.maps.Marker({
+              position: place.geometry.location,
+              map,
+            });
+          }
+        });
+      } catch (err: any) {
+        console.error('[MapsDebug] Autocomplete setup failed:', err);
+        setError(prev => prev || `Autocomplete failed: ${err.message}`);
+      }
     }
+  };
+  
+  const copyOrigin = () => {
+    navigator.clipboard.writeText(origin);
+    toast({ title: "Origin copied", description: origin });
   };
 
   // Check on mount
@@ -114,6 +142,32 @@ export default function MapsDebug() {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-2xl mx-auto space-y-4">
+        {/* Origin & Environment Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <AlertTriangle className="h-5 w-5" />
+              Environment Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Origin:</span>
+              <code className="text-xs bg-muted px-2 py-1 rounded flex-1 overflow-hidden text-ellipsis">{origin}</code>
+              <Button variant="ghost" size="sm" onClick={copyOrigin}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <div>
+              <span className="text-sm font-medium">User Agent:</span>
+              <p className="text-xs text-muted-foreground mt-1 break-all">{userAgent}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ⚠️ This origin must be allowed in your Google Cloud API key restrictions!
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -126,7 +180,7 @@ export default function MapsDebug() {
             <div className="flex flex-wrap gap-2">
               <StatusBadge ok={hasMap} label="Map API" />
               <StatusBadge ok={hasPlaces} label="Places API" />
-              <StatusBadge ok={tilesLoaded} label="Tiles" />
+              <StatusBadge ok={tilesLoaded && !tilesError} label="Tiles" />
               <StatusBadge ok={autocompleteWorking} label="Autocomplete" />
             </div>
             
@@ -139,9 +193,22 @@ export default function MapsDebug() {
             
             {/* Error */}
             {error && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <p className="text-sm text-destructive font-medium">Error:</p>
-                <p className="text-sm text-destructive/80">{error}</p>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-destructive font-medium">Error Detected</p>
+                    <p className="text-sm text-destructive/80 break-all">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Tiles warning */}
+            {tilesError && !error && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <p className="text-sm text-amber-600 font-medium">⚠️ Tiles Not Loading</p>
+                <p className="text-sm text-amber-600/80">Map API loaded but tiles won't render. Check billing and domain restrictions.</p>
               </div>
             )}
             
