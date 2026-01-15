@@ -7,15 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
+import { useDespia } from "@/contexts/DespiaContext";
+import { useBiometricAuth } from "@/hooks/useBiometricAuth";
+import { useNativeNotifications } from "@/hooks/useNativeNotifications";
 
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useI18n();
+  
+  // Native features - only active on iOS app
+  const { isNative } = useDespia();
+  const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, enableBiometric, disableBiometric, getBiometricLabel } = useBiometricAuth();
+  const { isAvailable: notificationsAvailable, requestPermission, registerPushToken } = useNativeNotifications();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   
   // Profile state
   const [email, setEmail] = useState("");
@@ -457,6 +467,88 @@ export default function Account() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Native Features Section - Only visible on iOS native app */}
+          {isNative && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="h-5 w-5" />
+                  Native Features
+                </CardTitle>
+                <CardDescription>Settings available only in the iOS app</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Biometric Login */}
+                {biometricAvailable && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Fingerprint className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{getBiometricLabel()} Login</p>
+                        <p className="text-sm text-muted-foreground">
+                          Sign in quickly with {getBiometricLabel()}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={biometricEnabled}
+                      onCheckedChange={async (checked) => {
+                        if (checked) {
+                          const success = await enableBiometric();
+                          if (success) {
+                            toast({ title: `${getBiometricLabel()} enabled` });
+                          }
+                        } else {
+                          const success = await disableBiometric();
+                          if (success) {
+                            toast({ title: `${getBiometricLabel()} disabled` });
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Push Notifications */}
+                {notificationsAvailable && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Bell className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Push Notifications</p>
+                        <p className="text-sm text-muted-foreground">
+                          Get notified about reservations and updates
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={notificationsEnabled}
+                      onCheckedChange={async (checked) => {
+                        if (checked) {
+                          const granted = await requestPermission();
+                          if (granted) {
+                            await registerPushToken();
+                            setNotificationsEnabled(true);
+                            toast({ title: "Notifications enabled" });
+                          } else {
+                            toast({ 
+                              title: "Permission denied", 
+                              description: "Please enable notifications in your device settings",
+                              variant: "destructive" 
+                            });
+                          }
+                        } else {
+                          setNotificationsEnabled(false);
+                          toast({ title: "Notifications disabled" });
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Legal Section */}
           <Card>

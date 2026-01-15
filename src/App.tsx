@@ -11,6 +11,7 @@ import { PWAUpdatePrompt } from "@/components/pwa/PWAUpdatePrompt";
 import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import { SplashScreen } from "@/components/pwa/SplashScreen";
 import { useStandaloneMode } from "@/hooks/useStandaloneMode";
+import { DespiaProvider } from "@/contexts/DespiaContext";
 import { Auth } from "./components/Auth";
 
 // Lazy load pages for better performance
@@ -120,17 +121,19 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <ErrorBoundary>
-          <SplashScreen />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-            <PWAInstallPrompt />
-            <IOSInstallPrompt />
-            <PWAUpdatePrompt />
-          </BrowserRouter>
-        </ErrorBoundary>
+        <DespiaProvider>
+          <ErrorBoundary>
+            <SplashScreen />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+              <PWAInstallPrompt />
+              <IOSInstallPrompt />
+              <PWAUpdatePrompt />
+            </BrowserRouter>
+          </ErrorBoundary>
+        </DespiaProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

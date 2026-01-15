@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import evoqueLogo from "@/assets/evoque-logo.svg";
 import { z } from "zod";
+import { useDespia } from "@/contexts/DespiaContext";
+import { useBiometricAuth } from "@/hooks/useBiometricAuth";
+import { Fingerprint } from "lucide-react";
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -45,8 +48,70 @@ export const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [biometricLoading, setBiometricLoading] = useState(false);
   const { toast } = useToast();
   const { t } = useI18n();
+  
+  // Native features - only active on iOS app
+  const { isNative } = useDespia();
+  const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, biometricLogin, getBiometricLabel, loading: biometricStateLoading } = useBiometricAuth();
+
+  // Attempt biometric login on mount (only for native iOS app)
+  useEffect(() => {
+    const attemptBiometricLogin = async () => {
+      if (!isNative || !biometricAvailable || !biometricEnabled || biometricStateLoading) return;
+      
+      setBiometricLoading(true);
+      try {
+        const success = await biometricLogin();
+        if (success) {
+          toast({
+            title: t("auth.signInSuccess"),
+            description: `Signed in with ${getBiometricLabel()}`,
+          });
+        }
+      } catch (error) {
+        console.error('[Auth] Biometric login error:', error);
+      } finally {
+        setBiometricLoading(false);
+      }
+    };
+
+    // Small delay to ensure everything is ready
+    const timer = setTimeout(attemptBiometricLogin, 500);
+    return () => clearTimeout(timer);
+  }, [isNative, biometricAvailable, biometricEnabled, biometricStateLoading]);
+
+  // Manual biometric login handler
+  const handleBiometricLogin = async () => {
+    if (!isNative || !biometricAvailable || !biometricEnabled) return;
+    
+    setBiometricLoading(true);
+    try {
+      const success = await biometricLogin();
+      if (success) {
+        toast({
+          title: t("auth.signInSuccess"),
+          description: `Signed in with ${getBiometricLabel()}`,
+        });
+      } else {
+        toast({
+          title: "Authentication Failed",
+          description: "Please try again or use your password",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('[Auth] Biometric login error:', error);
+      toast({
+        title: "Error",
+        description: "Biometric authentication failed",
+        variant: "destructive",
+      });
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   // Validate password in real-time for sign up
   const validatePassword = (pwd: string) => {
@@ -212,6 +277,20 @@ export const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Biometric Login Button - Only visible on iOS native app */}
+          {isNative && biometricAvailable && biometricEnabled && !isSignUp && !isForgotPassword && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mb-4"
+              onClick={handleBiometricLogin}
+              disabled={biometricLoading || loading}
+            >
+              <Fingerprint className="w-5 h-5 mr-2" />
+              {biometricLoading ? "Authenticating..." : `Sign in with ${getBiometricLabel()}`}
+            </Button>
+          )}
+
           {!isForgotPassword && (
             <>
               <Button
