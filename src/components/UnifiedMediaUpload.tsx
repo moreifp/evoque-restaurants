@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils, Loader2 } from "lucide-react";
+import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils, Loader2, Camera, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -124,6 +124,9 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const [pendingValidFiles, setPendingValidFiles] = useState<{ files: UploadedFile[]; category: keyof typeof categoryConfig; useCamera: boolean } | null>(null);
   const [compressingVideo, setCompressingVideo] = useState<string | null>(null);
   const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
+  // Source selection dialog for native iOS (to bypass "Scan Document" option)
+  const [showSourceDialog, setShowSourceDialog] = useState(false);
+  const [sourceCategory, setSourceCategory] = useState<keyof typeof categoryConfig | null>(null);
   const { toast } = useToast();
   const { t } = useI18n();
   
@@ -255,15 +258,40 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       const result = await takePicture({ camera: 'back', quality: 0.9 });
       if (!result) return false;
 
-      // Convert native result to File
-      const file = await mediaResultToFile({
-        uri: result.uri,
-        type: 'image',
-        name: `photo_${Date.now()}.jpg`,
-        size: 0,
-      });
+      let file: File | null = null;
+      const fileName = `photo_${Date.now()}.jpg`;
 
-      if (!file) return false;
+      // Use base64 if available for more reliable file creation
+      if (result.base64) {
+        try {
+          const byteString = atob(result.base64);
+          const ab = new ArrayBuffer(byteString.length);
+          const ia = new Uint8Array(ab);
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+          const blob = new Blob([ab], { type: 'image/jpeg' });
+          file = new File([blob], fileName, { type: 'image/jpeg' });
+          console.log('[UnifiedMediaUpload] Created file from base64:', { name: file.name, type: file.type, size: file.size });
+        } catch (base64Error) {
+          console.error('[UnifiedMediaUpload] Base64 conversion failed, falling back to URI:', base64Error);
+        }
+      }
+
+      // Fallback to URI fetch if base64 failed or wasn't available
+      if (!file) {
+        file = await mediaResultToFile({
+          uri: result.uri,
+          type: 'image',
+          name: fileName,
+          size: 0,
+        });
+      }
+
+      if (!file) {
+        console.error('[UnifiedMediaUpload] Failed to create file from camera result');
+        return false;
+      }
 
       const newFile: UploadedFile = {
         file,
@@ -307,6 +335,18 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
     } catch (error) {
       console.error('[UnifiedMediaUpload] Native gallery error:', error);
       return false;
+    }
+  };
+
+  // Handle category button tap - show source dialog on native iOS
+  const handleCategoryTap = (category: keyof typeof categoryConfig) => {
+    if (isNative && nativeCameraAvailable) {
+      // Show our custom dialog with only Camera and Photo Library options (no Scan Document)
+      setSourceCategory(category);
+      setShowSourceDialog(true);
+    } else {
+      // Web/PWA behavior - go directly to file picker
+      handleFileSelect(category);
     }
   };
 
@@ -887,7 +927,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
             <button
               key={category}
               type="button"
-              onClick={() => handleFileSelect(category)}
+              onClick={() => handleCategoryTap(category)}
               className="flex flex-col items-center justify-center h-40 rounded-2xl border-2 transition-all hover:border-[#0d1a2d] hover:shadow-lg bg-background"
               style={{ borderColor: 'rgba(13, 26, 45, 0.12)' }}
             >
@@ -936,7 +976,57 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* File Size Rejection Dialog */}
+      {/* Native iOS Source Selection Dialog (Camera or Photo Library - no Scan Document) */}
+      <AlertDialog open={showSourceDialog} onOpenChange={setShowSourceDialog}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-2xl">
+              {sourceCategory ? categoryConfig[sourceCategory].label : t("unifiedMediaUpload.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">
+              {t("unifiedMediaUpload.sourceDialog.description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-3 mt-4">
+            <Button
+              size="lg"
+              className="w-full h-16 text-lg font-semibold bg-navy hover:bg-navy/90 text-white"
+              onClick={() => {
+                setShowSourceDialog(false);
+                if (sourceCategory) {
+                  setTimeout(() => handleFileSelect(sourceCategory, true), 100);
+                }
+              }}
+            >
+              <Camera className="h-6 w-6 mr-3" />
+              {t("unifiedMediaUpload.sourceDialog.camera")}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full h-16 text-lg font-semibold"
+              onClick={() => {
+                setShowSourceDialog(false);
+                if (sourceCategory) {
+                  setTimeout(() => handleFileSelect(sourceCategory, false), 100);
+                }
+              }}
+            >
+              <Image className="h-6 w-6 mr-3" />
+              {t("unifiedMediaUpload.sourceDialog.photoLibrary")}
+            </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowSourceDialog(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
