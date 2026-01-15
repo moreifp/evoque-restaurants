@@ -200,24 +200,60 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          biometric_enabled: boolean | null
           created_at: string | null
           display_name: string | null
           id: string
+          notification_preferences: Json | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          biometric_enabled?: boolean | null
           created_at?: string | null
           display_name?: string | null
           id: string
+          notification_preferences?: Json | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          biometric_enabled?: boolean | null
           created_at?: string | null
           display_name?: string | null
           id?: string
+          notification_preferences?: Json | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          created_at: string | null
+          device_name: string | null
+          id: string
+          platform: string
+          token: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_name?: string | null
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          device_name?: string | null
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -498,6 +534,7 @@ export type Database = {
           end_datetime: string
           google_place_id: string | null
           id: string
+          local_notification_id: string | null
           location_address: string | null
           maps_url: string | null
           meal_type: string
@@ -521,6 +558,7 @@ export type Database = {
           end_datetime: string
           google_place_id?: string | null
           id?: string
+          local_notification_id?: string | null
           location_address?: string | null
           maps_url?: string | null
           meal_type?: string
@@ -544,6 +582,7 @@ export type Database = {
           end_datetime?: string
           google_place_id?: string | null
           id?: string
+          local_notification_id?: string | null
           location_address?: string | null
           maps_url?: string | null
           meal_type?: string
