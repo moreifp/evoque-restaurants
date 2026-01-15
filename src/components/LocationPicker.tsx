@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
 import { loadGoogleMaps, resetGoogleMapsLoader, isGoogleMapsReady, getGoogleMapsError, getCurrentOrigin } from "@/lib/googleMapsLoader";
+import { useNativeLocation } from "@/hooks/useNativeLocation";
 
 interface LocationPickerProps {
   onLocationSelect: (location: {
@@ -40,6 +41,9 @@ export const LocationPicker = ({
   const [tilesLoaded, setTilesLoaded] = useState(false);
   const onSelectRef = useRef(onLocationSelect);
   const { toast } = useToast();
+  
+  // Native location - only active on iOS app for more precise GPS
+  const { isNativeAvailable, getCurrentPosition: getNativePosition } = useNativeLocation();
 
   // Keep latest callback without re-initializing map
   useEffect(() => {
@@ -205,58 +209,77 @@ export const LocationPicker = ({
     });
   }, [map, loading, loadError, marker]);
 
-  const getCurrentLocation = useCallback(() => {
+  // Handle location result (shared between native and web)
+  const handleLocationResult = useCallback((lat: number, lng: number) => {
+    console.log('[LocationPicker] Got location:', lat, lng);
+
+    if (map && isGoogleMapsReady()) {
+      map.setCenter({ lat, lng });
+      map.setZoom(15);
+
+      // Add or update marker at current location
+      if (marker) {
+        marker.setPosition({ lat, lng });
+      } else {
+        const google = (window as any).google;
+        const newMarker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          title: "Your Location",
+        });
+        setMarker(newMarker);
+      }
+
+      // Show nearby restaurants
+      const service = new (window as any).google.maps.places.PlacesService(map);
+      service.nearbySearch(
+        {
+          location: { lat, lng },
+          radius: 1000,
+          type: "restaurant",
+        },
+        (results: any, status: any) => {
+          console.log('[LocationPicker] Nearby search status:', status, 'Results:', results?.length);
+          toast({
+            title: "Location found",
+            description: "Showing restaurants near you. Click on the map to select one.",
+          });
+        }
+      );
+    }
+    setLoadingLocation(false);
+  }, [map, marker, toast]);
+
+  const getCurrentLocation = useCallback(async () => {
+    setLoadingLocation(true);
+
+    // Use native location on iOS app for more precise GPS
+    if (isNativeAvailable) {
+      console.log('[LocationPicker] Using native GPS...');
+      const position = await getNativePosition({ enableHighAccuracy: true, timeout: 15000 });
+      
+      if (position) {
+        handleLocationResult(position.latitude, position.longitude);
+        return;
+      }
+      // Fall through to web implementation if native fails
+      console.log('[LocationPicker] Native GPS failed, falling back to web...');
+    }
+
+    // Web/PWA implementation (unchanged)
     if (!navigator.geolocation) {
       toast({
         title: "Geolocation not supported",
         description: "Your browser doesn't support geolocation",
         variant: "destructive",
       });
+      setLoadingLocation(false);
       return;
     }
 
-    setLoadingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        console.log('[LocationPicker] Got location:', lat, lng);
-
-        if (map && isGoogleMapsReady()) {
-          map.setCenter({ lat, lng });
-          map.setZoom(15);
-
-          // Add or update marker at current location
-          if (marker) {
-            marker.setPosition({ lat, lng });
-          } else {
-            const google = (window as any).google;
-            const newMarker = new google.maps.Marker({
-              position: { lat, lng },
-              map,
-              title: "Your Location",
-            });
-            setMarker(newMarker);
-          }
-
-          // Show nearby restaurants
-          const service = new (window as any).google.maps.places.PlacesService(map);
-          service.nearbySearch(
-            {
-              location: { lat, lng },
-              radius: 1000,
-              type: "restaurant",
-            },
-            (results: any, status: any) => {
-              console.log('[LocationPicker] Nearby search status:', status, 'Results:', results?.length);
-              toast({
-                title: "Location found",
-                description: "Showing restaurants near you. Click on the map to select one.",
-              });
-            }
-          );
-        }
-        setLoadingLocation(false);
+        handleLocationResult(position.coords.latitude, position.coords.longitude);
       },
       (error) => {
         const errorMessages: Record<number, string> = {
@@ -280,7 +303,7 @@ export const LocationPicker = ({
         maximumAge: 0,
       }
     );
-  }, [map, marker, toast]);
+  }, [isNativeAvailable, getNativePosition, handleLocationResult, toast]);
 
   const handleRetry = useCallback(() => {
     console.log('[LocationPicker] Retrying...');
