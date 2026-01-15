@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone } from "lucide-react";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
@@ -19,7 +19,7 @@ import { useNativeNotifications } from "@/hooks/useNativeNotifications";
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
   
   // Native features - only active on iOS app
   const { isNative } = useDespia();
@@ -549,6 +549,43 @@ export default function Account() {
               </CardContent>
             </Card>
           )}
+
+          {/* Preferences Section - Language */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                {t("account.preferences")}
+              </CardTitle>
+              <CardDescription>{t("account.languageDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{t("account.language")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "en" ? "English" : "Português"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={language === "en" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLanguage("en")}
+                  >
+                    🇺🇸 EN
+                  </Button>
+                  <Button
+                    variant={language === "pt" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLanguage("pt")}
+                  >
+                    🇧🇷 PT
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Legal Section */}
           <Card>

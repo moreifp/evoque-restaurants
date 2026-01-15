@@ -119,10 +119,16 @@ All colors MUST be HSL.
 /* Extra offset for PWA standalone mode (Dynamic Island devices) */
 :root {
   --safe-top-extra: 0px;
+  --safe-bottom-extra: 0px;
 }
 
 body.standalone-mode {
   --safe-top-extra: 12px;
+}
+
+/* Extra offset for Despia native iOS app */
+body.despia-native {
+  --safe-bottom-extra: 24px;
 }
 
 /* Safe area utilities for PWA - apply to fixed elements */
@@ -131,7 +137,7 @@ body.standalone-mode {
 }
 
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--safe-bottom-extra));
 }
 
 .pl-safe {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useDespiaNative, NativeCapabilities, DespiaSDK } from '@/hooks/useDespiaNative';
 
 interface DespiaContextValue extends NativeCapabilities {
@@ -14,6 +14,19 @@ interface DespiaProviderProps {
 
 export function DespiaProvider({ children }: DespiaProviderProps) {
   const nativeState = useDespiaNative();
+
+  // Add body class for Despia native to enable extra safe area padding
+  useEffect(() => {
+    if (nativeState.isNative) {
+      document.body.classList.add('despia-native');
+    } else {
+      document.body.classList.remove('despia-native');
+    }
+    
+    return () => {
+      document.body.classList.remove('despia-native');
+    };
+  }, [nativeState.isNative]);
 
   return (
     <DespiaContext.Provider value={nativeState}>
