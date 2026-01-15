@@ -129,24 +129,6 @@ export const Navigation = () => {
               </Link>
             );
           })}
-          
-          {/* Language Switcher for Mobile */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex flex-col items-center justify-center flex-1 h-full">
-                <Globe className="h-5 w-5 mb-1 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{language.toUpperCase()}</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg mb-2">
-              <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
-                🇺🇸 English
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
-                🇧🇷 Português
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </nav>
     </>
