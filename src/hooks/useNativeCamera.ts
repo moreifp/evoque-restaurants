@@ -93,7 +93,30 @@ export function useNativeCamera() {
     try {
       const response = await fetch(media.uri);
       const blob = await response.blob();
-      const file = new File([blob], media.name, { type: blob.type });
+      
+      // Determine MIME type - prioritize explicit type, fallback to blob, then infer from extension
+      let mimeType = blob.type;
+      if (!mimeType || mimeType === 'application/octet-stream') {
+        // Infer from media type or filename extension
+        const ext = media.name.toLowerCase().split('.').pop();
+        if (media.type === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext || '')) {
+          mimeType = ext === 'png' ? 'image/png' : 
+                     ext === 'gif' ? 'image/gif' : 
+                     ext === 'webp' ? 'image/webp' : 
+                     'image/jpeg';
+        } else if (media.type === 'video' || ['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) {
+          mimeType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+        }
+      }
+      
+      // Ensure filename has proper extension
+      let fileName = media.name;
+      if (!fileName.includes('.')) {
+        fileName = media.type === 'image' ? `${fileName}.jpg` : `${fileName}.mp4`;
+      }
+      
+      const file = new File([blob], fileName, { type: mimeType });
+      console.log('[NativeCamera] Created file:', { name: file.name, type: file.type, size: file.size });
       return file;
     } catch (error) {
       console.error('[NativeCamera] Error converting media to file:', error);
