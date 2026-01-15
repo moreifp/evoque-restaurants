@@ -22,6 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useDespia } from "@/contexts/DespiaContext";
+import { useNativeCamera } from "@/hooks/useNativeCamera";
 
 interface UploadedFile {
   file: File;
@@ -124,6 +126,10 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
   const { toast } = useToast();
   const { t } = useI18n();
+  
+  // Native camera - only active on iOS app
+  const { isNative } = useDespia();
+  const { isAvailable: nativeCameraAvailable, takePicture, pickImages, mediaResultToFile } = useNativeCamera();
 
   // Initialize from saved upload data (for draft restoration)
   useEffect(() => {
@@ -241,7 +247,85 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
     receipt: { icon: Receipt, label: t("unifiedMediaUpload.categories.receipt"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
   };
 
+  // Native camera handler for iOS app only
+  const handleNativeCamera = async (category: keyof typeof categoryConfig) => {
+    if (!nativeCameraAvailable) return false;
+
+    try {
+      const result = await takePicture({ camera: 'back', quality: 0.9 });
+      if (!result) return false;
+
+      // Convert native result to File
+      const file = await mediaResultToFile({
+        uri: result.uri,
+        type: 'image',
+        name: `photo_${Date.now()}.jpg`,
+        size: 0,
+      });
+
+      if (!file) return false;
+
+      const newFile: UploadedFile = {
+        file,
+        preview: result.uri,
+        category,
+      };
+
+      proceedWithUpload([newFile], category, true);
+      return true;
+    } catch (error) {
+      console.error('[UnifiedMediaUpload] Native camera error:', error);
+      return false;
+    }
+  };
+
+  // Native gallery picker for iOS app only
+  const handleNativeGallery = async (category: keyof typeof categoryConfig) => {
+    if (!nativeCameraAvailable) return false;
+
+    try {
+      const results = await pickImages({ multiple: category !== 'receipt', maxCount: 10, quality: 0.9 });
+      if (!results || results.length === 0) return false;
+
+      const newFiles: UploadedFile[] = [];
+      
+      for (const result of results) {
+        const file = await mediaResultToFile(result);
+        if (file) {
+          newFiles.push({
+            file,
+            preview: result.uri,
+            category,
+          });
+        }
+      }
+
+      if (newFiles.length === 0) return false;
+
+      proceedWithUpload(newFiles, category, false);
+      return true;
+    } catch (error) {
+      console.error('[UnifiedMediaUpload] Native gallery error:', error);
+      return false;
+    }
+  };
+
   const handleFileSelect = async (category: keyof typeof categoryConfig, useCamera = false) => {
+    // Use native camera on iOS app for better quality
+    if (isNative && nativeCameraAvailable && useCamera) {
+      const success = await handleNativeCamera(category);
+      if (success) return;
+      // Fall through to web implementation if native fails
+    }
+
+    // Use native gallery picker on iOS app
+    if (isNative && nativeCameraAvailable && !useCamera) {
+      const success = await handleNativeGallery(category);
+      if (success) return;
+      // Fall through to web implementation if native fails
+    }
+
+    // Web/PWA implementation (unchanged)
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = category === 'receipt' ? 'image/*' : 'image/*,video/*';
