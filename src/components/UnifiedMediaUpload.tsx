@@ -312,28 +312,93 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
     if (!nativeCameraAvailable) return false;
 
     try {
+      console.log('[UnifiedMediaUpload] Starting native gallery picker for category:', category);
       const results = await pickImages({ multiple: category !== 'receipt', maxCount: 10, quality: 0.9 });
-      if (!results || results.length === 0) return false;
+      
+      if (!results || results.length === 0) {
+        console.log('[UnifiedMediaUpload] No images selected from gallery');
+        return false;
+      }
+
+      console.log('[UnifiedMediaUpload] Gallery images selected:', results.length);
 
       const newFiles: UploadedFile[] = [];
       
       for (const result of results) {
-        const file = await mediaResultToFile(result);
-        if (file) {
+        let file: File | null = null;
+        const fileName = result.name || `gallery_${Date.now()}_${newFiles.length}.jpg`;
+
+        console.log('[UnifiedMediaUpload] Processing gallery result:', { uri: result.uri, name: result.name, type: result.type });
+
+        // Try base64 first if available (more reliable on iOS)
+        if ((result as any).base64) {
+          try {
+            console.log('[UnifiedMediaUpload] Using base64 data from gallery result');
+            const byteString = atob((result as any).base64);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+              ia[i] = byteString.charCodeAt(i);
+            }
+            // Detect type from extension or default to jpeg
+            const ext = fileName.toLowerCase().split('.').pop();
+            const mimeType = ext === 'png' ? 'image/png' : 
+                            ext === 'gif' ? 'image/gif' : 
+                            ext === 'webp' ? 'image/webp' :
+                            ext === 'heic' ? 'image/heic' :
+                            'image/jpeg';
+            const blob = new Blob([ab], { type: mimeType });
+            file = new File([blob], fileName, { type: mimeType });
+            console.log('[UnifiedMediaUpload] Created file from base64:', { name: file.name, type: file.type, size: file.size });
+          } catch (base64Error) {
+            console.error('[UnifiedMediaUpload] Base64 conversion failed:', base64Error);
+          }
+        }
+
+        // Fallback to URI fetch with improved error handling
+        if (!file) {
+          console.log('[UnifiedMediaUpload] Falling back to mediaResultToFile for:', result.uri);
+          file = await mediaResultToFile(result);
+          
+          if (file) {
+            console.log('[UnifiedMediaUpload] mediaResultToFile succeeded:', { name: file.name, type: file.type, size: file.size });
+          } else {
+            console.error('[UnifiedMediaUpload] mediaResultToFile failed for:', result.uri);
+          }
+        }
+
+        if (file && file.size > 0) {
           newFiles.push({
             file,
             preview: result.uri,
             category,
           });
+          console.log('[UnifiedMediaUpload] File added to upload queue:', file.name);
+        } else {
+          console.error('[UnifiedMediaUpload] Invalid file (empty or null) for:', result.uri);
         }
       }
 
-      if (newFiles.length === 0) return false;
+      if (newFiles.length === 0) {
+        console.error('[UnifiedMediaUpload] No files could be converted from gallery');
+        toast({
+          title: t('unifiedMediaUpload.errors.processingFailed'),
+          description: t('unifiedMediaUpload.errors.tryCamera'),
+          variant: "destructive",
+        });
+        return false;
+      }
 
+      console.log('[UnifiedMediaUpload] Proceeding with upload:', newFiles.length, 'files');
       proceedWithUpload(newFiles, category, false);
       return true;
     } catch (error) {
       console.error('[UnifiedMediaUpload] Native gallery error:', error);
+      toast({
+        title: t('unifiedMediaUpload.errors.galleryAccess'),
+        description: String(error),
+        variant: "destructive",
+      });
       return false;
     }
   };

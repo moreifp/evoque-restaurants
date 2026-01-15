@@ -90,33 +90,67 @@ export function useNativeCamera() {
 
   // Convert native media result to File object for upload
   const mediaResultToFile = useCallback(async (media: MediaResult): Promise<File | null> => {
+    console.log('[NativeCamera] Converting media to file:', { 
+      uri: media.uri?.substring(0, 100), 
+      type: media.type, 
+      name: media.name 
+    });
+
     try {
+      // Attempt to fetch the URI
       const response = await fetch(media.uri);
+      
+      if (!response.ok) {
+        console.error('[NativeCamera] Fetch failed with status:', response.status, response.statusText);
+        return null;
+      }
+
       const blob = await response.blob();
+      
+      // Validate blob
+      if (!blob || blob.size === 0) {
+        console.error('[NativeCamera] Blob is empty or invalid:', { size: blob?.size, type: blob?.type });
+        return null;
+      }
+
+      console.log('[NativeCamera] Blob received:', { size: blob.size, type: blob.type });
       
       // Determine MIME type - prioritize explicit type, fallback to blob, then infer from extension
       let mimeType = blob.type;
-      if (!mimeType || mimeType === 'application/octet-stream') {
+      if (!mimeType || mimeType === 'application/octet-stream' || mimeType === '') {
         // Infer from media type or filename extension
-        const ext = media.name.toLowerCase().split('.').pop();
-        if (media.type === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext || '')) {
+        const ext = media.name?.toLowerCase().split('.').pop() || '';
+        if (media.type === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) {
           mimeType = ext === 'png' ? 'image/png' : 
                      ext === 'gif' ? 'image/gif' : 
                      ext === 'webp' ? 'image/webp' : 
+                     ext === 'heic' ? 'image/heic' :
                      'image/jpeg';
-        } else if (media.type === 'video' || ['mp4', 'mov', 'avi', 'webm'].includes(ext || '')) {
+        } else if (media.type === 'video' || ['mp4', 'mov', 'avi', 'webm'].includes(ext)) {
           mimeType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+        } else {
+          // Default to jpeg for images if we can't determine
+          mimeType = media.type === 'video' ? 'video/mp4' : 'image/jpeg';
         }
+        console.log('[NativeCamera] Inferred MIME type:', mimeType);
       }
       
       // Ensure filename has proper extension
-      let fileName = media.name;
+      let fileName = media.name || `media_${Date.now()}`;
       if (!fileName.includes('.')) {
-        fileName = media.type === 'image' ? `${fileName}.jpg` : `${fileName}.mp4`;
+        const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg').replace('quicktime', 'mov') || 'jpg';
+        fileName = `${fileName}.${ext}`;
       }
       
       const file = new File([blob], fileName, { type: mimeType });
-      console.log('[NativeCamera] Created file:', { name: file.name, type: file.type, size: file.size });
+      
+      // Final validation
+      if (file.size === 0) {
+        console.error('[NativeCamera] File is empty after creation');
+        return null;
+      }
+
+      console.log('[NativeCamera] Created file successfully:', { name: file.name, type: file.type, size: file.size });
       return file;
     } catch (error) {
       console.error('[NativeCamera] Error converting media to file:', error);
