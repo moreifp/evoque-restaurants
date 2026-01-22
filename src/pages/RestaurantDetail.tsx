@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import { enUS, ptBR } from "date-fns/locale";
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, language } = useI18n();
   const [entry, setEntry] = useState<any>(null);
@@ -284,6 +286,9 @@ export default function RestaurantDetail() {
         if (linksError) throw linksError;
       }
 
+      // Invalidate cache so Dining page shows updated data
+      queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
+      
       toast({
         title: t("restaurantDetail.success"),
         description: t("restaurantDetail.restaurantUpdated"),
