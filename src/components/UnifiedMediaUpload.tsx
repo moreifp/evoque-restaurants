@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
+import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 
 interface UploadedFile {
   file: File;
@@ -133,6 +134,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   // Native camera - only active on iOS app
   const { isNative } = useDespia();
   const { isAvailable: nativeCameraAvailable, takePicture, pickImages, mediaResultToFile } = useNativeCamera();
+  const { uploadWithRetry, logUploadError } = useUploadWithRetry();
 
   // Initialize from saved upload data (for draft restoration)
   useEffect(() => {
@@ -855,6 +857,9 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      let successCount = 0;
+      let failCount = 0;
+
       for (const fileData of newFiles) {
         let fileToUpload = fileData.file;
         
@@ -887,15 +892,45 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         }
         
         const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileToUpload.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("restaurant-photos")
-          .upload(fileName, fileToUpload);
+        
+        // Use upload with retry for more reliable uploads
+        const uploadResult = await uploadWithRetry({
+          bucket: "restaurant-photos",
+          filePath: fileName,
+          file: fileToUpload,
+          category: fileData.category,
+          maxRetries: 3,
+        });
 
-        if (uploadError) throw uploadError;
+        if (!uploadResult.success) {
+          console.error('[UnifiedMediaUpload] Upload failed after retries:', uploadResult.error);
+          failCount++;
+          
+          // Show error toast for this specific file
+          toast({
+            title: t("unifiedMediaUpload.toasts.uploadFailed"),
+            description: uploadResult.attempts > 1 
+              ? `${fileToUpload.name} - Falhou após ${uploadResult.attempts} tentativas. ${uploadResult.error}`
+              : uploadResult.error,
+            variant: "destructive",
+          });
+          
+          // Remove the failed file from the list
+          setFiles(prev => prev.filter(f => f.preview !== fileData.preview));
+          URL.revokeObjectURL(fileData.preview);
+          continue;
+        }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from("restaurant-photos")
-          .getPublicUrl(fileName);
+        const publicUrl = uploadResult.publicUrl!;
+        successCount++;
+        
+        // Show retry success if it took multiple attempts
+        if (uploadResult.attempts > 1) {
+          toast({
+            title: "🔄 Upload recuperado",
+            description: `${fileToUpload.name} enviado com sucesso após ${uploadResult.attempts} tentativas`,
+          });
+        }
 
         // If entryId exists (editing existing restaurant), save immediately to DB
         if (entryId) {
@@ -919,7 +954,28 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
 
           if (dbError) {
             console.error('Error saving photo to database:', dbError);
-            throw dbError;
+            // Log DB error
+            await logUploadError({
+              error_type: 'database_error',
+              error_message: dbError.message,
+              error_code: dbError.code,
+              file_name: fileToUpload.name,
+              file_size: fileToUpload.size,
+              file_type: fileToUpload.type,
+              category: fileData.category,
+              platform: 'web',
+              is_native: isNative,
+              connection_type: navigator.onLine ? 'online' : 'offline',
+              attempt_number: 1,
+              was_retry_successful: false,
+            });
+            
+            toast({
+              title: t("common.error"),
+              description: "Falha ao salvar foto no banco de dados",
+              variant: "destructive",
+            });
+            continue;
           }
 
           // Notify parent that photo was saved
@@ -957,14 +1013,23 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         });
       }
       
-      // Show final toast only if NOT editing (no entryId)
-      if (!entryId) {
-        toast({
-          title: t("unifiedMediaUpload.toasts.filesUploaded"),
-          description: t("unifiedMediaUpload.toasts.filesSuccess").replace("{count}", newFiles.length.toString()),
-        });
+      // Show final summary toast only if NOT editing (no entryId) and some succeeded
+      if (!entryId && successCount > 0) {
+        if (failCount > 0) {
+          toast({
+            title: t("unifiedMediaUpload.toasts.filesUploaded"),
+            description: `${successCount} de ${newFiles.length} arquivos enviados. ${failCount} falharam.`,
+            variant: failCount > 0 ? "default" : "default",
+          });
+        } else {
+          toast({
+            title: t("unifiedMediaUpload.toasts.filesUploaded"),
+            description: t("unifiedMediaUpload.toasts.filesSuccess").replace("{count}", successCount.toString()),
+          });
+        }
       }
     } catch (error: any) {
+      console.error('[UnifiedMediaUpload] Unexpected error in autoUploadFiles:', error);
       toast({
         title: t("unifiedMediaUpload.toasts.uploadFailed"),
         description: error.message,
