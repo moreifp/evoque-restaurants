@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ const restaurantSchema = z.object({
 export default function AddRestaurant() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, language } = useI18n();
   const [loading, setLoading] = useState(false);
@@ -374,6 +376,9 @@ export default function AddRestaurant() {
 
       // Clear autosave after successful submit
       localStorage.removeItem(AUTOSAVE_KEY);
+      
+      // Invalidate cache so Dining page shows fresh data
+      queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
       
       toast({
         title: t("addRestaurant.restaurantAdded"),

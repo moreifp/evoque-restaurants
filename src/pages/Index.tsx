@@ -7,30 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, BookImage, Search, UtensilsCrossed, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n/i18n";
+import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
 import evoqueIcon from "@/assets/evoque-icon.png";
 
 export default function Index() {
   const navigate = useNavigate();
   const { t, language } = useI18n();
-  const [recentEntries, setRecentEntries] = useState<any[]>([]);
   const [popularTags, setPopularTags] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Use shared hook for consistent cache with Dining page
+  const { data: allEntries = [], isLoading: loading } = useRestaurantEntries();
+  const recentEntries = allEntries.slice(0, 6);
 
   useEffect(() => {
-    fetchRecentEntries();
     fetchPopularTags();
   }, []);
-
-  const fetchRecentEntries = async () => {
-    const { data } = await supabase
-      .from("restaurant_entries")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(6);
-
-    if (data) setRecentEntries(data);
-    setLoading(false);
-  };
 
   const fetchPopularTags = async () => {
     const { data } = await supabase.from("tags").select("*").limit(10);
