@@ -81,6 +81,7 @@ interface MediaPickerOptions {
   multiple?: boolean;
   maxCount?: number;
   quality?: number;
+  includeBase64?: boolean; // Request base64 data for more reliable iOS gallery uploads
 }
 
 interface MediaResult {
@@ -88,6 +89,7 @@ interface MediaResult {
   type: 'image' | 'video';
   name: string;
   size: number;
+  base64?: string; // Base64 data if requested and available
 }
 
 type BiometricType = 'face' | 'fingerprint' | 'none';
