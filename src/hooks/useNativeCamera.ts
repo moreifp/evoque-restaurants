@@ -54,13 +54,21 @@ export function useNativeCamera() {
     }
 
     try {
+      console.log('[NativeCamera] Calling pickImages with options:', {
+        multiple: options?.multiple ?? true,
+        maxCount: options?.maxCount || 10,
+        quality: options?.quality || 0.8,
+        includeBase64: true, // Always request base64 for more reliable iOS uploads
+      });
+      
       const results = await despia.media.pickImages({
         multiple: options?.multiple ?? true,
         maxCount: options?.maxCount || 10,
         quality: options?.quality || 0.8,
-      });
+        includeBase64: true, // Request base64 data for reliable conversion
+      } as any); // Cast to any since SDK types may not include includeBase64 yet
       
-      console.log('[NativeCamera] Images picked:', results.length);
+      console.log('[NativeCamera] Images picked:', results.length, 'hasBase64:', results.length > 0 && !!(results[0] as any).base64);
       return results;
     } catch (error) {
       console.error('[NativeCamera] Error picking images:', error);
@@ -90,15 +98,65 @@ export function useNativeCamera() {
 
   // Convert native media result to File object for upload
   const mediaResultToFile = useCallback(async (media: MediaResult): Promise<File | null> => {
+    const uriProtocol = media.uri?.split(':')[0] || 'unknown';
     console.log('[NativeCamera] Converting media to file:', { 
       uri: media.uri?.substring(0, 100), 
+      uriProtocol,
       type: media.type, 
-      name: media.name 
+      name: media.name,
+      size: media.size,
+      hasBase64: !!(media as any).base64
     });
 
+    // Try base64 first if available (most reliable for iOS)
+    if ((media as any).base64) {
+      try {
+        console.log('[NativeCamera] Using base64 data for conversion');
+        const base64Data = (media as any).base64;
+        const byteString = atob(base64Data);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        
+        // Determine MIME type from filename extension
+        const ext = media.name?.toLowerCase().split('.').pop() || '';
+        const mimeType = ext === 'png' ? 'image/png' : 
+                        ext === 'gif' ? 'image/gif' : 
+                        ext === 'webp' ? 'image/webp' :
+                        ext === 'heic' ? 'image/heic' :
+                        'image/jpeg';
+        
+        let fileName = media.name || `media_${Date.now()}`;
+        if (!fileName.includes('.')) {
+          fileName = `${fileName}.jpg`;
+        }
+        
+        const blob = new Blob([ab], { type: mimeType });
+        const file = new File([blob], fileName, { type: mimeType });
+        
+        if (file.size > 0) {
+          console.log('[NativeCamera] Created file from base64 successfully:', { name: file.name, type: file.type, size: file.size });
+          return file;
+        }
+        console.error('[NativeCamera] Base64 file is empty');
+      } catch (base64Error) {
+        console.error('[NativeCamera] Base64 conversion failed:', base64Error);
+      }
+    }
+
+    // Fallback to URI fetch
     try {
-      // Attempt to fetch the URI
+      console.log('[NativeCamera] Attempting fetch with URI:', media.uri?.substring(0, 100));
       const response = await fetch(media.uri);
+      
+      console.log('[NativeCamera] Fetch response:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type')
+      });
       
       if (!response.ok) {
         console.error('[NativeCamera] Fetch failed with status:', response.status, response.statusText);
@@ -153,7 +211,11 @@ export function useNativeCamera() {
       console.log('[NativeCamera] Created file successfully:', { name: file.name, type: file.type, size: file.size });
       return file;
     } catch (error) {
-      console.error('[NativeCamera] Error converting media to file:', error);
+      console.error('[NativeCamera] Fetch error details:', {
+        error: error,
+        message: error instanceof Error ? error.message : String(error),
+        uri: media.uri?.substring(0, 100)
+      });
       return null;
     }
   }, []);
