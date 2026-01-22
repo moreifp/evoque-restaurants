@@ -664,6 +664,63 @@ export type Database = {
         }
         Relationships: []
       }
+      upload_error_logs: {
+        Row: {
+          attempt_number: number | null
+          category: string | null
+          connection_type: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          error_type: string
+          file_name: string | null
+          file_size: number | null
+          file_type: string | null
+          id: string
+          is_native: boolean | null
+          metadata: Json | null
+          platform: string | null
+          user_id: string | null
+          was_retry_successful: boolean | null
+        }
+        Insert: {
+          attempt_number?: number | null
+          category?: string | null
+          connection_type?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          error_type: string
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_native?: boolean | null
+          metadata?: Json | null
+          platform?: string | null
+          user_id?: string | null
+          was_retry_successful?: boolean | null
+        }
+        Update: {
+          attempt_number?: number | null
+          category?: string | null
+          connection_type?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          error_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          is_native?: boolean | null
+          metadata?: Json | null
+          platform?: string | null
+          user_id?: string | null
+          was_retry_successful?: boolean | null
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           created_at: string | null
