@@ -33,6 +33,7 @@ const PlanDetail = lazy(() => import("./pages/PlanDetail"));
 const Following = lazy(() => import("./pages/Following"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MapsDebug = lazy(() => import("./pages/MapsDebug"));
+const AppleCallback = lazy(() => import("./pages/AppleCallback"));
 
 // Create QueryClient outside component to prevent re-creation on renders
 const queryClient = new QueryClient({
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="/s/:token" element={<SharedByToken />} />
         <Route path="/token" element={<TokenInput />} />
         <Route path="/maps-debug" element={<MapsDebug />} />
+        <Route path="/callback/apple" element={<AppleCallback />} />
 
         {/* Redirects for old routes */}
         <Route
