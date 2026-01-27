@@ -34,7 +34,8 @@ declare global {
 }
 
 const APPLE_CLIENT_ID = "app.lovable.385321039a9345e2934908e3a7564453.appleauth";
-const REDIRECT_URI = "https://evoquebyfausto.lovable.app/callback/apple";
+
+const getRedirectUri = () => `${window.location.origin}/callback/apple`;
 
 export function useAppleAuth() {
   const [loading, setLoading] = useState(false);
@@ -73,7 +74,7 @@ export function useAppleAuth() {
       window.AppleID.auth.init({
         clientId: APPLE_CLIENT_ID,
         scope: "name email",
-        redirectURI: REDIRECT_URI,
+        redirectURI: getRedirectUri(),
         usePopup: true,
       });
     } catch (error) {
@@ -112,7 +113,7 @@ export function useAppleAuth() {
           authorization_code: authorization.code,
           id_token: authorization.id_token,
           user_info: user,
-          redirect_uri: REDIRECT_URI,
+          redirect_uri: getRedirectUri(),
         }),
       });
 
