@@ -151,11 +151,17 @@ export function useDespiaNative() {
 
   useEffect(() => {
     const checkNativeCapabilities = async () => {
-      // Check if Despia SDK is available
-      const despia = window.despia;
+      // Check if running in Despia WebView via userAgent (official detection method)
+      const isDespiaNative = navigator.userAgent.includes('despia');
       
-      if (!despia || !despia.isNative()) {
-        // Not running in native context - use web fallbacks
+      console.log('[DespiaNative] Environment check:', {
+        userAgent: navigator.userAgent,
+        isDespia: isDespiaNative,
+        platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'other'
+      });
+      
+      if (!isDespiaNative) {
+        // Not running in Despia native context - use web fallbacks
         setCapabilities({
           isNative: false,
           platform: 'web',
@@ -168,25 +174,30 @@ export function useDespiaNative() {
         return;
       }
 
-      // Running in native context - check available features
-      const platform = despia.getPlatform();
+      // Running in Despia native context
+      // IMPORTANT: Despia SDK does NOT expose camera/gallery APIs
+      // We must use standard web APIs (input type=file with capture) instead
+      // See: https://docs.despia.com - camera/media APIs are NOT documented
       
-      // Check biometrics availability
+      // Check biometrics availability via the protocol (bioauth://)
       let hasBiometrics = false;
       try {
-        const biometricType = await despia.biometrics.isAvailable();
-        hasBiometrics = biometricType !== 'none';
+        const despia = window.despia;
+        if (despia?.biometrics?.isAvailable) {
+          const biometricType = await despia.biometrics.isAvailable();
+          hasBiometrics = biometricType !== 'none';
+        }
       } catch {
         hasBiometrics = false;
       }
 
       setCapabilities({
-        isNative: true,
-        platform,
-        hasNotifications: true,
-        hasCamera: true,
-        hasBiometrics,
-        hasLocation: true,
+        isNative: isDespiaNative,
+        platform: 'ios', // Despia currently only supports iOS
+        hasNotifications: true,  // Works via OneSignal/registerpush://
+        hasCamera: false,        // NOT available - use web input with capture
+        hasBiometrics,           // Works via bioauth://
+        hasLocation: true,       // Works via standard browser API
       });
       setIsReady(true);
     };

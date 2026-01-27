@@ -7,15 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { extractGPSFromImage } from "@/utils/exifExtractor";
+// GPS extraction can be re-enabled if needed for location auto-fill
+// import { extractGPSFromImage } from "@/utils/exifExtractor";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import { compressVideoSafe, formatFileSize, CompressionProgress } from "@/utils/videoCompressor";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -133,7 +132,9 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   
   // Native camera - only active on iOS app
   const { isNative } = useDespia();
-  const { isAvailable: nativeCameraAvailable, takePicture, pickImages, mediaResultToFile } = useNativeCamera();
+  // Note: Native camera hook is kept for potential future Despia SDK updates
+  // Currently always returns isAvailable: false since Despia doesn't expose camera APIs
+  const _nativeCamera = useNativeCamera(); // Prefixed with _ to indicate intentionally unused
   const { uploadWithRetry, logUploadError } = useUploadWithRetry();
 
   // Initialize from saved upload data (for draft restoration)
@@ -252,193 +253,44 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
     receipt: { icon: Receipt, label: t("unifiedMediaUpload.categories.receipt"), color: "from-[hsl(var(--primary))] to-[#0d1a2d]" },
   };
 
-  // Native camera handler for iOS app only
-  const handleNativeCamera = async (category: keyof typeof categoryConfig) => {
-    if (!nativeCameraAvailable) return false;
+  // Log environment info for debugging (especially useful in TestFlight)
+  console.log('[UnifiedMediaUpload] Environment:', {
+    userAgent: navigator.userAgent,
+    isDespia: navigator.userAgent.includes('despia'),
+    isNative,
+    platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios' : 'other'
+  });
 
-    try {
-      const result = await takePicture({ camera: 'back', quality: 0.9 });
-      if (!result) return false;
-
-      let file: File | null = null;
-      const fileName = `photo_${Date.now()}.jpg`;
-
-      // Use base64 if available for more reliable file creation
-      if (result.base64) {
-        try {
-          const byteString = atob(result.base64);
-          const ab = new ArrayBuffer(byteString.length);
-          const ia = new Uint8Array(ab);
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-          }
-          const blob = new Blob([ab], { type: 'image/jpeg' });
-          file = new File([blob], fileName, { type: 'image/jpeg' });
-          console.log('[UnifiedMediaUpload] Created file from base64:', { name: file.name, type: file.type, size: file.size });
-        } catch (base64Error) {
-          console.error('[UnifiedMediaUpload] Base64 conversion failed, falling back to URI:', base64Error);
-        }
-      }
-
-      // Fallback to URI fetch if base64 failed or wasn't available
-      if (!file) {
-        file = await mediaResultToFile({
-          uri: result.uri,
-          type: 'image',
-          name: fileName,
-          size: 0,
-        });
-      }
-
-      if (!file) {
-        console.error('[UnifiedMediaUpload] Failed to create file from camera result');
-        return false;
-      }
-
-      const newFile: UploadedFile = {
-        file,
-        preview: result.uri,
-        category,
-      };
-
-      proceedWithUpload([newFile], category, true);
-      return true;
-    } catch (error) {
-      console.error('[UnifiedMediaUpload] Native camera error:', error);
-      return false;
-    }
-  };
-
-  // Native gallery picker for iOS app only
-  const handleNativeGallery = async (category: keyof typeof categoryConfig) => {
-    if (!nativeCameraAvailable) return false;
-
-    try {
-      console.log('[UnifiedMediaUpload] Starting native gallery picker for category:', category);
-      const results = await pickImages({ multiple: category !== 'receipt', maxCount: 10, quality: 0.9 });
-      
-      if (!results || results.length === 0) {
-        console.log('[UnifiedMediaUpload] No images selected from gallery');
-        return false;
-      }
-
-      console.log('[UnifiedMediaUpload] Gallery images selected:', results.length);
-
-      const newFiles: UploadedFile[] = [];
-      
-      for (const result of results) {
-        let file: File | null = null;
-        const fileName = result.name || `gallery_${Date.now()}_${newFiles.length}.jpg`;
-
-        console.log('[UnifiedMediaUpload] Processing gallery result:', { uri: result.uri, name: result.name, type: result.type });
-
-        // Try base64 first if available (more reliable on iOS)
-        if ((result as any).base64) {
-          try {
-            console.log('[UnifiedMediaUpload] Using base64 data from gallery result');
-            const byteString = atob((result as any).base64);
-            const ab = new ArrayBuffer(byteString.length);
-            const ia = new Uint8Array(ab);
-            for (let i = 0; i < byteString.length; i++) {
-              ia[i] = byteString.charCodeAt(i);
-            }
-            // Detect type from extension or default to jpeg
-            const ext = fileName.toLowerCase().split('.').pop();
-            const mimeType = ext === 'png' ? 'image/png' : 
-                            ext === 'gif' ? 'image/gif' : 
-                            ext === 'webp' ? 'image/webp' :
-                            ext === 'heic' ? 'image/heic' :
-                            'image/jpeg';
-            const blob = new Blob([ab], { type: mimeType });
-            file = new File([blob], fileName, { type: mimeType });
-            console.log('[UnifiedMediaUpload] Created file from base64:', { name: file.name, type: file.type, size: file.size });
-          } catch (base64Error) {
-            console.error('[UnifiedMediaUpload] Base64 conversion failed:', base64Error);
-          }
-        }
-
-        // Fallback to URI fetch with improved error handling
-        if (!file) {
-          console.log('[UnifiedMediaUpload] Falling back to mediaResultToFile for:', result.uri);
-          file = await mediaResultToFile(result);
-          
-          if (file) {
-            console.log('[UnifiedMediaUpload] mediaResultToFile succeeded:', { name: file.name, type: file.type, size: file.size });
-          } else {
-            console.error('[UnifiedMediaUpload] mediaResultToFile failed for:', result.uri);
-          }
-        }
-
-        if (file && file.size > 0) {
-          newFiles.push({
-            file,
-            preview: result.uri,
-            category,
-          });
-          console.log('[UnifiedMediaUpload] File added to upload queue:', file.name);
-        } else {
-          console.error('[UnifiedMediaUpload] Invalid file (empty or null) for:', result.uri);
-        }
-      }
-
-      if (newFiles.length === 0) {
-        console.error('[UnifiedMediaUpload] No files could be converted from gallery');
-        toast({
-          title: t('unifiedMediaUpload.errors.processingFailed'),
-          description: t('unifiedMediaUpload.errors.tryCamera'),
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      console.log('[UnifiedMediaUpload] Proceeding with upload:', newFiles.length, 'files');
-      proceedWithUpload(newFiles, category, false);
-      return true;
-    } catch (error) {
-      console.error('[UnifiedMediaUpload] Native gallery error:', error);
-      toast({
-        title: t('unifiedMediaUpload.errors.galleryAccess'),
-        description: String(error),
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  // Handle category button tap - show source dialog on native iOS
+  // Handle category button tap - on iOS (Despia), show source dialog for better UX
+  // This allows users to choose between Camera and Photo Library without iOS's default "Scan Document" option
   const handleCategoryTap = (category: keyof typeof categoryConfig) => {
-    if (isNative && nativeCameraAvailable) {
-      // Show our custom dialog with only Camera and Photo Library options (no Scan Document)
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
+    if (isIOSDevice) {
+      // Show our custom dialog with only Camera and Photo Library options
       setSourceCategory(category);
       setShowSourceDialog(true);
     } else {
-      // Web/PWA behavior - go directly to file picker
+      // Desktop/Android - go directly to file picker
       handleFileSelect(category);
     }
   };
 
+  // Handle file selection using standard web APIs
+  // This works reliably in iOS WebView (Despia) with capture attribute for camera
   const handleFileSelect = async (category: keyof typeof categoryConfig, useCamera = false) => {
-    // Use native camera on iOS app for better quality
-    if (isNative && nativeCameraAvailable && useCamera) {
-      const success = await handleNativeCamera(category);
-      if (success) return;
-      // Fall through to web implementation if native fails
-    }
-
-    // Use native gallery picker on iOS app
-    if (isNative && nativeCameraAvailable && !useCamera) {
-      const success = await handleNativeGallery(category);
-      if (success) return;
-      // Fall through to web implementation if native fails
-    }
-
-    // Web/PWA implementation (unchanged)
+    console.log('[UnifiedMediaUpload] handleFileSelect:', { category, useCamera });
+    
+    // Create standard web file input - works in all browsers including iOS WebView
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = category === 'receipt' ? 'image/*' : 'image/*,video/*';
     input.multiple = category !== 'receipt';
+    
+    // The capture attribute triggers the native iOS camera when set
     if (useCamera) {
-      input.capture = 'environment'; // Opens camera directly on mobile
+      input.capture = 'environment'; // Opens rear camera directly on iOS
+      console.log('[UnifiedMediaUpload] Using camera capture mode');
     }
     
     input.onchange = async (e) => {
