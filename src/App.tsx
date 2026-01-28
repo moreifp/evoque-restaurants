@@ -83,12 +83,13 @@ function AppRoutes() {
           element={<Navigate to="/dining?tab=albums" replace />}
         />
 
-        {/* Legacy token route - LAST to avoid conflicts with other routes */}
-        <Route path="/:token" element={<SharedByToken />} />
-
         {/* Protected routes */}
         {!session ? (
-          <Route path="*" element={<Auth />} />
+          <>
+            {/* Legacy token route - only for unauthenticated users */}
+            <Route path="/:token" element={<SharedByToken />} />
+            <Route path="*" element={<Auth />} />
+          </>
         ) : (
           <>
             <Route path="/" element={<Index />} />
