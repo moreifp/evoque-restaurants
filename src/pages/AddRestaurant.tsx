@@ -57,7 +57,7 @@ export default function AddRestaurant() {
     food: string[];
     friends: string[];
     wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
-    menu: string[];
+    menu: Array<{ url: string; translation?: string }>;
     receipt: any | null;
   }>({
     place: [],
@@ -282,10 +282,11 @@ export default function AddRestaurant() {
           photo_url: url,
           type: 'food',
         })),
-        ...uploadData.menu.map(url => ({
+        ...uploadData.menu.map(menu => ({
           entry_id: entry.id,
-          photo_url: url,
+          photo_url: menu.url,
           type: 'menu',
+          menu_translation: menu.translation || null,
         })),
         ...uploadData.wine.map(wine => ({
           entry_id: entry.id,
