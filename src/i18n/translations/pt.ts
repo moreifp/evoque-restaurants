@@ -578,4 +578,17 @@ export const pt = {
     step2Hint: "Role para baixo no menu de compartilhamento se necessário",
     maybeLater: "Talvez Depois",
   },
+  restaurantMap: {
+    title: "Mapa de Restaurantes",
+    locationCount: "{count} localização dos seus álbuns",
+    locationsCount: "{count} localizações dos seus álbuns",
+    loadError: "Falha ao carregar localizações dos restaurantes",
+    loading: "Carregando mapa...",
+    noLocations: "Nenhuma Localização Encontrada",
+    noLocationsDesc: "Adicione restaurantes com dados de localização aos seus álbuns para vê-los no mapa",
+    addRestaurant: "Adicionar Restaurante",
+    visited: "Visitado em",
+    viewDetails: "Ver Detalhes",
+    error: "Erro",
+  },
 };
