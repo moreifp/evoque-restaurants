@@ -762,7 +762,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      search_users_fuzzy: {
+        Args: {
+          exclude_user_id: string
+          max_results?: number
+          search_term: string
+        }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          similarity_score: number
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
