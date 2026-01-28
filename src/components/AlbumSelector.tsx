@@ -33,9 +33,16 @@ export function AlbumSelector({ selectedAlbumId, onAlbumSelect }: AlbumSelectorP
   }, []);
 
   const fetchAlbums = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase
       .from("albums")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     
     if (data) setAlbums(data);
