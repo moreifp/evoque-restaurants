@@ -1,58 +1,72 @@
 
-# Plano: Suporte a Múltiplos Domínios no Apple Sign In
+# Plano: Traduzir Página "Mapa de Restaurantes"
 
-## Situação Atual
-O Apple Sign In funciona em `evoquebyfausto.lovable.app` mas não em `food.evoque.guru` porque:
-1. O domínio não está registrado no Apple Developer Console
-2. O código tem o redirect URI fixo (hardcoded)
+## Problema Identificado
+A página `src/pages/AlbumsMap.tsx` contém textos hardcoded em inglês que não passam pelo sistema de internacionalização (i18n).
 
-## Ações Necessárias
+### Textos Não Traduzidos
+| Localização | Texto em Inglês |
+|-------------|-----------------|
+| Título (linha 212) | "Restaurant Map" |
+| Subtítulo (linha 214) | "{n} location(s) from your albums" |
+| Erro toast (linha 93) | "Error" / "Failed to load restaurant locations" |
+| Loading (linha 225) | "Loading map..." |
+| Estado vazio (linha 232) | "No Locations Found" |
+| Estado vazio (linha 234) | "Add restaurants with location data..." |
+| Botão (linha 237) | "Add Restaurant" |
+| InfoWindow (linha 149) | "Visited:" |
+| InfoWindow (linha 155) | "View Details" |
 
-### Parte 1: Configuração no Apple Developer Console (você faz)
-1. Acesse **Certificates, Identifiers & Profiles → Identifiers**
-2. Clique no Service ID `app.lovable.385321039a9345e2934908e3a7564453.appleauth`
-3. Clique em **Configure** ao lado de "Sign in with Apple"
-4. Adicione em **Domains and Subdomains**: `food.evoque.guru`
-5. Adicione em **Return URLs**: `https://food.evoque.guru/callback/apple`
-6. Salve as alterações
+## Solução
 
-### Parte 2: Atualização do Código (eu faço)
+### Parte 1: Adicionar Traduções
 
-#### Arquivo: `src/hooks/useAppleAuth.ts`
-- Remover o `REDIRECT_URI` fixo
-- Detectar o domínio atual usando `window.location.origin`
-- Gerar dinamicamente: `${window.location.origin}/callback/apple`
-
-#### Arquivo: `supabase/functions/apple-auth-callback/index.ts`
-- O código já aceita `redirect_uri` como parâmetro (linha 88 e 129)
-- Apenas garantir que o fallback use o valor correto quando não fornecido
-
-## Detalhes Técnicos
-
-### Mudança no useAppleAuth.ts
+**Arquivo: `src/i18n/translations/en.ts`**
+Adicionar nova seção `restaurantMap`:
 ```text
-Antes:
-const REDIRECT_URI = "https://evoquebyfausto.lovable.app/callback/apple";
-
-Depois:
-const getRedirectUri = () => `${window.location.origin}/callback/apple`;
+restaurantMap: {
+  title: "Restaurant Map",
+  locationCount: "{count} location from your albums",
+  locationsCount: "{count} locations from your albums",
+  loadError: "Failed to load restaurant locations",
+  loading: "Loading map...",
+  noLocations: "No Locations Found",
+  noLocationsDesc: "Add restaurants with location data to your albums to see them on the map",
+  addRestaurant: "Add Restaurant",
+  visited: "Visited",
+  viewDetails: "View Details",
+}
 ```
 
-### Fluxo de Autenticação Atualizado
+**Arquivo: `src/i18n/translations/pt.ts`**
+Adicionar mesma seção em português:
 ```text
-Usuário clica "Sign in with Apple"
-          ↓
-Hook detecta domínio atual (food.evoque.guru ou evoquebyfausto.lovable.app)
-          ↓
-Apple popup abre com redirect_uri correto
-          ↓
-Usuário autoriza
-          ↓
-Edge Function recebe redirect_uri dinâmico e processa
-          ↓
-Sessão criada com sucesso
+restaurantMap: {
+  title: "Mapa de Restaurantes",
+  locationCount: "{count} localização dos seus álbuns",
+  locationsCount: "{count} localizações dos seus álbuns",
+  loadError: "Falha ao carregar localizações dos restaurantes",
+  loading: "Carregando mapa...",
+  noLocations: "Nenhuma Localização Encontrada",
+  noLocationsDesc: "Adicione restaurantes com dados de localização aos seus álbuns para vê-los no mapa",
+  addRestaurant: "Adicionar Restaurante",
+  visited: "Visitado em",
+  viewDetails: "Ver Detalhes",
+}
 ```
+
+### Parte 2: Atualizar AlbumsMap.tsx
+
+1. Importar o hook `useI18n`
+2. Substituir todos os textos hardcoded por chamadas `t("restaurantMap.xxx")`
+3. Usar lógica condicional para singular/plural no contador de localizações
+
+### Arquivos a Modificar
+1. `src/i18n/translations/en.ts` - adicionar seção restaurantMap
+2. `src/i18n/translations/pt.ts` - adicionar seção restaurantMap
+3. `src/pages/AlbumsMap.tsx` - usar hook useI18n e substituir textos
 
 ## Resultado Esperado
-- Apple Sign In funcionará em todos os domínios configurados no Apple Developer Console
-- Nenhuma mudança de código necessária ao adicionar novos domínios no futuro (apenas configurar na Apple)
+- A página mostrará "Mapa de Restaurantes" quando o idioma for português
+- Todos os textos da página (loading, erros, estados vazios) serão traduzidos
+- O InfoWindow do mapa também exibirá textos no idioma correto
