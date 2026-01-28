@@ -5,9 +5,13 @@ import type { Album } from "@/types";
 const QUERY_KEY = ["albums"];
 
 async function fetchAlbums(): Promise<Album[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from("albums")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
