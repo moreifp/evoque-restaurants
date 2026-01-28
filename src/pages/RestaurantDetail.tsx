@@ -82,7 +82,7 @@ export default function RestaurantDetail() {
     food: string[];
     friends: string[];
     wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
-    menu: string[];
+    menu: Array<{ url: string; translation?: string }>;
     receipt: any | null;
   }>({
     place: [],

@@ -21,6 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
@@ -34,6 +41,7 @@ interface UploadedFile {
   caption?: string;
   rating?: number;
   receiptData?: any;
+  menuTranslation?: string;
 }
 
 interface UnifiedMediaUploadProps {
@@ -43,7 +51,7 @@ interface UnifiedMediaUploadProps {
     food: string[];
     friends: string[];
     wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
-    menu: string[];
+    menu: Array<{ url: string; translation?: string }>;
     receipt: any | null;
   };
   onUploadsChange: (data: {
@@ -51,7 +59,7 @@ interface UnifiedMediaUploadProps {
     food: string[];
     friends: string[];
     wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
-    menu: string[];
+    menu: Array<{ url: string; translation?: string }>;
     receipt: any | null;
   }) => void;
   onLocationExtracted?: (location: { lat: number; lng: number; address: string }) => void;
@@ -111,11 +119,24 @@ const validateFiles = (files: File[], t: (key: string, params?: Record<string, s
   return { validFiles, rejectedFiles, totalValidSize };
 };
 
+// Language options for menu translation
+const LANGUAGE_OPTIONS = [
+  { value: "Portuguese", label: "Português" },
+  { value: "English", label: "English" },
+  { value: "Spanish", label: "Español" },
+  { value: "French", label: "Français" },
+  { value: "Italian", label: "Italiano" },
+  { value: "German", label: "Deutsch" },
+  { value: "Japanese", label: "日本語" },
+  { value: "Chinese", label: "中文" },
+];
+
 export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processingWine, setProcessingWine] = useState<string | null>(null);
   const [processingReceipt, setProcessingReceipt] = useState(false);
+  const [translatingMenuPreview, setTranslatingMenuPreview] = useState<string | null>(null);
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [lastCategory, setLastCategory] = useState<keyof typeof categoryConfig | null>(null);
   const [initialized, setInitialized] = useState(false);
@@ -186,12 +207,14 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       });
       
       // Restore menu photos
-      initialUploadData.menu.forEach(url => {
+      initialUploadData.menu.forEach(menu => {
+        const menuData = typeof menu === 'string' ? { url: menu } : menu;
         restoredFiles.push({
           file: new File([], 'restored'),
-          preview: url,
+          preview: menuData.url,
           category: 'menu',
-          url,
+          url: menuData.url,
+          menuTranslation: menuData.translation,
         });
       });
       
@@ -220,7 +243,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       food: [] as string[],
       friends: [] as string[],
       wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
-      menu: [] as string[],
+      menu: [] as Array<{ url: string; translation?: string }>,
       receipt: null as any,
     };
 
@@ -235,7 +258,12 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
           });
         } else if (fileData.category === 'receipt') {
           currentData.receipt = fileData.receiptData;
-        } else if (fileData.category === 'place' || fileData.category === 'food' || fileData.category === 'friends' || fileData.category === 'menu') {
+        } else if (fileData.category === 'menu') {
+          currentData.menu.push({
+            url: fileData.url,
+            translation: fileData.menuTranslation,
+          });
+        } else if (fileData.category === 'place' || fileData.category === 'food' || fileData.category === 'friends') {
           currentData[fileData.category].push(fileData.url);
         }
       }
@@ -703,6 +731,76 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
     });
   };
 
+  // Translate menu photo using AI
+  const handleTranslateMenuLocal = async (filePreview: string, targetLanguage: string) => {
+    const file = files.find(f => f.preview === filePreview);
+    if (!file || !file.url) {
+      toast({
+        title: t("common.error"),
+        description: "Photo not uploaded yet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTranslatingMenuPreview(filePreview);
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
+      const { data: resp, error: functionError } = await supabase.functions.invoke(
+        "translate-menu",
+        {
+          body: { 
+            imageUrl: file.url, 
+            targetLanguage,
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      if (functionError) {
+        console.error('Menu translation error:', functionError);
+        throw new Error(functionError.message || 'Failed to translate menu');
+      }
+
+      if (resp?.error) {
+        console.error('Translation error:', resp.error);
+        throw new Error(resp.error);
+      }
+
+      const translation = resp?.translation;
+      if (!translation) {
+        throw new Error('No translation returned');
+      }
+
+      // Update file with translation in local state
+      setFiles(prev => {
+        const updated = prev.map(f => 
+          f.preview === filePreview ? { ...f, menuTranslation: translation } : f
+        );
+        setTimeout(updateParent, 0);
+        return updated;
+      });
+
+      toast({
+        title: t("unifiedMediaUpload.toasts.menuTranslated"),
+        description: t("unifiedMediaUpload.toasts.menuTranslationSaved"),
+      });
+    } catch (error: any) {
+      console.error('Error translating menu:', error);
+      toast({
+        title: t("unifiedMediaUpload.toasts.menuTranslationError"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTranslatingMenuPreview(null);
+    }
+  };
+
   const autoUploadFiles = async (newFiles: UploadedFile[]) => {
     setUploading(true);
     try {
@@ -857,7 +955,10 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
                 rating: f.rating,
                 wineInfo: f.wineInfo,
               })),
-              menu: updated.filter(f => f.category === 'menu' && f.url).map(f => f.url!),
+              menu: updated.filter(f => f.category === 'menu' && f.url).map(f => ({
+                url: f.url!,
+                translation: f.menuTranslation,
+              })),
               receipt: updated.find(f => f.category === 'receipt')?.receiptData || null,
             });
           }, 0);
@@ -1175,6 +1276,113 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         </Card>
       )}
 
+      {/* Menu Section with Translation */}
+      {files.some(f => f.category === 'menu') && (
+        <Card className="border-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UtensilsCrossed className="h-5 w-5" />
+              {t("unifiedMediaUpload.menu.collectionTitle")} ({files.filter(f => f.category === 'menu').length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {files.filter(f => f.category === 'menu').map((file, index) => (
+              <div key={file.preview}>
+                {index > 0 && <Separator className="my-6" />}
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    {/* Menu Image */}
+                    <div className="relative group w-32 h-32 flex-shrink-0">
+                      <div className="w-full h-full rounded-lg overflow-hidden bg-muted">
+                        <img src={file.preview} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeFile(file.preview)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Translation Controls */}
+                    <div className="flex-1 space-y-3">
+                      {!file.menuTranslation ? (
+                        <div className="space-y-2">
+                          <Select
+                            onValueChange={(value) => handleTranslateMenuLocal(file.preview, value)}
+                            disabled={translatingMenuPreview === file.preview || !file.url}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder={translatingMenuPreview === file.preview ? t("unifiedMediaUpload.menu.translating") : t("unifiedMediaUpload.menu.translateMenu")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {LANGUAGE_OPTIONS.map((lang) => (
+                                <SelectItem key={lang.value} value={lang.value}>
+                                  {lang.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {translatingMenuPreview === file.preview && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {t("unifiedMediaUpload.menu.translating")}
+                            </div>
+                          )}
+                          {!file.url && (
+                            <p className="text-xs text-muted-foreground">
+                              Uploading photo...
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Badge variant="secondary" className="gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            {t("restaurantDetail.translated")}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // Clear translation and allow re-translate
+                              setFiles(prev => {
+                                const updated = prev.map(f => 
+                                  f.preview === file.preview ? { ...f, menuTranslation: undefined } : f
+                                );
+                                setTimeout(updateParent, 0);
+                                return updated;
+                              });
+                            }}
+                          >
+                            {t("restaurantDetail.retranslate")}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Translation Content */}
+                  {file.menuTranslation && (
+                    <div className="p-4 bg-muted/50 rounded-lg border space-y-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <UtensilsCrossed className="h-4 w-4" />
+                        {t("unifiedMediaUpload.menu.menuTranslation")}
+                      </h4>
+                      <div className="text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
+                        {file.menuTranslation}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Receipt Section */}
       {files.some(f => f.category === 'receipt') && (
         <Card className="border-2">
@@ -1277,13 +1485,13 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         </Card>
       )}
 
-      {/* Regular Uploaded Files Grid (Place, Menu, Friends) */}
-      {files.filter(f => !['wine', 'receipt'].includes(f.category)).length > 0 && (
+      {/* Regular Uploaded Files Grid (Place, Food, Friends) */}
+      {files.filter(f => !['wine', 'receipt', 'menu'].includes(f.category)).length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Other Photos ({files.filter(f => !['wine', 'receipt'].includes(f.category)).length})</h3>
+          <h3 className="text-lg font-semibold">Other Photos ({files.filter(f => !['wine', 'receipt', 'menu'].includes(f.category)).length})</h3>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {files.filter(f => !['wine', 'receipt'].includes(f.category)).map((file) => (
+            {files.filter(f => !['wine', 'receipt', 'menu'].includes(f.category)).map((file) => (
               <div key={file.preview} className="relative group">
                 <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                   {file.file.type.startsWith('video/') ? (
