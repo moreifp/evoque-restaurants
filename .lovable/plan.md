@@ -1,72 +1,72 @@
 
-# Plano: Traduzir Página "Mapa de Restaurantes"
+# Plano: Corrigir Vazamento de Álbuns Entre Usuários
 
 ## Problema Identificado
-A página `src/pages/AlbumsMap.tsx` contém textos hardcoded em inglês que não passam pelo sistema de internacionalização (i18n).
+A página "Meus Álbuns" (Dining → aba Albums) está mostrando álbuns públicos de **outros usuários** para contas novas. Isso acontece porque:
 
-### Textos Não Traduzidos
-| Localização | Texto em Inglês |
-|-------------|-----------------|
-| Título (linha 212) | "Restaurant Map" |
-| Subtítulo (linha 214) | "{n} location(s) from your albums" |
-| Erro toast (linha 93) | "Error" / "Failed to load restaurant locations" |
-| Loading (linha 225) | "Loading map..." |
-| Estado vazio (linha 232) | "No Locations Found" |
-| Estado vazio (linha 234) | "Add restaurants with location data..." |
-| Botão (linha 237) | "Add Restaurant" |
-| InfoWindow (linha 149) | "Visited:" |
-| InfoWindow (linha 155) | "View Details" |
+1. A query em `useAlbums.ts` busca todos os álbuns sem filtrar por `user_id`
+2. A política RLS "Anyone can view public albums" permite ver álbuns com `visibility = 'public'`
+3. Resultado: novos usuários veem álbuns como "Recife" e "New York" de outros usuários
+
+### Álbuns Públicos no Sistema
+| Título | Proprietário |
+|--------|--------------|
+| Recife | a9ebe544-... |
+| New york | a9ebe544-... |
 
 ## Solução
+Adicionar filtro `user_id` na query para garantir que apenas os álbuns do próprio usuário sejam exibidos na tela principal.
 
-### Parte 1: Adicionar Traduções
+### Arquivo: `src/hooks/useAlbums.ts`
+Modificar a função `fetchAlbums` para filtrar por usuário:
 
-**Arquivo: `src/i18n/translations/en.ts`**
-Adicionar nova seção `restaurantMap`:
 ```text
-restaurantMap: {
-  title: "Restaurant Map",
-  locationCount: "{count} location from your albums",
-  locationsCount: "{count} locations from your albums",
-  loadError: "Failed to load restaurant locations",
-  loading: "Loading map...",
-  noLocations: "No Locations Found",
-  noLocationsDesc: "Add restaurants with location data to your albums to see them on the map",
-  addRestaurant: "Add Restaurant",
-  visited: "Visited",
-  viewDetails: "View Details",
-}
+Antes:
+const { data, error } = await supabase
+  .from("albums")
+  .select("*")
+  .order("created_at", { ascending: false });
+
+Depois:
+// Obter usuário autenticado
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return [];
+
+const { data, error } = await supabase
+  .from("albums")
+  .select("*")
+  .eq("user_id", user.id)  // ← Filtro adicionado
+  .order("created_at", { ascending: false });
 ```
 
-**Arquivo: `src/i18n/translations/pt.ts`**
-Adicionar mesma seção em português:
+### Arquivo: `src/components/AlbumSelector.tsx`
+Mesmo problema existe aqui (linha 35-39). Adicionar filtro:
+
 ```text
-restaurantMap: {
-  title: "Mapa de Restaurantes",
-  locationCount: "{count} localização dos seus álbuns",
-  locationsCount: "{count} localizações dos seus álbuns",
-  loadError: "Falha ao carregar localizações dos restaurantes",
-  loading: "Carregando mapa...",
-  noLocations: "Nenhuma Localização Encontrada",
-  noLocationsDesc: "Adicione restaurantes com dados de localização aos seus álbuns para vê-los no mapa",
-  addRestaurant: "Adicionar Restaurante",
-  visited: "Visitado em",
-  viewDetails: "Ver Detalhes",
-}
+Depois:
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return;
+
+const { data } = await supabase
+  .from("albums")
+  .select("*")
+  .eq("user_id", user.id)  // ← Filtro adicionado
+  .order("created_at", { ascending: false });
 ```
 
-### Parte 2: Atualizar AlbumsMap.tsx
+## Por Que Não Alterar o RLS?
+A política "Anyone can view public albums" é **correta e necessária** para:
+- Página `UserPublicAlbums.tsx` (ver álbuns públicos de um usuário específico)
+- Compartilhamento de links de álbuns públicos
+- Funcionalidade de descoberta futura
 
-1. Importar o hook `useI18n`
-2. Substituir todos os textos hardcoded por chamadas `t("restaurantMap.xxx")`
-3. Usar lógica condicional para singular/plural no contador de localizações
+O problema está no **código**, não no RLS. O código deve filtrar explicitamente quando quer mostrar apenas os álbuns do próprio usuário.
 
-### Arquivos a Modificar
-1. `src/i18n/translations/en.ts` - adicionar seção restaurantMap
-2. `src/i18n/translations/pt.ts` - adicionar seção restaurantMap
-3. `src/pages/AlbumsMap.tsx` - usar hook useI18n e substituir textos
+## Arquivos a Modificar
+1. `src/hooks/useAlbums.ts` - adicionar `.eq("user_id", user.id)`
+2. `src/components/AlbumSelector.tsx` - adicionar `.eq("user_id", user.id)`
 
 ## Resultado Esperado
-- A página mostrará "Mapa de Restaurantes" quando o idioma for português
-- Todos os textos da página (loading, erros, estados vazios) serão traduzidos
-- O InfoWindow do mapa também exibirá textos no idioma correto
+- Novos usuários verão uma lista vazia de álbuns (correto!)
+- Usuários existentes verão apenas seus próprios álbuns
+- Álbuns públicos ainda serão visíveis via `UserPublicAlbums.tsx` e links diretos
