@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ interface RestaurantLocation {
 export default function AlbumsMap() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [restaurants, setRestaurants] = useState<RestaurantLocation[]>([]);
@@ -89,8 +91,8 @@ export default function AlbumsMap() {
     } catch (error: any) {
       console.error("Error fetching restaurants:", error);
       toast({
-        title: "Error",
-        description: "Failed to load restaurant locations",
+        title: t("restaurantMap.error"),
+        description: t("restaurantMap.loadError"),
         variant: "destructive",
       });
       setLoading(false);
@@ -146,13 +148,13 @@ export default function AlbumsMap() {
             ${restaurant.location_address}
           </p>
           <p style="margin: 4px 0; font-size: 12px; color: #999;">
-            Visited: ${new Date(restaurant.visit_date).toLocaleDateString()}
+            ${t("restaurantMap.visited")}: ${new Date(restaurant.visit_date).toLocaleDateString()}
           </p>
           <button 
             onclick="window.location.href='/dining/${restaurant.id}'" 
             style="margin-top: 8px; padding: 6px 12px; background: hsl(var(--primary)); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;"
           >
-            View Details
+            ${t("restaurantMap.viewDetails")}
           </button>
         </div>
       `;
@@ -209,9 +211,11 @@ export default function AlbumsMap() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Restaurant Map</h1>
+              <h1 className="text-3xl font-bold">{t("restaurantMap.title")}</h1>
               <p className="text-muted-foreground mt-1">
-                {restaurants.length} {restaurants.length === 1 ? "location" : "locations"} from your albums
+                {restaurants.length === 1 
+                  ? t("restaurantMap.locationCount").replace("{count}", "1")
+                  : t("restaurantMap.locationsCount").replace("{count}", String(restaurants.length))}
               </p>
             </div>
           </div>
@@ -222,19 +226,19 @@ export default function AlbumsMap() {
           <div className="flex items-center justify-center h-[calc(100vh-200px)] bg-card rounded-lg">
             <div className="text-center">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-              <p className="text-muted-foreground">Loading map...</p>
+              <p className="text-muted-foreground">{t("restaurantMap.loading")}</p>
             </div>
           </div>
         ) : restaurants.length === 0 ? (
           <div className="flex items-center justify-center h-[calc(100vh-200px)] bg-card rounded-lg">
             <div className="text-center p-8">
               <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Locations Found</h3>
+              <h3 className="text-xl font-semibold mb-2">{t("restaurantMap.noLocations")}</h3>
               <p className="text-muted-foreground mb-6">
-                Add restaurants with location data to your albums to see them on the map
+                {t("restaurantMap.noLocationsDesc")}
               </p>
               <Button onClick={() => navigate("/dining/add")}>
-                Add Restaurant
+                {t("restaurantMap.addRestaurant")}
               </Button>
             </div>
           </div>

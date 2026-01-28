@@ -578,4 +578,17 @@ export const en = {
     step2Hint: "Scroll down in the share menu if needed",
     maybeLater: "Maybe Later",
   },
+  restaurantMap: {
+    title: "Restaurant Map",
+    locationCount: "{count} location from your albums",
+    locationsCount: "{count} locations from your albums",
+    loadError: "Failed to load restaurant locations",
+    loading: "Loading map...",
+    noLocations: "No Locations Found",
+    noLocationsDesc: "Add restaurants with location data to your albums to see them on the map",
+    addRestaurant: "Add Restaurant",
+    visited: "Visited",
+    viewDetails: "View Details",
+    error: "Error",
+  },
 };
