@@ -1,175 +1,210 @@
 
-# Plan: Add Account Deletion Feature
+# Apple App Store Compliance Review
 
-## Problem
-Apple rejected your app because it lacks an **account deletion** feature, which is required under Guideline 5.1.1(v) - Data Collection and Storage.
+## Analysis Summary
 
-## Solution Overview
-Add a complete account deletion flow with:
-1. A "Danger Zone" section in Account Settings
-2. Confirmation dialog to prevent accidental deletion
-3. Backend edge function to securely delete all user data and auth account
+After reviewing the codebase, ChatGPT correctly identified the main compliance issue. Your app has **User Generated Content (UGC)** features that require additional safeguards under Apple's **Guideline 1.2 (User-Generated Content)**:
+
+### Current UGC Features
+- Public restaurant sharing via `/share/:id` and `/s/:token`
+- Public albums viewable at `/albums/:id` when visibility="public"
+- User public albums at `/user/:userId/albums`
+- User search and follow system
+
+### What's Missing
+
+| Requirement | Status | Location Needed |
+|-------------|--------|-----------------|
+| Report Content | Missing | SharedRestaurant, AlbumDetail, UserPublicAlbums |
+| Block User | Missing | Account page, UserPublicAlbums |
+| Support Contact | Missing | Account Settings page |
+| Content Moderation | Partial | Need database tables |
 
 ---
 
-## Changes Required
+## Implementation Plan
 
-### 1. Create Edge Function: `delete-account`
+### 1. Database Tables
 
-**File:** `supabase/functions/delete-account/index.ts`
-
-This edge function will:
-- Authenticate the user via JWT token
-- Delete all user data from related tables in order:
-  - `push_tokens`
-  - `user_follows` (both follower and following)
-  - `share_tokens` (via restaurant_entries)
-  - `entry_tags` (via restaurant_entries)
-  - `receipt_items` (via receipts)
-  - `receipts` (via restaurant_entries)
-  - `restaurant_photos` (via restaurant_entries)
-  - `restaurant_social_links` (via restaurant_entries)
-  - `album_entries`
-  - `albums`
-  - `plan_slots` (via plans)
-  - `plans`
-  - `scheduled_visits`
-  - `restaurant_entries`
-  - `profiles`
-  - `upload_error_logs`
-- Delete the auth user using Supabase Admin API
-- Return success or error
-
-### 2. Update Account Page
-
-**File:** `src/pages/Account.tsx`
-
-Add a new "Danger Zone" section with:
-- Warning card with red styling
-- "Delete Account" button
-- AlertDialog confirmation with:
-  - Clear warning about permanent deletion
-  - Checkbox to confirm understanding
-  - Cancel and Delete buttons
-- Loading state during deletion
-- Success handling (redirect to login)
-
-### 3. Add Translations
-
-**Files:** 
-- `src/i18n/translations/en.ts`
-- `src/i18n/translations/pt.ts`
-
-New translation keys:
-```text
-account.dangerZone: "Danger Zone"
-account.deleteAccount: "Delete Account"
-account.deleteAccountDesc: "Permanently delete your account and all associated data"
-account.deleteAccountTitle: "Delete Account?"
-account.deleteAccountWarning: "This action cannot be undone. All your data will be permanently deleted, including:"
-account.deleteAccountList: "• All restaurant entries and photos\n• All albums and collections\n• All scheduled visits and plans\n• Your profile and preferences"
-account.deleteAccountConfirm: "I understand this action is permanent"
-account.deleting: "Deleting..."
-account.deleteSuccess: "Account deleted successfully"
-account.deleteFailed: "Failed to delete account"
+**Table: `content_reports`**
+```sql
+- id (uuid, primary key)
+- reporter_id (uuid, references auth.users)
+- target_type (text: 'restaurant', 'album', 'user')
+- target_id (uuid)
+- target_user_id (uuid, the owner of reported content)
+- reason (text: 'inappropriate', 'spam', 'offensive', 'other')
+- details (text, optional description)
+- status (text: 'pending', 'reviewed', 'dismissed')
+- created_at (timestamp)
 ```
+
+**Table: `user_blocks`**
+```sql
+- id (uuid, primary key)
+- blocker_id (uuid, references auth.users)
+- blocked_id (uuid, references auth.users)
+- created_at (timestamp)
+- unique constraint on (blocker_id, blocked_id)
+```
+
+### 2. UI Changes
+
+**A) Support Contact in Account Settings**
+
+Add a new "Support" card in `src/pages/Account.tsx` with:
+- Email link: `contato@evoque.guru`
+- External link to: `https://evoque.guru/support`
+
+**B) Report Button on Public Content Pages**
+
+Add "Report" option via dropdown menu (•••) on:
+- `SharedRestaurant.tsx` - Report this restaurant
+- `AlbumDetail.tsx` - Report this album (when viewing other's public album)
+- `UserPublicAlbums.tsx` - Report this user
+
+**C) Block User Feature**
+
+Add "Block User" option on:
+- `UserPublicAlbums.tsx` - Block button
+- `Account.tsx` - New "Blocked Users" section to manage blocks
+
+**D) Content Filtering (RLS)**
+
+Update queries to filter out blocked users:
+- Social search results
+- Public albums from blocked users
+- Shared content from blocked users
+
+### 3. Files to Modify/Create
+
+| File | Action |
+|------|--------|
+| Database migration | Create `content_reports` and `user_blocks` tables |
+| `src/pages/Account.tsx` | Add Support section + Blocked Users management |
+| `src/pages/SharedRestaurant.tsx` | Add Report dropdown menu |
+| `src/pages/AlbumDetail.tsx` | Add Report dropdown for non-owner |
+| `src/pages/UserPublicAlbums.tsx` | Add Report/Block dropdown |
+| `src/components/ReportDialog.tsx` | New component for reporting |
+| `src/hooks/useBlockedUsers.ts` | New hook to manage blocks |
+| `src/i18n/translations/en.ts` | Add translations |
+| `src/i18n/translations/pt.ts` | Add translations |
 
 ---
 
 ## UI Design
 
-The "Danger Zone" section will appear at the bottom of the Account page, before the Sign Out button:
-
+### Support Section (Account Page)
 ```text
 ┌────────────────────────────────────────────┐
-│ ⚠️ Danger Zone                             │
+│ 📧 Support                                 │
 │ ──────────────────────────────────────────│
 │                                            │
-│ Delete Account                             │
-│ Permanently delete your account and all    │
-│ associated data. This cannot be undone.    │
+│ Need help? Contact us at:                  │
+│ contato@evoque.guru           [Open Email] │
 │                                            │
-│                    [Delete Account] (red)  │
+│ Visit our support page:                    │
+│ evoque.guru/support           [Open Link]  │
 └────────────────────────────────────────────┘
 ```
 
-Confirmation Dialog:
+### Report Dialog
 ```text
 ┌────────────────────────────────────────────┐
-│ Delete Account?                            │
+│ Report Content                             │
 │ ──────────────────────────────────────────│
 │                                            │
-│ This action cannot be undone. All your     │
-│ data will be permanently deleted:          │
+│ Why are you reporting this?                │
 │                                            │
-│ • All restaurant entries and photos        │
-│ • All albums and collections               │
-│ • All scheduled visits and plans           │
-│ • Your profile and preferences             │
+│ ○ Inappropriate content                    │
+│ ○ Spam or misleading                       │
+│ ○ Offensive or harmful                     │
+│ ○ Other                                    │
 │                                            │
-│ ☐ I understand this action is permanent    │
+│ Additional details (optional):             │
+│ [                              ]           │
 │                                            │
-│            [Cancel]  [Delete Account]      │
+│            [Cancel]  [Submit Report]       │
+└────────────────────────────────────────────┘
+```
+
+### Blocked Users Section (Account Page)
+```text
+┌────────────────────────────────────────────┐
+│ 🚫 Blocked Users                           │
+│ ──────────────────────────────────────────│
+│                                            │
+│ [Avatar] User Name           [Unblock]     │
+│ [Avatar] Another User        [Unblock]     │
+│                                            │
+│ No blocked users (when empty)              │
 └────────────────────────────────────────────┘
 ```
 
 ---
 
-## Files to Create/Modify
+## Regarding Push Notifications (OneSignal/Despia)
 
-| File | Action |
-|------|--------|
-| `supabase/functions/delete-account/index.ts` | Create |
-| `src/pages/Account.tsx` | Modify - add Danger Zone section |
-| `src/i18n/translations/en.ts` | Modify - add translations |
-| `src/i18n/translations/pt.ts` | Modify - add translations |
+The Privacy Manifest (`PrivacyInfo.xcprivacy`) is NOT part of your Lovable project - it lives in the **native iOS project generated by Despia**. You need to:
 
----
+1. **Check with Despia** if their wrapper includes the required Privacy Manifest
+2. **Verify OneSignal SDK** version - recent versions include their own Privacy Manifest
+3. **In App Store Connect**, declare the data types collected:
+   - Device ID (for push notifications)
+   - If NOT using tracking (IDFA), you may be able to remove `NSUserTrackingUsageDescription`
 
-## Technical Details
-
-### Edge Function Security
-
-The edge function uses:
-- JWT authentication to verify user identity
-- Supabase Service Role key for admin operations
-- Transaction-like deletion order (respects foreign key constraints)
-
-### Deletion Order
-
-Tables must be deleted in this order to respect foreign key relationships:
-
-1. `push_tokens` (user_id)
-2. `user_follows` (follower_id, following_id)
-3. `share_tokens` (via entry_id → restaurant_entries)
-4. `entry_tags` (via entry_id)
-5. `receipt_items` (via receipt_id → receipts)
-6. `receipts` (via entry_id)
-7. `restaurant_photos` (via entry_id)
-8. `restaurant_social_links` (via entry_id)
-9. `album_entries` (via album_id)
-10. `albums` (user_id)
-11. `plan_slots` (via plan_id)
-12. `plans` (user_id)
-13. `scheduled_visits` (user_id)
-14. `restaurant_entries` (user_id)
-15. `upload_error_logs` (user_id)
-16. `profiles` (id = user_id)
-17. Auth user (via admin API)
-
-### Storage Cleanup
-
-The edge function will also delete user files from storage:
-- Avatar images in `restaurant-photos/avatars/`
-- Restaurant photos uploaded by the user
+This is configuration on the Despia/native side, not something we can fix in Lovable code.
 
 ---
 
-## Apple Compliance
+## Translation Keys to Add
 
-This implementation satisfies Apple's requirements:
-- ✅ Full account deletion (not just deactivation)
-- ✅ All user data is permanently removed
-- ✅ Confirmation step prevents accidental deletion
-- ✅ No external website required
-- ✅ No customer service contact required
+```typescript
+// English
+support: {
+  title: "Support",
+  description: "Need help? Contact us",
+  email: "Email Support",
+  visitSupport: "Visit Support Page",
+},
+report: {
+  title: "Report Content",
+  reportUser: "Report User",
+  reportRestaurant: "Report Restaurant", 
+  reportAlbum: "Report Album",
+  reason: "Why are you reporting this?",
+  inappropriate: "Inappropriate content",
+  spam: "Spam or misleading",
+  offensive: "Offensive or harmful",
+  other: "Other",
+  details: "Additional details (optional)",
+  detailsPlaceholder: "Tell us more...",
+  submit: "Submit Report",
+  success: "Report submitted",
+  successDesc: "Thank you for helping keep our community safe",
+  failed: "Failed to submit report",
+},
+block: {
+  blockUser: "Block User",
+  unblockUser: "Unblock",
+  blockedUsers: "Blocked Users",
+  noBlockedUsers: "No blocked users",
+  blocked: "User blocked",
+  blockedDesc: "You will no longer see content from this user",
+  unblocked: "User unblocked",
+  unblockedDesc: "You can now see content from this user",
+}
+```
+
+---
+
+## Summary
+
+This implementation will satisfy Apple's UGC requirements:
+
+- **Filter objectionable material**: Block feature hides content from blocked users
+- **Mechanism to report**: Report dialog on all public content
+- **Block abusive users**: Block/unblock user functionality
+- **Published contact**: Support email visible in Account Settings
+
+Shall I proceed with the implementation?
