@@ -3,13 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, MapPin, Calendar, Star, Trash2, Share2, Lock, Globe } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Star, Trash2, Share2, Lock, Globe, MoreVertical, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/i18n/i18n";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
+import { ReportDialog } from "@/components/ReportDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,16 +31,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function AlbumDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [album, setAlbum] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -362,6 +372,23 @@ export default function AlbumDetail() {
               </AlertDialog>
             </div>
           )}
+          
+          {/* Report menu for non-owners on public albums */}
+          {!isOwner && album.visibility === "public" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
+                  <Flag className="h-4 w-4 mr-2" />
+                  {t("report.reportAlbum")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Cover Collage */}
@@ -483,6 +510,17 @@ export default function AlbumDetail() {
               Add Restaurant
             </Button>
           </Card>
+        )}
+
+        {/* Report Dialog */}
+        {album && (
+          <ReportDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            targetType="album"
+            targetId={album.id}
+            targetUserId={album.user_id}
+          />
         )}
       </main>
     </div>

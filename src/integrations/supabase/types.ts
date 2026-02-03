@@ -77,6 +77,42 @@ export type Database = {
         }
         Relationships: []
       }
+      content_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          target_id: string
+          target_type: string
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          target_id: string
+          target_type: string
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          target_id?: string
+          target_type?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       entry_tags: {
         Row: {
           entry_id: string
@@ -721,6 +757,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           created_at: string | null
@@ -762,6 +819,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_blocked_by: {
+        Args: { blocked: string; blocker: string }
+        Returns: boolean
+      }
       search_users_fuzzy: {
         Args: {
           exclude_user_id: string
