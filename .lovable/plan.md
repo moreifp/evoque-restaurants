@@ -1,133 +1,175 @@
 
+# Plan: Add Account Deletion Feature
 
-# Plano: Corrigir Redirecionamento ao Fazer Sign Out
+## Problem
+Apple rejected your app because it lacks an **account deletion** feature, which is required under Guideline 5.1.1(v) - Data Collection and Storage.
 
-## Problema Identificado
-
-Quando o usuário faz **sign out**, ele é redirecionado para a página "Digite o Código de Compartilhamento" (`/token`) em vez da tela de login.
-
-### Causa Raiz
-
-No arquivo `src/App.tsx`, a rota **legacy** para tokens de compartilhamento está posicionada incorretamente:
-
-```typescript
-// Linha 87 - PROBLEMA!
-<Route path="/:token" element={<SharedByToken />} />
-
-// Rotas protegidas (linha 90-113)
-{!session ? (
-  <Route path="*" element={<Auth />} />
-) : (
-  // ...rotas autenticadas
-)}
-```
-
-**Fluxo do Bug:**
-1. Usuário está em `/social`
-2. Faz sign out → sessão é removida
-3. React re-renderiza as rotas
-4. A rota `/:token` captura `/social` (interpreta "social" como um token)
-5. `SharedByToken` não valida "social" → redireciona para `/token`
-
-### Por Que Isso Acontece?
-
-A rota `/:token` é um **catch-all** para caminhos de um único segmento. Ela está posicionada **antes** da verificação de sessão, então captura qualquer rota não-protegida com um segmento.
+## Solution Overview
+Add a complete account deletion flow with:
+1. A "Danger Zone" section in Account Settings
+2. Confirmation dialog to prevent accidental deletion
+3. Backend edge function to securely delete all user data and auth account
 
 ---
 
-## Solução
+## Changes Required
 
-Mover a rota `/:token` para **dentro** da verificação de sessão, mas apenas no bloco de usuários **não autenticados**. Isso garante que:
+### 1. Create Edge Function: `delete-account`
 
-1. Usuários autenticados usam as rotas normais (`/social`, `/dining`, etc.)
-2. Usuários não autenticados que acessam um link de token (`/abc123xyz`) são redirecionados corretamente
-3. Usuários não autenticados em qualquer outra rota veem a tela de login
+**File:** `supabase/functions/delete-account/index.ts`
+
+This edge function will:
+- Authenticate the user via JWT token
+- Delete all user data from related tables in order:
+  - `push_tokens`
+  - `user_follows` (both follower and following)
+  - `share_tokens` (via restaurant_entries)
+  - `entry_tags` (via restaurant_entries)
+  - `receipt_items` (via receipts)
+  - `receipts` (via restaurant_entries)
+  - `restaurant_photos` (via restaurant_entries)
+  - `restaurant_social_links` (via restaurant_entries)
+  - `album_entries`
+  - `albums`
+  - `plan_slots` (via plans)
+  - `plans`
+  - `scheduled_visits`
+  - `restaurant_entries`
+  - `profiles`
+  - `upload_error_logs`
+- Delete the auth user using Supabase Admin API
+- Return success or error
+
+### 2. Update Account Page
+
+**File:** `src/pages/Account.tsx`
+
+Add a new "Danger Zone" section with:
+- Warning card with red styling
+- "Delete Account" button
+- AlertDialog confirmation with:
+  - Clear warning about permanent deletion
+  - Checkbox to confirm understanding
+  - Cancel and Delete buttons
+- Loading state during deletion
+- Success handling (redirect to login)
+
+### 3. Add Translations
+
+**Files:** 
+- `src/i18n/translations/en.ts`
+- `src/i18n/translations/pt.ts`
+
+New translation keys:
+```text
+account.dangerZone: "Danger Zone"
+account.deleteAccount: "Delete Account"
+account.deleteAccountDesc: "Permanently delete your account and all associated data"
+account.deleteAccountTitle: "Delete Account?"
+account.deleteAccountWarning: "This action cannot be undone. All your data will be permanently deleted, including:"
+account.deleteAccountList: "• All restaurant entries and photos\n• All albums and collections\n• All scheduled visits and plans\n• Your profile and preferences"
+account.deleteAccountConfirm: "I understand this action is permanent"
+account.deleting: "Deleting..."
+account.deleteSuccess: "Account deleted successfully"
+account.deleteFailed: "Failed to delete account"
+```
 
 ---
 
-## Mudanças no Código
+## UI Design
 
-### Arquivo: `src/App.tsx`
-
-**Remover** a rota legacy da posição atual (linha 86-87):
-```typescript
-// REMOVER estas linhas:
-{/* Legacy token route - LAST to avoid conflicts with other routes */}
-<Route path="/:token" element={<SharedByToken />} />
-```
-
-**Adicionar** dentro do bloco de usuários não autenticados:
-```typescript
-{!session ? (
-  <>
-    {/* Legacy token route - only for unauthenticated users */}
-    <Route path="/:token" element={<SharedByToken />} />
-    <Route path="*" element={<Auth />} />
-  </>
-) : (
-  // ... rotas autenticadas permanecem iguais
-)}
-```
-
----
-
-## Estrutura Final das Rotas
+The "Danger Zone" section will appear at the bottom of the Account page, before the Sign Out button:
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ ROTAS PÚBLICAS (sempre acessíveis)                      │
-├─────────────────────────────────────────────────────────┤
-│ /share/:id      → SharedRestaurant                      │
-│ /s/:token       → SharedByToken                         │
-│ /token          → TokenInput                            │
-│ /maps-debug     → MapsDebug                             │
-│ /callback/apple → AppleCallback                         │
-│ /albums         → Redirect para /dining?tab=albums      │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│ ⚠️ Danger Zone                             │
+│ ──────────────────────────────────────────│
+│                                            │
+│ Delete Account                             │
+│ Permanently delete your account and all    │
+│ associated data. This cannot be undone.    │
+│                                            │
+│                    [Delete Account] (red)  │
+└────────────────────────────────────────────┘
+```
 
-┌─────────────────────────────────────────────────────────┐
-│ SE NÃO AUTENTICADO                                      │
-├─────────────────────────────────────────────────────────┤
-│ /:token         → SharedByToken (legacy tokens)         │
-│ *               → Auth (tela de login)                  │
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│ SE AUTENTICADO                                          │
-├─────────────────────────────────────────────────────────┤
-│ /               → Index                                 │
-│ /dining         → Dining                                │
-│ /social         → Following                             │
-│ ...outras rotas protegidas...                           │
-│ *               → NotFound                              │
-└─────────────────────────────────────────────────────────┘
+Confirmation Dialog:
+```text
+┌────────────────────────────────────────────┐
+│ Delete Account?                            │
+│ ──────────────────────────────────────────│
+│                                            │
+│ This action cannot be undone. All your     │
+│ data will be permanently deleted:          │
+│                                            │
+│ • All restaurant entries and photos        │
+│ • All albums and collections               │
+│ • All scheduled visits and plans           │
+│ • Your profile and preferences             │
+│                                            │
+│ ☐ I understand this action is permanent    │
+│                                            │
+│            [Cancel]  [Delete Account]      │
+└────────────────────────────────────────────┘
 ```
 
 ---
 
-## Arquivo a Modificar
+## Files to Create/Modify
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/App.tsx` | Mover rota `/:token` para dentro do bloco `!session` |
-
----
-
-## Resultado Esperado
-
-| Antes | Depois |
-|-------|--------|
-| Sign out em `/social` → vai para `/token` | Sign out em `/social` → vai para tela de Login |
-| Rota `/:token` captura rotas protegidas | Rota `/:token` só funciona para não-autenticados |
+| File | Action |
+|------|--------|
+| `supabase/functions/delete-account/index.ts` | Create |
+| `src/pages/Account.tsx` | Modify - add Danger Zone section |
+| `src/i18n/translations/en.ts` | Modify - add translations |
+| `src/i18n/translations/pt.ts` | Modify - add translations |
 
 ---
 
-## Seção Técnica
+## Technical Details
 
-A ordem das rotas no React Router é importante. Rotas mais específicas devem vir antes de rotas genéricas. A rota `/:token` é extremamente genérica (captura qualquer segmento único) e estava "vazando" para rotas que deveriam ser protegidas.
+### Edge Function Security
 
-Ao mover para dentro do bloco condicional, garantimos que:
-- Usuários autenticados nunca "batem" na rota `/:token`
-- Usuários não autenticados acessando `/social` vão para Auth (login)
-- Usuários não autenticados acessando `/abc123` (token real) vão para SharedByToken
+The edge function uses:
+- JWT authentication to verify user identity
+- Supabase Service Role key for admin operations
+- Transaction-like deletion order (respects foreign key constraints)
 
+### Deletion Order
+
+Tables must be deleted in this order to respect foreign key relationships:
+
+1. `push_tokens` (user_id)
+2. `user_follows` (follower_id, following_id)
+3. `share_tokens` (via entry_id → restaurant_entries)
+4. `entry_tags` (via entry_id)
+5. `receipt_items` (via receipt_id → receipts)
+6. `receipts` (via entry_id)
+7. `restaurant_photos` (via entry_id)
+8. `restaurant_social_links` (via entry_id)
+9. `album_entries` (via album_id)
+10. `albums` (user_id)
+11. `plan_slots` (via plan_id)
+12. `plans` (user_id)
+13. `scheduled_visits` (user_id)
+14. `restaurant_entries` (user_id)
+15. `upload_error_logs` (user_id)
+16. `profiles` (id = user_id)
+17. Auth user (via admin API)
+
+### Storage Cleanup
+
+The edge function will also delete user files from storage:
+- Avatar images in `restaurant-photos/avatars/`
+- Restaurant photos uploaded by the user
+
+---
+
+## Apple Compliance
+
+This implementation satisfies Apple's requirements:
+- ✅ Full account deletion (not just deactivation)
+- ✅ All user data is permanently removed
+- ✅ Confirmation step prevents accidental deletion
+- ✅ No external website required
+- ✅ No customer service contact required
