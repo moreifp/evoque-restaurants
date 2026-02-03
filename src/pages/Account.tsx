@@ -8,14 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { useNativeNotifications } from "@/hooks/useNativeNotifications";
-
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,6 +27,11 @@ export default function Account() {
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, enableBiometric, disableBiometric, getBiometricLabel } = useBiometricAuth();
   const { isAvailable: notificationsAvailable, requestPermission, registerPushToken } = useNativeNotifications();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  
+  // Delete account state
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   // Profile state
   const [email, setEmail] = useState("");
@@ -255,6 +261,42 @@ export default function Account() {
       });
     } else {
       toast({ title: "Signed out successfully" });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteConfirmed) return;
+    
+    setDeleteLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session");
+      }
+
+      const response = await supabase.functions.invoke("delete-account", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to delete account");
+      }
+
+      toast({ title: t("account.deleteSuccess") });
+      setDeleteDialogOpen(false);
+      navigate("/");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast({
+        title: t("account.deleteFailed"),
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(false);
+      setDeleteConfirmed(false);
     }
   };
 
@@ -612,6 +654,67 @@ export default function Account() {
                 <span>Privacy Policy</span>
                 <ExternalLink className="h-4 w-4" />
               </a>
+            </CardContent>
+          </Card>
+
+          {/* Danger Zone - Account Deletion */}
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                {t("account.dangerZone")}
+              </CardTitle>
+              <CardDescription>{t("account.deleteAccountDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+                setDeleteDialogOpen(open);
+                if (!open) setDeleteConfirmed(false);
+              }}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="w-full">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {t("account.deleteAccount")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="h-5 w-5" />
+                      {t("account.deleteAccountTitle")}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-4">
+                      <p>{t("account.deleteAccountWarning")}</p>
+                      <p className="whitespace-pre-line text-sm bg-muted p-3 rounded-md">
+                        {t("account.deleteAccountList")}
+                      </p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="flex items-center space-x-2 py-4">
+                    <Checkbox 
+                      id="delete-confirm" 
+                      checked={deleteConfirmed}
+                      onCheckedChange={(checked) => setDeleteConfirmed(checked === true)}
+                    />
+                    <label 
+                      htmlFor="delete-confirm" 
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {t("account.deleteAccountConfirm")}
+                    </label>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      disabled={!deleteConfirmed || deleteLoading}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleteLoading ? t("account.deleting") : t("account.deleteAccount")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </CardContent>
           </Card>
 
