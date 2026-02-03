@@ -4,21 +4,40 @@ import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, BookImage } from "lucide-react";
+import { ArrowLeft, BookImage, MoreVertical, Flag, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/i18n/i18n";
+import { useBlockedUsers } from "@/hooks/useBlockedUsers";
+import { ReportDialog } from "@/components/ReportDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function UserPublicAlbums() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const { t } = useI18n();
+  const { blockUser, isBlocked } = useBlockedUsers();
   const [user, setUser] = useState<any>(null);
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
       fetchUserAndAlbums();
+      fetchCurrentUser();
     }
   }, [userId]);
+
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+  };
 
   const fetchUserAndAlbums = async () => {
     // Fetch user profile
@@ -70,24 +89,49 @@ export default function UserPublicAlbums() {
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
         {/* Header */}
-        <div className="flex items-center space-x-4 mb-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={user.avatar_url} />
-            <AvatarFallback className="text-2xl">
-              {user.display_name?.charAt(0).toUpperCase() || "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-3xl font-bold">{user.display_name || "Anonymous"}</h1>
-            <p className="text-muted-foreground">Public Albums</p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={user.avatar_url} />
+              <AvatarFallback className="text-2xl">
+                {user.display_name?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-3xl font-bold">{user.display_name || "Anonymous"}</h1>
+              <p className="text-muted-foreground">Public Albums</p>
+            </div>
           </div>
+          
+          {/* Report/Block Menu - only show for other users */}
+          {currentUserId && currentUserId !== userId && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
+                  <Flag className="h-4 w-4 mr-2" />
+                  {t("report.reportUser")}
+                </DropdownMenuItem>
+                {!isBlocked(userId!) && (
+                  <DropdownMenuItem onClick={() => blockUser(userId!)}>
+                    <ShieldBan className="h-4 w-4 mr-2" />
+                    {t("block.blockUser")}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Albums Grid */}
@@ -137,6 +181,15 @@ export default function UserPublicAlbums() {
             </p>
           </Card>
         )}
+
+        {/* Report Dialog */}
+        <ReportDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          targetType="user"
+          targetId={userId!}
+          targetUserId={userId!}
+        />
       </main>
     </div>
   );

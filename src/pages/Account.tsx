@@ -10,7 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2 } from "lucide-react";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2, Mail, ShieldBan } from "lucide-react";
+import { useBlockedUsers } from "@/hooks/useBlockedUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
@@ -27,6 +28,9 @@ export default function Account() {
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, enableBiometric, disableBiometric, getBiometricLabel } = useBiometricAuth();
   const { isAvailable: notificationsAvailable, requestPermission, registerPushToken } = useNativeNotifications();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  
+  // Blocked users
+  const { blockedUsers, unblockUser, loading: blockedLoading } = useBlockedUsers();
   
   // Delete account state
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
@@ -589,8 +593,90 @@ export default function Account() {
                   </div>
                 )}
               </CardContent>
-            </Card>
+          </Card>
           )}
+
+          {/* Support Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                {t("support.title")}
+              </CardTitle>
+              <CardDescription>{t("support.description")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <a
+                href={`mailto:${t("support.contactEmail")}`}
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+              >
+                <div>
+                  <span className="font-medium">{t("support.email")}</span>
+                  <p className="text-sm text-muted-foreground">{t("support.contactEmail")}</p>
+                </div>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+              <a
+                href="https://evoque.guru/support"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
+              >
+                <span>{t("support.visitSupport")}</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </CardContent>
+          </Card>
+
+          {/* Blocked Users Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldBan className="h-5 w-5" />
+                {t("block.blockedUsers")}
+              </CardTitle>
+              <CardDescription>Manage users you've blocked</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {blockedLoading ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {t("common.loading")}
+                </p>
+              ) : blockedUsers.length > 0 ? (
+                <div className="space-y-2">
+                  {blockedUsers.map((block) => (
+                    <div
+                      key={block.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={block.profile?.avatar_url || ""} />
+                          <AvatarFallback>
+                            {block.profile?.display_name?.charAt(0)?.toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="font-medium">
+                          {block.profile?.display_name || "Unknown User"}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => unblockUser(block.blocked_id)}
+                      >
+                        {t("block.unblockUser")}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {t("block.noBlockedUsers")}
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Preferences Section - Language */}
           <Card>

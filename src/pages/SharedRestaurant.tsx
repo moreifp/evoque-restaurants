@@ -3,14 +3,18 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook, Sparkles, Languages } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook, Sparkles, Languages, MoreVertical, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client"; // v2 - menu translation support
 import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ReportDialog } from "@/components/ReportDialog";
+import { useI18n } from "@/i18n/i18n";
 
 export default function SharedRestaurant() {
   const { id } = useParams();
+  const { t } = useI18n();
   const [entry, setEntry] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [socialLinks, setSocialLinks] = useState<any[]>([]);
@@ -20,6 +24,7 @@ export default function SharedRestaurant() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [translationDialogOpen, setTranslationDialogOpen] = useState(false);
   const [selectedTranslation, setSelectedTranslation] = useState<string | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -156,9 +161,24 @@ export default function SharedRestaurant() {
               <img src={evoqueIcon} alt="Evoque" className="w-5 h-5" />
               <span>Shared via <strong className="text-foreground">Evoque</strong></span>
             </div>
-            <Button variant="ghost" size="sm" asChild>
-              <a href="https://food.evoque.guru">Join Community</a>
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
+                    <Flag className="h-4 w-4 mr-2" />
+                    {t("report.reportRestaurant")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="ghost" size="sm" asChild>
+                <a href="https://food.evoque.guru">Join Community</a>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -618,6 +638,17 @@ export default function SharedRestaurant() {
           </div>
         </div>
       </footer>
+
+      {/* Report Dialog */}
+      {entry && (
+        <ReportDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          targetType="restaurant"
+          targetId={entry.id}
+          targetUserId={entry.user_id}
+        />
+      )}
     </div>
   );
 }
