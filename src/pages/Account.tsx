@@ -290,7 +290,8 @@ export default function Account() {
 
       toast({ title: t("account.deleteSuccess") });
       setDeleteDialogOpen(false);
-      navigate("/");
+      // Clear local session to trigger redirect to login
+      await supabase.auth.signOut();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       toast({
