@@ -78,6 +78,29 @@ export function useBlockedUsers() {
 
       if (error) throw error;
 
+      // Auto-create content report for developer audit trail
+      await supabase.from("content_reports").insert({
+        reporter_id: user.id,
+        target_type: "user",
+        target_id: userId,
+        target_user_id: userId,
+        reason: "blocked",
+        details: "User was blocked by another user",
+      });
+
+      // Auto-unfollow the blocked user (both directions)
+      await supabase
+        .from("user_follows")
+        .delete()
+        .eq("follower_id", user.id)
+        .eq("following_id", userId);
+
+      await supabase
+        .from("user_follows")
+        .delete()
+        .eq("follower_id", userId)
+        .eq("following_id", user.id);
+
       toast({
         title: t("block.blocked"),
         description: t("block.blockedDesc"),

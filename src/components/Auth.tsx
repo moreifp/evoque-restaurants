@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
@@ -56,6 +57,7 @@ export const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { toast } = useToast();
   const { t } = useI18n();
   
@@ -201,6 +203,16 @@ export const Auth = () => {
         setIsForgotPassword(false);
         setEmail("");
       } else if (isSignUp) {
+        if (!agreedToTerms) {
+          toast({
+            title: t("auth.mustAgreeToTerms"),
+            description: t("auth.mustAgreeToTerms"),
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const validation = signUpSchema.safeParse({ email, password, displayName });
         if (!validation.success) {
           const errors = validation.error.errors.map(err => err.message).join('. ');
@@ -421,13 +433,47 @@ export const Auth = () => {
                     </li>
                   </ul>
                 </div>
-              )}
+            )}
             </div>
+            )}
+            {isSignUp && !isForgotPassword && (
+              <div className="flex items-start space-x-2 mt-2">
+                <Checkbox
+                  id="terms"
+                  checked={agreedToTerms}
+                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                />
+                <label
+                  htmlFor="terms"
+                  className="text-sm leading-tight cursor-pointer select-none"
+                >
+                  {t("auth.agreeToTerms")}.{" "}
+                  <a
+                    href="https://evoque.guru/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Terms of Use
+                  </a>
+                  {" & "}
+                  <a
+                    href="https://evoque.guru/privacy-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Privacy Policy
+                  </a>
+                </label>
+              </div>
             )}
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || (isSignUp && !agreedToTerms)}
             >
               {loading ? t("common.loading") : isForgotPassword ? t("auth.sendResetLink") : isSignUp ? t("auth.createAccount") : t("auth.signIn")}
             </Button>
@@ -459,27 +505,29 @@ export const Auth = () => {
                 : t("auth.dontHaveAccount")}
             </button>
           </div>
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            By signing up, you agree to our{" "}
-            <a
-              href="https://evoque.guru/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent hover:underline"
-            >
-              Terms of Use
-            </a>
-            {" "}and{" "}
-            <a
-              href="https://evoque.guru/privacy-policy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent hover:underline"
-            >
-              Privacy Policy
-            </a>
-            .
-          </div>
+          {!isSignUp && (
+            <div className="mt-4 text-center text-xs text-muted-foreground">
+              By signing up, you agree to our{" "}
+              <a
+                href="https://evoque.guru/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Terms of Use
+              </a>
+              {" "}and{" "}
+              <a
+                href="https://evoque.guru/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Privacy Policy
+              </a>
+              .
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

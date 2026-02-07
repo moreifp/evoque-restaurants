@@ -81,6 +81,8 @@ export const en = {
     emailRequired: "Email is required",
     passwordRequired: "Password is required",
     displayNameRequired: "Display name is required",
+    agreeToTerms: "I agree to the Terms of Use and acknowledge zero tolerance for objectionable content or abusive behavior",
+    mustAgreeToTerms: "You must agree to the terms to create an account",
   },
   home: {
     title: "Keep the taste alive",
