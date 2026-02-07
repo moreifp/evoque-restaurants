@@ -124,7 +124,10 @@ export default function UserPublicAlbums() {
                   {t("report.reportUser")}
                 </DropdownMenuItem>
                 {!isBlocked(userId!) && (
-                  <DropdownMenuItem onClick={() => blockUser(userId!)}>
+                  <DropdownMenuItem onClick={async () => {
+                    const success = await blockUser(userId!);
+                    if (success) navigate(-1);
+                  }}>
                     <ShieldBan className="h-4 w-4 mr-2" />
                     {t("block.blockUser")}
                   </DropdownMenuItem>

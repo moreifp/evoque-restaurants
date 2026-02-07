@@ -6,10 +6,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserPlus, UserMinus, Search, Users } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserPlus, UserMinus, Search, Users, MoreVertical, Flag, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
+import { useBlockedUsers } from "@/hooks/useBlockedUsers";
+import { ReportDialog } from "@/components/ReportDialog";
 
 const MIN_SEARCH_LENGTH = 3;
 
@@ -17,12 +25,15 @@ export default function Following() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { blockedIds, blockUser, isBlocked } = useBlockedUsers();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [following, setFollowing] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportTargetUserId, setReportTargetUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCurrentUser();
@@ -134,9 +145,27 @@ export default function Following() {
     }
   };
 
-  const isFollowing = (userId: string) => {
+  const handleBlockUser = async (userId: string) => {
+    const success = await blockUser(userId);
+    if (success) {
+      // Instantly remove from search results and following list
+      setSearchResults(prev => prev.filter(u => u.id !== userId));
+      setFollowing(prev => prev.filter(u => u.id !== userId));
+    }
+  };
+
+  const handleReportUser = (userId: string) => {
+    setReportTargetUserId(userId);
+    setReportDialogOpen(true);
+  };
+
+  const isFollowingUser = (userId: string) => {
     return following.some(f => f.id === userId);
   };
+
+  // Filter blocked users from search results and following list
+  const filteredSearchResults = searchResults.filter(u => !blockedIds.has(u.id));
+  const filteredFollowing = following.filter(u => !blockedIds.has(u.id));
 
   const isSearchEnabled = searchQuery.trim().length >= MIN_SEARCH_LENGTH;
 
@@ -167,7 +196,7 @@ export default function Following() {
               </TabsTrigger>
               <TabsTrigger value="following">
                 <Users className="h-4 w-4 mr-2" />
-                {t("social.following")} ({following.length})
+                {t("social.following")} ({filteredFollowing.length})
               </TabsTrigger>
             </TabsList>
 
@@ -209,9 +238,9 @@ export default function Following() {
                 </Card>
               )}
 
-              {!searching && searchResults.length > 0 && (
+              {!searching && filteredSearchResults.length > 0 && (
                 <div className="space-y-3">
-                  {searchResults.map((user) => (
+                  {filteredSearchResults.map((user) => (
                     <Card key={user.id}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center gap-3">
@@ -232,31 +261,50 @@ export default function Following() {
                             </Button>
                           </div>
                         </div>
-                        {isFollowing(user.id) ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUnfollow(user.id)}
-                          >
-                            <UserMinus className="h-4 w-4 mr-2" />
-                            {t("social.unfollow")}
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => handleFollow(user.id)}
-                          >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            {t("social.follow")}
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {isFollowingUser(user.id) ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUnfollow(user.id)}
+                            >
+                              <UserMinus className="h-4 w-4 mr-2" />
+                              {t("social.unfollow")}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleFollow(user.id)}
+                            >
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              {t("social.follow")}
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleReportUser(user.id)}>
+                                <Flag className="h-4 w-4 mr-2" />
+                                {t("report.reportUser")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBlockUser(user.id)}>
+                                <ShieldBan className="h-4 w-4 mr-2" />
+                                {t("block.blockUser")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               )}
 
-              {!searching && searchResults.length === 0 && isSearchEnabled && searchQuery && (
+              {!searching && filteredSearchResults.length === 0 && isSearchEnabled && searchQuery && (
                 <Card>
                   <CardContent className="p-12 text-center">
                     <p className="text-muted-foreground">{t("social.noResults")}</p>
@@ -266,8 +314,8 @@ export default function Following() {
             </TabsContent>
 
             <TabsContent value="following" className="space-y-3">
-              {following.length > 0 ? (
-                following.map((user) => (
+              {filteredFollowing.length > 0 ? (
+                filteredFollowing.map((user) => (
                   <Card key={user.id}>
                     <CardContent className="flex items-center justify-between p-4">
                       <div className="flex items-center gap-3">
@@ -288,14 +336,33 @@ export default function Following() {
                           </Button>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUnfollow(user.id)}
-                      >
-                        <UserMinus className="h-4 w-4 mr-2" />
-                        {t("social.unfollow")}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUnfollow(user.id)}
+                        >
+                          <UserMinus className="h-4 w-4 mr-2" />
+                          {t("social.unfollow")}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleReportUser(user.id)}>
+                              <Flag className="h-4 w-4 mr-2" />
+                              {t("report.reportUser")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleBlockUser(user.id)}>
+                              <ShieldBan className="h-4 w-4 mr-2" />
+                              {t("block.blockUser")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </CardContent>
                   </Card>
                 ))
@@ -314,6 +381,17 @@ export default function Following() {
           </Tabs>
         </div>
       </main>
+
+      {/* Report Dialog */}
+      {reportTargetUserId && (
+        <ReportDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          targetType="user"
+          targetId={reportTargetUserId}
+          targetUserId={reportTargetUserId}
+        />
+      )}
     </div>
   );
 }

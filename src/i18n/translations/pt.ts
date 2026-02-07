@@ -81,6 +81,8 @@ export const pt = {
     emailRequired: "E-mail é obrigatório",
     passwordRequired: "Senha é obrigatória",
     displayNameRequired: "Nome de exibição é obrigatório",
+    agreeToTerms: "Concordo com os Termos de Uso e reconheço tolerância zero para conteúdo ofensivo ou comportamento abusivo",
+    mustAgreeToTerms: "Você deve concordar com os termos para criar uma conta",
   },
   home: {
     title: "Mantenha o sabor vivo",
