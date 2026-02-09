@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN terms_accepted_at TIMESTAMPTZ DEFAULT NULL;

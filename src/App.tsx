@@ -14,6 +14,7 @@ import { useStandaloneMode } from "@/hooks/useStandaloneMode";
 import { DespiaProvider } from "@/contexts/DespiaContext";
 import { BlockedUsersProvider } from "@/contexts/BlockedUsersContext";
 import { Auth } from "./components/Auth";
+import { TermsAcceptanceGate } from "./components/TermsAcceptanceGate";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -94,6 +95,7 @@ function AppRoutes() {
           </>
         ) : (
           <>
+            <TermsAcceptanceGate userId={session.user.id} />
             <Route path="/" element={<Index />} />
             <Route path="/dining" element={<Dining />} />
             <Route path="/dining/:id" element={<RestaurantDetail />} />

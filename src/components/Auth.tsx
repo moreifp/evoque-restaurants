@@ -239,11 +239,12 @@ export const Auth = () => {
         if (error) throw error;
 
         if (data.user) {
-          // Create profile
+          // Create profile with terms accepted
           await supabase.from("profiles").insert({
             id: data.user.id,
             display_name: displayName,
-          });
+            terms_accepted_at: new Date().toISOString(),
+          } as any);
 
           toast({
             title: t("auth.signUpSuccess"),
