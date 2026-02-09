@@ -71,32 +71,33 @@ function AppRoutes() {
   }
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
-        {/* Public routes - specific routes FIRST */}
-        <Route path="/share/:id" element={<SharedRestaurant />} />
-        <Route path="/s/:token" element={<SharedByToken />} />
-        <Route path="/token" element={<TokenInput />} />
-        <Route path="/maps-debug" element={<MapsDebug />} />
-        <Route path="/callback/apple" element={<AppleCallback />} />
+    <>
+      {session && <TermsAcceptanceGate userId={session.user.id} />}
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public routes - specific routes FIRST */}
+          <Route path="/share/:id" element={<SharedRestaurant />} />
+          <Route path="/s/:token" element={<SharedByToken />} />
+          <Route path="/token" element={<TokenInput />} />
+          <Route path="/maps-debug" element={<MapsDebug />} />
+          <Route path="/callback/apple" element={<AppleCallback />} />
 
-        {/* Redirects for old routes */}
-        <Route
-          path="/albums"
-          element={<Navigate to="/dining?tab=albums" replace />}
-        />
+          {/* Redirects for old routes */}
+          <Route
+            path="/albums"
+            element={<Navigate to="/dining?tab=albums" replace />}
+          />
 
-        {/* Protected routes */}
-        {!session ? (
-          <>
-            {/* Legacy token route - only for unauthenticated users */}
-            <Route path="/:token" element={<SharedByToken />} />
-            <Route path="*" element={<Auth />} />
-          </>
-        ) : (
-          <>
-            <TermsAcceptanceGate userId={session.user.id} />
-            <Route path="/" element={<Index />} />
+          {/* Protected routes */}
+          {!session ? (
+            <>
+              {/* Legacy token route - only for unauthenticated users */}
+              <Route path="/:token" element={<SharedByToken />} />
+              <Route path="*" element={<Auth />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<Index />} />
             <Route path="/dining" element={<Dining />} />
             <Route path="/dining/:id" element={<RestaurantDetail />} />
             <Route path="/dining/add" element={<AddRestaurant />} />
@@ -119,6 +120,7 @@ function AppRoutes() {
         )}
       </Routes>
     </Suspense>
+    </>
   );
 }
 
