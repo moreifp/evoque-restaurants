@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 interface ReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,19 +43,29 @@ export function ReportDialog({
 
     setSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-      const { error } = await supabase.from("content_reports").insert({
-        reporter_id: user.id,
-        target_type: targetType,
-        target_id: targetId,
-        target_user_id: targetUserId,
-        reason,
-        details: details.trim() || null,
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/submit-content-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({
+          target_type: targetType,
+          target_id: targetId,
+          target_user_id: targetUserId,
+          reason,
+          details: details.trim() || null,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to submit report");
+      }
 
       toast({
         title: t("report.success"),

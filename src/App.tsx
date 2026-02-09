@@ -12,6 +12,7 @@ import { IOSInstallPrompt } from "@/components/pwa/IOSInstallPrompt";
 import { SplashScreen } from "@/components/pwa/SplashScreen";
 import { useStandaloneMode } from "@/hooks/useStandaloneMode";
 import { DespiaProvider } from "@/contexts/DespiaContext";
+import { BlockedUsersProvider } from "@/contexts/BlockedUsersContext";
 import { Auth } from "./components/Auth";
 
 // Lazy load pages for better performance
@@ -130,7 +131,9 @@ const App = () => {
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <AppRoutes />
+              <BlockedUsersProvider>
+                <AppRoutes />
+              </BlockedUsersProvider>
               <PWAInstallPrompt />
               <IOSInstallPrompt />
               <PWAUpdatePrompt />
