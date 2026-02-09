@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.apple-auth-callback]
 verify_jwt = false
+
+[functions.submit-content-report]
+verify_jwt = false

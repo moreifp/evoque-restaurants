@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, BookImage, MoreVertical, Flag, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n/i18n";
-import { useBlockedUsers } from "@/hooks/useBlockedUsers";
+import { useBlockedUsersContext } from "@/contexts/BlockedUsersContext";
 import { ReportDialog } from "@/components/ReportDialog";
 import {
   DropdownMenu,
@@ -20,7 +20,7 @@ export default function UserPublicAlbums() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { t } = useI18n();
-  const { blockUser, isBlocked } = useBlockedUsers();
+  const { blockUser, isBlocked } = useBlockedUsersContext();
   const [user, setUser] = useState<any>(null);
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,7 @@ export default function UserPublicAlbums() {
     );
   }
 
-  if (!user) {
+  if (!user || (userId && isBlocked(userId))) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
         <Navigation />

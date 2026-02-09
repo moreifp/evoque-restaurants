@@ -16,7 +16,7 @@ import { UserPlus, UserMinus, Search, Users, MoreVertical, Flag, ShieldBan } fro
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
-import { useBlockedUsers } from "@/hooks/useBlockedUsers";
+import { useBlockedUsersContext } from "@/contexts/BlockedUsersContext";
 import { ReportDialog } from "@/components/ReportDialog";
 
 const MIN_SEARCH_LENGTH = 3;
@@ -25,7 +25,7 @@ export default function Following() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useI18n();
-  const { blockedIds, blockUser, isBlocked } = useBlockedUsers();
+  const { blockedIds, blockUser, isBlocked } = useBlockedUsersContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [following, setFollowing] = useState<any[]>([]);

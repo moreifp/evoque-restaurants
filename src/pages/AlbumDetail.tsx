@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useBlockedUsersContext } from "@/contexts/BlockedUsersContext";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +44,7 @@ export default function AlbumDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useI18n();
+  const { isBlocked } = useBlockedUsersContext();
   const [album, setAlbum] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,7 +256,7 @@ export default function AlbumDetail() {
     );
   }
 
-  if (!album) {
+  if (!album || (!isOwner && isBlocked(album.user_id))) {
     return (
       <div className="min-h-screen bg-gradient-subtle">
         <Navigation />

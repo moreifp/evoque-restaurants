@@ -78,15 +78,29 @@ export function useBlockedUsers() {
 
       if (error) throw error;
 
-      // Auto-create content report for developer audit trail
-      await supabase.from("content_reports").insert({
-        reporter_id: user.id,
-        target_type: "user",
-        target_id: userId,
-        target_user_id: userId,
-        reason: "blocked",
-        details: "User was blocked by another user",
-      });
+      // Auto-create content report via edge function for developer notification
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-content-report`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({
+              target_type: "user",
+              target_id: userId,
+              target_user_id: userId,
+              reason: "blocked",
+              details: "User was blocked by another user",
+            }),
+          });
+        }
+      } catch (reportErr) {
+        console.error("Error sending block report:", reportErr);
+      }
 
       // Auto-unfollow the blocked user (both directions)
       await supabase

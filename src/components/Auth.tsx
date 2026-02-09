@@ -323,13 +323,49 @@ export const Auth = () => {
 
           {!isForgotPassword && (
             <>
+              {/* EULA Checkbox - shown ABOVE OAuth buttons in sign-up mode */}
+              {isSignUp && (
+                <div className="flex items-start space-x-2 mb-4">
+                  <Checkbox
+                    id="terms-oauth"
+                    checked={agreedToTerms}
+                    onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                  />
+                  <label
+                    htmlFor="terms-oauth"
+                    className="text-sm leading-tight cursor-pointer select-none"
+                  >
+                    {t("auth.agreeToTerms")}.{" "}
+                    <a
+                      href="https://evoque.guru/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Terms of Use
+                    </a>
+                    {" & "}
+                    <a
+                      href="https://evoque.guru/privacy-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Privacy Policy
+                    </a>
+                  </label>
+                </div>
+              )}
+
               {/* Apple Sign In Button */}
               <Button
                 type="button"
                 variant="outline"
                 className="w-full mb-2 bg-black text-white hover:bg-black/90 border-black"
                 onClick={handleAppleSignIn}
-                disabled={loading || appleLoading || !appleReady}
+                disabled={loading || appleLoading || !appleReady || (isSignUp && !agreedToTerms)}
               >
                 <AppleIcon />
                 <span className="ml-2">{isSignUp ? t("auth.signUpWithApple") : t("auth.signInWithApple")}</span>
@@ -341,7 +377,7 @@ export const Auth = () => {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleSignIn}
-                disabled={loading}
+                disabled={loading || (isSignUp && !agreedToTerms)}
               >
                 <GoogleIcon />
                 {isSignUp ? t("auth.signUpWithGoogle") : t("auth.signInWithGoogle")}
@@ -436,40 +472,7 @@ export const Auth = () => {
             )}
             </div>
             )}
-            {isSignUp && !isForgotPassword && (
-              <div className="flex items-start space-x-2 mt-2">
-                <Checkbox
-                  id="terms"
-                  checked={agreedToTerms}
-                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-                />
-                <label
-                  htmlFor="terms"
-                  className="text-sm leading-tight cursor-pointer select-none"
-                >
-                  {t("auth.agreeToTerms")}.{" "}
-                  <a
-                    href="https://evoque.guru/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Terms of Use
-                  </a>
-                  {" & "}
-                  <a
-                    href="https://evoque.guru/privacy-policy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Privacy Policy
-                  </a>
-                </label>
-              </div>
-            )}
+            {/* EULA checkbox removed from here - now shown above OAuth buttons */}
             <Button
               type="submit"
               className="w-full"
