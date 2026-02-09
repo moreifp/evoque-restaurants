@@ -26,7 +26,8 @@ export function useAuthProfile() {
       await supabase.from("profiles").insert({
         id: session.user.id,
         display_name: displayName,
-      });
+        terms_accepted_at: new Date().toISOString(),
+      } as any);
     }
   }, []);
 
