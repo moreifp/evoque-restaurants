@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.submit-content-report]
 verify_jwt = false
+
+[functions.admin-dashboard]
+verify_jwt = false
