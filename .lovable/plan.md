@@ -1,136 +1,140 @@
 
 
-# Plan: Fix Apple Guideline 1.2 Rejection - UGC Safety
+# Plan: Complete Apple Guideline 1.2 Compliance
 
-Apple rejected the app because several UGC safety requirements are not fully met. Here is exactly what is missing and how to fix each point.
-
----
-
-## What Apple Requires vs What We Have
-
-| Apple Requirement | Current Status | Fix Needed |
-|---|---|---|
-| Users must agree to EULA with zero-tolerance language | Passive "By signing up, you agree..." text, no checkbox | Add required checkbox on sign-up |
-| Method for filtering objectionable content | Block exists but content is NOT filtered anywhere | Filter blocked users from search, following, and public views |
-| Mechanism to flag content | Report dialog exists on some pages | Already done (verify visibility) |
-| Block abusive users + notify developer | Block works but does NOT notify developer | Auto-create a content_report when blocking |
-| Block removes content from feed instantly | Block doesn't remove user from current view | Instantly remove blocked user from visible lists |
-| Developer acts within 24 hours | Operational process, no tooling | Already operational (support email exists) |
+Analysis of the Claude Code suggestions against the current codebase. Three real gaps need fixing.
 
 ---
 
-## Changes Required
+## Gap 1: EULA NOT enforced on OAuth sign-ups
 
-### 1. EULA Checkbox on Sign-Up
+**Problem:** The Apple and Google sign-in buttons (lines 326-348 of Auth.tsx) are NOT disabled when `agreedToTerms` is false during sign-up mode. A user can tap "Sign up with Apple" or "Sign up with Google" without ever agreeing to the EULA.
 
-**File:** `src/components/Auth.tsx`
+**Fix:** In `src/components/Auth.tsx`:
+- When `isSignUp` is true, disable Apple/Google buttons unless `agreedToTerms` is checked
+- Move the EULA checkbox ABOVE the OAuth buttons so users see it first
+- Show the checkbox in sign-up mode before everything else
 
-Add a required checkbox before the submit button during sign-up:
+---
 
-- Checkbox text: "I agree to the Terms of Use and acknowledge zero tolerance for objectionable content or abusive behavior"
-- Sign-up button disabled until checkbox is checked
-- Links to Terms of Use and Privacy Policy within the label
+## Gap 2: Blocked users NOT filtered globally
 
-### 2. Block + Report on Following/Social Page
+**Problem:** Only `Following.tsx` filters `blockedIds`. Other pages that show third-party content do NOT filter blocked users:
+- `UserPublicAlbums.tsx` — still shows albums from a blocked user (only navigates away on manual block action, but if you navigate directly to `/user/{blockedId}/albums`, content loads)
+- `AlbumDetail.tsx` — shows public albums from any user including blocked ones
+- `SharedRestaurant.tsx` — shows shared restaurants from blocked users
+- `AlbumsMap.tsx` — no block filtering
 
-**File:** `src/pages/Following.tsx`
+**Fix (two layers):**
 
-The Following page currently only shows "Unfollow". Add a dropdown menu (three dots) per user with:
+### Layer A: Frontend — BlockedUsersProvider (context)
+Create `src/contexts/BlockedUsersContext.tsx`:
+- Wraps the app in `App.tsx` inside the authenticated routes
+- Loads `blockedIds` once on mount
+- Exposes `blockedIds`, `isBlocked()`, `blockUser()`, `unblockUser()` globally
+- Pages consume via `useBlockedUsersContext()` instead of instantiating `useBlockedUsers()` separately
 
-- "Report User"
-- "Block User"
+Apply filtering in:
+- `UserPublicAlbums.tsx`: if `isBlocked(userId)`, show "User not found" instead of their albums
+- `AlbumDetail.tsx`: if album owner is blocked, show "Album not available"
+- `SharedRestaurant.tsx`: if entry owner is blocked, show "Not available" (only for logged-in users)
 
-After blocking, the user is instantly removed from the following list and search results.
+### Layer B: Database RLS (defense in depth)
+The `is_blocked_by(blocker, blocked)` function already exists. Add RLS policies on public content tables to block SELECT when a block exists in either direction:
 
-### 3. Filter Blocked Users from All Content
+- **albums** (public visibility): add policy denying SELECT when `is_blocked_by(auth.uid(), user_id)` or `is_blocked_by(user_id, auth.uid())`
+- **restaurant_entries** (is_public = true): same pattern
+- **restaurant_photos** (public entries): inherited via existing join policies
 
-**File:** `src/pages/Following.tsx`
+This ensures even if frontend misses a filter, the database won't return data from blocked users.
 
-- Filter blocked user IDs from search results
-- Filter blocked user IDs from the following list
-- Use the `useBlockedUsers` hook to get `blockedIds`
+---
 
-**File:** `src/pages/Account.tsx` (Social section)
+## Gap 3: No developer notification mechanism
 
-- Same filtering for the search results and following list in Account settings
+**Problem:** When a user reports or blocks someone, a row goes into `content_reports`, but no one is notified. Apple expects the developer to be able to "act within 24 hours." There is no email notification and no admin panel.
 
-### 4. Block Automatically Notifies Developer
+**Fix (minimum viable):**
 
-**File:** `src/hooks/useBlockedUsers.ts`
+### A. Edge function `submit-content-report`
+Create a new edge function that:
+1. Receives the report data (target_type, target_id, reason, details)
+2. Inserts into `content_reports`
+3. Sends an email notification to `contato@evoque.guru` using Resend (or a simple fetch to an email API)
 
-When `blockUser()` is called, also insert a record into `content_reports` table with:
+Update `ReportDialog.tsx` and `useBlockedUsers.ts` to call this edge function instead of inserting directly into `content_reports`.
 
-- `target_type: "user"`
-- `target_id: userId`
-- `target_user_id: userId`
-- `reason: "blocked"`
-- `details: "User was blocked by another user"`
+### B. Simple admin moderation (optional but recommended)
+This is NOT strictly required for Apple approval if you can demonstrate you monitor reports via email. But for robustness, a simple admin page listing pending reports would help.
 
-This ensures every block creates an audit trail for the developer to review.
+---
 
-### 5. Instant Content Removal After Block
+## What does NOT need changing (from Claude Code suggestions)
 
-**File:** `src/pages/Following.tsx`
-
-After blocking a user:
-
-- Remove them from the displayed search results immediately
-- Remove them from the following list immediately (also unfollow)
-
-**File:** `src/pages/UserPublicAlbums.tsx`
-
-After blocking a user:
-
-- Navigate back (the user should not see the blocked user's content)
-
-### 6. Add Translations
-
-**Files:** `src/i18n/translations/en.ts` and `src/i18n/translations/pt.ts`
-
-New keys:
-
-- `auth.agreeToTerms`: "I agree to the Terms of Use and acknowledge zero tolerance for objectionable content or abusive behavior"
-- `auth.mustAgreeToTerms`: "You must agree to the terms to create an account"
+| Suggestion | Verdict |
+|---|---|
+| "Profanity filtering on text content" | Not required by Apple 1.2. The guideline says "method for filtering objectionable content" which is satisfied by report + block + moderation. Profanity filters are a nice-to-have. |
+| "Admin panel with ban/remove" | Nice-to-have but not a blocker. Email notification + manual DB action satisfies the "24 hour" rule. |
+| "is_banned column on profiles" | Over-engineering for now. Can be added later if needed. |
+| "Apple token revocation" | Already identified in previous plan — will implement in `delete-account` edge function. |
 
 ---
 
 ## Files to Create/Modify
 
-| File | Action |
+| File | Change |
 |---|---|
-| `src/components/Auth.tsx` | Add EULA checkbox on sign-up |
-| `src/pages/Following.tsx` | Add block/report dropdown, filter blocked users |
-| `src/hooks/useBlockedUsers.ts` | Auto-create content_report on block |
-| `src/pages/UserPublicAlbums.tsx` | Navigate away after blocking |
-| `src/i18n/translations/en.ts` | Add new translation keys |
-| `src/i18n/translations/pt.ts` | Add new translation keys |
+| `src/components/Auth.tsx` | Move EULA checkbox above OAuth buttons; disable OAuth buttons when unchecked in sign-up mode |
+| `src/contexts/BlockedUsersContext.tsx` | NEW — global provider for blocked users |
+| `src/App.tsx` | Wrap authenticated routes with BlockedUsersProvider |
+| `src/pages/UserPublicAlbums.tsx` | Use context; block access if user is blocked |
+| `src/pages/AlbumDetail.tsx` | Use context; block access if album owner is blocked |
+| `src/pages/SharedRestaurant.tsx` | Use context; block access if entry owner is blocked (logged-in only) |
+| `src/pages/Following.tsx` | Switch to context instead of local useBlockedUsers |
+| `src/hooks/useBlockedUsers.ts` | Keep as-is (used by context internally) |
+| `supabase/functions/submit-content-report/index.ts` | NEW — insert report + send email notification |
+| `src/components/ReportDialog.tsx` | Call edge function instead of direct insert |
+| Database migration | Add RLS policies on albums and restaurant_entries to deny SELECT for blocked users |
 
 ---
 
 ## Technical Details
 
-### EULA Checkbox Implementation
-
-The checkbox will use a `useState<boolean>` that must be `true` before the sign-up form can submit. The existing "By signing up, you agree to our Terms" text will be replaced by the interactive checkbox.
-
-### Block Notification Flow
+### BlockedUsersProvider
 
 ```text
-User clicks "Block"
+BlockedUsersContext
   |
-  +--> Insert into user_blocks table (existing)
-  |
-  +--> Insert into content_reports table (NEW)
-  |      reporter_id: current user
-  |      target_type: "user"
-  |      target_id: blocked user
-  |      reason: "blocked"
-  |
-  +--> Remove user from current view (NEW)
-  +--> Unfollow if following (NEW)
+  +-- loads blockedIds on auth state change
+  +-- exposes: blockedIds, isBlocked(), blockUser(), unblockUser()
+  +-- blockUser() also calls submit-content-report edge function
+  +-- refetches after block/unblock
 ```
 
-### Content Filtering
+### RLS Policy for Block Filtering
 
-The `useBlockedUsers` hook returns `blockedIds` (a Set). Each page that shows other users will filter out any user whose ID is in this set before rendering.
+```text
+Policy on "albums" table (SELECT, restrictive):
+  USING NOT (
+    is_blocked_by(auth.uid(), user_id) 
+    OR is_blocked_by(user_id, auth.uid())
+  )
+  -- Only applies when auth.uid() IS NOT NULL (logged-in users)
+
+Same pattern on "restaurant_entries" for public entries.
+```
+
+### Email Notification Flow
+
+```text
+User clicks "Report" or "Block"
+  |
+  +-> POST /submit-content-report
+  |     body: { target_type, target_id, target_user_id, reason, details }
+  |
+  +-> Edge function:
+        1. Insert into content_reports
+        2. Send email to contato@evoque.guru via Resend API
+        3. Return success
+```
 
