@@ -173,6 +173,33 @@ export type Database = {
           },
         ]
       }
+      follow_notifications: {
+        Row: {
+          actor_id: string
+          created_at: string
+          id: string
+          read: boolean
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          id?: string
+          read?: boolean
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          id?: string
+          read?: boolean
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_slots: {
         Row: {
           created_at: string
@@ -275,6 +302,7 @@ export type Database = {
           display_name: string | null
           id: string
           notification_preferences: Json | null
+          profile_visibility: string
           terms_accepted_at: string | null
           updated_at: string | null
         }
@@ -289,6 +317,7 @@ export type Database = {
           display_name?: string | null
           id: string
           notification_preferences?: Json | null
+          profile_visibility?: string
           terms_accepted_at?: string | null
           updated_at?: string | null
         }
@@ -303,6 +332,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           notification_preferences?: Json | null
+          profile_visibility?: string
           terms_accepted_at?: string | null
           updated_at?: string | null
         }
@@ -829,18 +859,21 @@ export type Database = {
           follower_id: string
           following_id: string
           id: string
+          status: string
         }
         Insert: {
           created_at?: string | null
           follower_id: string
           following_id: string
           id?: string
+          status?: string
         }
         Update: {
           created_at?: string | null
           follower_id?: string
           following_id?: string
           id?: string
+          status?: string
         }
         Relationships: [
           {
@@ -864,6 +897,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_profile_visibility: {
+        Args: { target_user_id: string }
+        Returns: string
+      }
+      is_accepted_follower: {
+        Args: { follower: string; target: string }
+        Returns: boolean
+      }
       is_blocked_by: {
         Args: { blocked: string; blocker: string }
         Returns: boolean
