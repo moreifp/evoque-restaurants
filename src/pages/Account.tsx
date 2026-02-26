@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2, Mail, ShieldBan, Sparkles } from "lucide-react";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2, Mail, ShieldBan, Sparkles, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAIConsent } from "@/hooks/useAIConsent";
 import { useBlockedUsers } from "@/hooks/useBlockedUsers";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,7 @@ export default function Account() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [uploading, setUploading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [profileVisibility, setProfileVisibility] = useState("public");
 
   // Social state
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,6 +76,7 @@ export default function Account() {
       if (profile) {
         setDisplayName(profile.display_name || "");
         setAvatarUrl(profile.avatar_url || "");
+        setProfileVisibility((profile as any).profile_visibility || "public");
       }
     }
   };
@@ -256,6 +259,29 @@ export default function Account() {
 
   const isFollowing = (userId: string) => {
     return following.some(f => f.id === userId);
+  };
+
+  const handleVisibilityChange = async (value: string) => {
+    setProfileVisibility(value);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ profile_visibility: value } as any)
+        .eq("id", user.id);
+      if (error) throw error;
+      toast({
+        title: t("privacy.updated"),
+        description: t("privacy.updatedDesc"),
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSignOut = async () => {
@@ -515,6 +541,51 @@ export default function Account() {
                   </p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Profile Privacy Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                {t("privacy.title")}
+              </CardTitle>
+              <CardDescription>{t("privacy.description")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup value={profileVisibility} onValueChange={handleVisibilityChange} className="space-y-3">
+                <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="public" id="visibility-public" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="visibility-public" className="flex items-center gap-2 cursor-pointer font-medium">
+                      <Eye className="h-4 w-4" />
+                      {t("privacy.public")}
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">{t("privacy.publicDesc")}</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="approval_required" id="visibility-approval" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="visibility-approval" className="flex items-center gap-2 cursor-pointer font-medium">
+                      <ShieldCheck className="h-4 w-4" />
+                      {t("privacy.approvalRequired")}
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">{t("privacy.approvalRequiredDesc")}</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="private" id="visibility-private" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="visibility-private" className="flex items-center gap-2 cursor-pointer font-medium">
+                      <EyeOff className="h-4 w-4" />
+                      {t("privacy.private")}
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">{t("privacy.privateDesc")}</p>
+                  </div>
+                </div>
+              </RadioGroup>
             </CardContent>
           </Card>
 

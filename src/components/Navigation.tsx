@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import evoqueLogo from "@/assets/evoque-logo.svg";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export const Navigation = () => {
   const location = useLocation();
@@ -54,6 +55,9 @@ export const Navigation = () => {
                 );
               })}
               
+              {/* Notification Bell */}
+              <NotificationBell />
+
               {/* Language Switcher */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -89,6 +93,9 @@ export const Navigation = () => {
                 );
               })}
               
+              {/* Notification Bell */}
+              <NotificationBell />
+
               {/* Language Switcher */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
