@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -166,6 +167,12 @@ export const NotificationBell = () => {
             <p className="text-sm text-muted-foreground">{t("notifications.noNotifications")}</p>
           </div>
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="justify-center cursor-pointer">
+          <Link to="/notifications" className="text-sm text-accent font-medium w-full text-center">
+            {t("notifications.viewAll")}
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

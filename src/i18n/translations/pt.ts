@@ -85,6 +85,8 @@ export const pt = {
     followRequest: "quer seguir você",
     followAccepted: "aceitou sua solicitação",
     markAllRead: "Marcar todas como lidas",
+    yesterday: "Ontem",
+    viewAll: "Ver todas as notificações",
     followToSeeAlbums: "Siga este usuário para ver seus álbuns",
     requestPending: "Solicitação enviada. Aguardando aprovação.",
     profilePrivate: "Este perfil é privado",

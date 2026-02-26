@@ -85,6 +85,8 @@ export const en = {
     followRequest: "wants to follow you",
     followAccepted: "accepted your follow request",
     markAllRead: "Mark all as read",
+    yesterday: "Yesterday",
+    viewAll: "View all notifications",
     followToSeeAlbums: "Follow this user to see their albums",
     requestPending: "Follow request sent. Waiting for approval.",
     profilePrivate: "This profile is private",
