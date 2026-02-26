@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_consent_logs: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          device_info: string | null
+          id: string
+          policy_version: string
+          scope: string
+          user_id: string
+        }
+        Insert: {
+          allowed: boolean
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          policy_version?: string
+          scope: string
+          user_id: string
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          device_info?: string | null
+          id?: string
+          policy_version?: string
+          scope?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       album_entries: {
         Row: {
           album_id: string
@@ -235,6 +265,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ai_consent: boolean
+          ai_consent_scopes: string[] | null
+          ai_consent_timestamp: string | null
+          ai_consent_version: string | null
           avatar_url: string | null
           biometric_enabled: boolean | null
           created_at: string | null
@@ -245,6 +279,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_consent?: boolean
+          ai_consent_scopes?: string[] | null
+          ai_consent_timestamp?: string | null
+          ai_consent_version?: string | null
           avatar_url?: string | null
           biometric_enabled?: boolean | null
           created_at?: string | null
@@ -255,6 +293,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_consent?: boolean
+          ai_consent_scopes?: string[] | null
+          ai_consent_timestamp?: string | null
+          ai_consent_version?: string | null
           avatar_url?: string | null
           biometric_enabled?: boolean | null
           created_at?: string | null

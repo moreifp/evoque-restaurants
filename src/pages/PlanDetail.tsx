@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAIConsent } from "@/hooks/useAIConsent";
 
 interface Recommendation {
   bucket: string;
@@ -50,6 +51,7 @@ interface ScheduleItem {
 export default function PlanDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { ensureAIConsent } = useAIConsent();
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<any>(null);
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
@@ -349,6 +351,8 @@ export default function PlanDetail() {
   };
 
   const handleRefineRecommendations = async () => {
+    const allowed = await ensureAIConsent("recommendations");
+    if (!allowed) return;
     setRefining(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();

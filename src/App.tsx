@@ -13,6 +13,8 @@ import { SplashScreen } from "@/components/pwa/SplashScreen";
 import { useStandaloneMode } from "@/hooks/useStandaloneMode";
 import { DespiaProvider } from "@/contexts/DespiaContext";
 import { BlockedUsersProvider } from "@/contexts/BlockedUsersContext";
+import { AIConsentProvider } from "@/contexts/AIConsentContext";
+import { AIConsentModal } from "@/components/AIConsentModal";
 import { Auth } from "./components/Auth";
 import { TermsAcceptanceGate } from "./components/TermsAcceptanceGate";
 
@@ -71,8 +73,9 @@ function AppRoutes() {
   }
 
   return (
-    <>
+    <AIConsentProvider userId={session?.user?.id ?? null}>
       {session && <TermsAcceptanceGate userId={session.user.id} />}
+      <AIConsentModal />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           {/* Public routes - specific routes FIRST */}
@@ -120,7 +123,7 @@ function AppRoutes() {
         )}
       </Routes>
     </Suspense>
-    </>
+    </AIConsentProvider>
   );
 }
 
