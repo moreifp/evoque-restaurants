@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useI18n } from "@/i18n/i18n";
 import { format } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
+import { useAIConsent } from "@/hooks/useAIConsent";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ export default function RestaurantDetail() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, language } = useI18n();
+  const { ensureAIConsent } = useAIConsent();
   const [entry, setEntry] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
@@ -558,6 +560,8 @@ export default function RestaurantDetail() {
   };
 
   const handleGenerateNote = async () => {
+    const allowed = await ensureAIConsent("recommendations");
+    if (!allowed) return;
     setGeneratingNote(true);
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -609,6 +613,8 @@ export default function RestaurantDetail() {
   };
 
   const handleTranslateMenu = async (photoId: string, photoUrl: string, targetLang?: string) => {
+    const allowed = await ensureAIConsent("menu_translation");
+    if (!allowed) return;
     setTranslatingMenuId(photoId);
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();

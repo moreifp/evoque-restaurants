@@ -31,6 +31,7 @@ import {
 import { useDespia } from "@/contexts/DespiaContext";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
+import { useAIConsent } from "@/hooks/useAIConsent";
 
 interface UploadedFile {
   file: File;
@@ -157,6 +158,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   // Currently always returns isAvailable: false since Despia doesn't expose camera APIs
   const _nativeCamera = useNativeCamera(); // Prefixed with _ to indicate intentionally unused
   const { uploadWithRetry, logUploadError } = useUploadWithRetry();
+  const { ensureAIConsent } = useAIConsent();
 
   // Initialize from saved upload data (for draft restoration)
   useEffect(() => {
@@ -420,6 +422,8 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   };
 
   const processReceipt = async (fileData: UploadedFile) => {
+    const allowed = await ensureAIConsent("invoice_transcription");
+    if (!allowed) return;
     setProcessingReceipt(true);
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -545,6 +549,8 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   };
 
   const analyzeWineLabel = async (fileData: UploadedFile) => {
+    const allowed = await ensureAIConsent("wine_recognition");
+    if (!allowed) return;
     setProcessingWine(fileData.preview);
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -733,6 +739,8 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
 
   // Translate menu photo using AI
   const handleTranslateMenuLocal = async (filePreview: string, targetLanguage: string) => {
+    const allowed = await ensureAIConsent("menu_translation");
+    if (!allowed) return;
     const file = files.find(f => f.preview === filePreview);
     if (!file || !file.url) {
       toast({

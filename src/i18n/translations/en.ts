@@ -654,4 +654,43 @@ export const en = {
     unblocked: "User unblocked",
     unblockedDesc: "You can now see content from this user",
   },
+  aiConsent: {
+    allowButton: "Allow AI for this feature",
+    notNowButton: "Not now",
+    aiOff: "AI is off",
+    aiOffDesc: "You can enable it anytime in Settings.",
+    dataOnlySentAfterAllow: "Your data will only be sent after you allow.",
+    settingsTitle: "AI Features",
+    settingsDesc: "Évoque uses Google Gemini (Google LLC) for wine recognition, menu translation, invoice transcription, and recommendations. Your content is only sent after you allow it.",
+    globalToggle: "Allow AI features (Google Gemini)",
+    withdrawAll: "Withdraw all consent",
+    withdrawAllConfirm: "This will disable all AI features",
+    grantedScopes: "Granted permissions",
+    consentWithdrawn: "AI consent withdrawn",
+    consentEnabled: "AI features enabled",
+    scopeLabels: {
+      wine_recognition: "Wine Recognition",
+      menu_translation: "Menu Translation",
+      invoice_transcription: "Invoice Transcription",
+      recommendations: "Recommendations",
+    },
+    scopes: {
+      wine_recognition: {
+        title: "AI Processing (Google Gemini)",
+        body: "To recognize this wine, Évoque will send the selected wine photo (and any optional notes you typed) to Google Gemini (Google LLC) for image understanding. Do you allow sending this data for wine recognition?",
+      },
+      menu_translation: {
+        title: "AI Processing (Google Gemini)",
+        body: "To recognize and translate this menu, Évoque will send the menu photo to Google Gemini (Google LLC) for text extraction and translation. Do you allow sending this data for menu translation?",
+      },
+      invoice_transcription: {
+        title: "AI Processing (Google Gemini)",
+        body: "To recognize and transcribe this invoice, Évoque will send the invoice photo to Google Gemini (Google LLC) for text extraction. Do you allow sending this data for invoice transcription?",
+      },
+      recommendations: {
+        title: "AI Processing (Google Gemini)",
+        body: "To recommend restaurants, Évoque may send your dining history and preference signals (restaurants saved, ratings, tags, notes) to Google Gemini (Google LLC) to generate suggestions. Do you allow sending this data for recommendations?",
+      },
+    },
+  },
 };

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useAIConsent } from "@/hooks/useAIConsent";
 
 interface AgendaAIPlannerTabProps {
   onVisitsCreated: () => void;
@@ -31,6 +32,7 @@ export function AgendaAIPlannerTab({ onVisitsCreated }: AgendaAIPlannerTabProps)
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t, language } = useI18n();
+  const { ensureAIConsent } = useAIConsent();
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState("");
   const [startDate, setStartDate] = useState<Date>();
@@ -72,6 +74,9 @@ export function AgendaAIPlannerTab({ onVisitsCreated }: AgendaAIPlannerTabProps)
   };
 
   const handleStartPlanning = async () => {
+    const allowed = await ensureAIConsent("recommendations");
+    if (!allowed) return;
+
     if (!city.trim()) {
       toast({
         title: language === "pt" ? "Cidade necessária" : "City required",

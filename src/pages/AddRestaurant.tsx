@@ -18,6 +18,7 @@ import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
 import { z } from "zod";
 import { useI18n } from "@/i18n/i18n";
+import { useAIConsent } from "@/hooks/useAIConsent";
 
 const AUTOSAVE_KEY = "restaurant-draft-autosave";
 
@@ -42,6 +43,7 @@ export default function AddRestaurant() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, language } = useI18n();
+  const { ensureAIConsent } = useAIConsent();
   const [loading, setLoading] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | undefined>();
@@ -405,6 +407,8 @@ export default function AddRestaurant() {
   };
 
   const generateDescription = async () => {
+    const allowed = await ensureAIConsent("recommendations");
+    if (!allowed) return;
     if (!formData.restaurant_name || !formData.location_address) {
       toast({
         title: t("addRestaurant.missingInfo"),

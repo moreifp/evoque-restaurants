@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
+import { useAIConsent } from "@/hooks/useAIConsent";
 
 interface WineData {
   url: string;
@@ -29,6 +30,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
   const [analyzingIndex, setAnalyzingIndex] = useState<number | null>(null);
   const { toast } = useToast();
   const { t } = useI18n();
+  const { ensureAIConsent } = useAIConsent();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -83,6 +85,8 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
   };
 
   const analyzeWineLabel = async (index: number) => {
+    const allowed = await ensureAIConsent("wine_recognition");
+    if (!allowed) return;
     setAnalyzingIndex(index);
     try {
       const file = files[index];

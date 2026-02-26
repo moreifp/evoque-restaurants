@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2, Mail, ShieldBan } from "lucide-react";
+import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2, Mail, ShieldBan, Sparkles } from "lucide-react";
+import { useAIConsent } from "@/hooks/useAIConsent";
 import { useBlockedUsers } from "@/hooks/useBlockedUsers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +30,7 @@ export default function Account() {
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, enableBiometric, disableBiometric, getBiometricLabel } = useBiometricAuth();
   const { isAvailable: notificationsAvailable, requestPermission, registerPushToken } = useNativeNotifications();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const { consentState, toggleGlobalConsent, withdrawAllConsent } = useAIConsent();
   
   // Blocked users
   const { blockedUsers, unblockUser, loading: blockedLoading } = useBlockedUsers();
@@ -675,6 +678,59 @@ export default function Account() {
                 <p className="text-sm text-muted-foreground py-4 text-center">
                   {t("block.noBlockedUsers")}
                 </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Features Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                {t("aiConsent.settingsTitle")}
+              </CardTitle>
+              <CardDescription>{t("aiConsent.settingsDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{t("aiConsent.globalToggle")}</p>
+                </div>
+                <Switch
+                  checked={consentState.aiConsent}
+                  onCheckedChange={async (checked) => {
+                    await toggleGlobalConsent(checked);
+                    toast({
+                      title: checked ? t("aiConsent.consentEnabled") : t("aiConsent.consentWithdrawn"),
+                    });
+                  }}
+                />
+              </div>
+
+              {consentState.aiConsentScopes.length > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">{t("aiConsent.grantedScopes")}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {consentState.aiConsentScopes.map((scope) => (
+                      <Badge key={scope} variant="secondary">
+                        {t(`aiConsent.scopeLabels.${scope}`)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {consentState.aiConsent && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={async () => {
+                    await withdrawAllConsent();
+                    toast({ title: t("aiConsent.consentWithdrawn") });
+                  }}
+                >
+                  {t("aiConsent.withdrawAll")}
+                </Button>
               )}
             </CardContent>
           </Card>

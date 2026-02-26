@@ -654,4 +654,43 @@ export const pt = {
     unblocked: "Usuário desbloqueado",
     unblockedDesc: "Você pode ver conteúdo deste usuário novamente",
   },
+  aiConsent: {
+    allowButton: "Permitir IA para este recurso",
+    notNowButton: "Agora não",
+    aiOff: "IA desativada",
+    aiOffDesc: "Você pode ativá-la a qualquer momento em Configurações.",
+    dataOnlySentAfterAllow: "Seus dados só serão enviados após sua permissão.",
+    settingsTitle: "Recursos de IA",
+    settingsDesc: "O Évoque usa o Google Gemini (Google LLC) para reconhecimento de vinhos, tradução de cardápios, transcrição de notas fiscais e recomendações. Seu conteúdo só é enviado após sua permissão.",
+    globalToggle: "Permitir recursos de IA (Google Gemini)",
+    withdrawAll: "Revogar todo consentimento",
+    withdrawAllConfirm: "Isso desativará todos os recursos de IA",
+    grantedScopes: "Permissões concedidas",
+    consentWithdrawn: "Consentimento de IA revogado",
+    consentEnabled: "Recursos de IA ativados",
+    scopeLabels: {
+      wine_recognition: "Reconhecimento de Vinhos",
+      menu_translation: "Tradução de Cardápios",
+      invoice_transcription: "Transcrição de Notas Fiscais",
+      recommendations: "Recomendações",
+    },
+    scopes: {
+      wine_recognition: {
+        title: "Processamento IA (Google Gemini)",
+        body: "Para reconhecer este vinho, o Évoque enviará a foto selecionada do vinho (e quaisquer notas opcionais que você digitou) ao Google Gemini (Google LLC) para compreensão de imagem. Você permite o envio destes dados para reconhecimento de vinhos?",
+      },
+      menu_translation: {
+        title: "Processamento IA (Google Gemini)",
+        body: "Para reconhecer e traduzir este cardápio, o Évoque enviará a foto do cardápio ao Google Gemini (Google LLC) para extração e tradução de texto. Você permite o envio destes dados para tradução de cardápio?",
+      },
+      invoice_transcription: {
+        title: "Processamento IA (Google Gemini)",
+        body: "Para reconhecer e transcrever esta nota fiscal, o Évoque enviará a foto da nota fiscal ao Google Gemini (Google LLC) para extração de texto. Você permite o envio destes dados para transcrição de nota fiscal?",
+      },
+      recommendations: {
+        title: "Processamento IA (Google Gemini)",
+        body: "Para recomendar restaurantes, o Évoque pode enviar seu histórico gastronômico e sinais de preferência (restaurantes salvos, avaliações, tags, notas) ao Google Gemini (Google LLC) para gerar sugestões. Você permite o envio destes dados para recomendações?",
+      },
+    },
+  },
 };
