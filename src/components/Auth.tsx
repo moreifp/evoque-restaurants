@@ -13,7 +13,6 @@ import evoqueLogo from "@/assets/evoque-logo.svg";
 import { z } from "zod";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
-import { useAppleAuth } from "@/hooks/useAppleAuth";
 import { Fingerprint } from "lucide-react";
 
 const GoogleIcon = () => (
@@ -65,7 +64,7 @@ export const Auth = () => {
   // Native features - only active on iOS app
   const { isNative } = useDespia();
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, biometricLogin, getBiometricLabel, loading: biometricStateLoading } = useBiometricAuth();
-  const { signInWithApple, loading: appleLoading, isReady: appleReady } = useAppleAuth();
+  const [appleLoading, setAppleLoading] = useState(false);
 
   // Attempt biometric login on mount (only for native iOS app)
   useEffect(() => {
@@ -157,12 +156,21 @@ export const Auth = () => {
   };
 
   const handleAppleSignIn = async () => {
-    const success = await signInWithApple();
-    if (success) {
-      toast({
-        title: t("auth.signInSuccess"),
-        description: t("auth.signInSuccess"),
+    try {
+      setAppleLoading(true);
+      const { error } = await lovable.auth.signInWithOAuth("apple", {
+        redirect_uri: window.location.origin,
       });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Apple sign-in failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -360,7 +368,7 @@ export const Auth = () => {
                 variant="outline"
                 className="w-full mb-2 bg-black text-white hover:bg-black/90 border-black"
                 onClick={handleAppleSignIn}
-                disabled={loading || appleLoading || !appleReady || (isSignUp && !agreedToTerms)}
+                disabled={loading || appleLoading || (isSignUp && !agreedToTerms)}
               >
                 <AppleIcon />
                 <span className="ml-2">{isSignUp ? t("auth.signUpWithApple") : t("auth.signInWithApple")}</span>
