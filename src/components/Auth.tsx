@@ -65,6 +65,7 @@ export const Auth = () => {
   // Native features - only active on iOS app
   const { isNative } = useDespia();
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, biometricLogin, getBiometricLabel, loading: biometricStateLoading } = useBiometricAuth();
+  const { signInWithApple, loading: appleNativeLoading, isReady: appleSDKReady } = useAppleAuth();
   const [appleLoading, setAppleLoading] = useState(false);
 
   // Attempt biometric login on mount (only for native iOS app)
