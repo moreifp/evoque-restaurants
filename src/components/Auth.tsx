@@ -13,6 +13,7 @@ import evoqueLogo from "@/assets/evoque-logo.svg";
 import { z } from "zod";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
+import { useAppleAuth } from "@/hooks/useAppleAuth";
 import { Fingerprint } from "lucide-react";
 
 const GoogleIcon = () => (
@@ -64,6 +65,7 @@ export const Auth = () => {
   // Native features - only active on iOS app
   const { isNative } = useDespia();
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, biometricLogin, getBiometricLabel, loading: biometricStateLoading } = useBiometricAuth();
+  const { signInWithApple } = useAppleAuth();
   const [appleLoading, setAppleLoading] = useState(false);
 
   // Attempt biometric login on mount (only for native iOS app)
@@ -158,12 +160,28 @@ export const Auth = () => {
   const handleAppleSignIn = async () => {
     try {
       setAppleLoading(true);
-      const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: window.location.origin,
-      });
+      console.log('[Auth] Apple Sign In started, isNative:', isNative);
 
-      if (error) throw error;
+      if (isNative) {
+        // Use popup-based Apple JS SDK flow for native webview (Despia)
+        // Full-page redirects don't work reliably in native webviews
+        console.log('[Auth] Using native popup flow via Apple JS SDK');
+        const success = await signInWithApple();
+        console.log('[Auth] Apple native popup result:', success);
+        if (!success) {
+          // signInWithApple already shows toast on error (except user cancellation)
+          return;
+        }
+      } else {
+        // Use managed Lovable Cloud OAuth redirect for web/PWA
+        console.log('[Auth] Using managed OAuth redirect flow');
+        const { error } = await lovable.auth.signInWithOAuth("apple", {
+          redirect_uri: window.location.origin,
+        });
+        if (error) throw error;
+      }
     } catch (error: any) {
+      console.error('[Auth] Apple Sign In error:', error);
       toast({
         title: "Error",
         description: "Apple sign-in failed. Please try again.",
