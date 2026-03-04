@@ -1,75 +1,44 @@
 
 
-## Profile Privacy & Follow Request System
+## Fix: Apple Sign In Not Working on iPad (Apple Review Rejection 2.1a)
 
-### Problem
-Currently, following is instant and unconditional. Anyone can follow any user and immediately see their public albums without the target user's knowledge or consent.
+### Root Cause Analysis
 
-### Database Changes
+The app uses `lovable.auth.signInWithOAuth("apple")` which performs a **full-page redirect** to Apple's OAuth provider. Inside the Despia webview on iPad, this redirect either silently fails or the return callback (`/~oauth`) doesn't get processed properly, resulting in "no further action" after tapping the button.
 
-**1. Add privacy settings to `profiles` table:**
-- `profile_visibility` enum: `public`, `approval_required`, `private`
-  - `public`: anyone can follow instantly (current behavior)
-  - `approval_required`: follow creates a pending request; target must approve
-  - `private`: user is hidden from search results entirely
+The old custom Apple auth implementation (`useAppleAuth.ts`, `AppleCallback.tsx`, `apple-auth-callback` edge function) still exists in the codebase but is no longer used -- it was replaced by the managed Lovable Cloud OAuth. However, the managed OAuth redirect flow may not work reliably inside native webviews.
 
-**2. Add `status` column to `user_follows` table:**
-- `status` text: `accepted`, `pending`, `rejected` (default: `accepted`)
-- When target profile is `public`, insert with `accepted`
-- When target profile is `approval_required`, insert with `pending`
+### Plan
 
-**3. Create `follow_notifications` table:**
-- `id`, `user_id` (recipient), `actor_id` (who triggered), `type` (new_follower, follow_request, follow_accepted), `read`, `created_at`
-- RLS: users can only view/update their own notifications
+**Step 1: Add diagnostic logging to Apple Sign In**
+- In `Auth.tsx`, wrap `handleAppleSignIn` with detailed console logging at every step (before call, after result, error details)
+- This will help capture exactly where the flow breaks on iPad
 
-**4. Update RLS policies on `user_follows`:**
-- SELECT: allow both follower and following to see (already exists)
-- INSERT: check follower = auth.uid() (already exists)
-- UPDATE: allow target user to update status (for approving/rejecting)
+**Step 2: Implement native-aware Apple Sign In fallback**
+- When running inside Despia (`isNative === true`), use **Apple's native JS SDK popup flow** (the old `useAppleAuth.ts` approach) instead of the Lovable Cloud redirect flow
+- The popup flow works better in webviews because it doesn't require a full-page redirect
+- Keep the Lovable Cloud managed OAuth for web/PWA users (non-native)
 
-**5. Update RLS on albums/entries:**
-- Add condition: only show content from followed users where `status = 'accepted'`
+**Step 3: Update Auth.tsx with conditional flow**
+- If `isNative`: use `useAppleAuth().signInWithApple()` (popup-based, uses the existing edge function)
+- If web/PWA: use `lovable.auth.signInWithOAuth("apple")` (redirect-based, current behavior)
 
-### Frontend Changes
+**Step 4: Ensure the edge function `apple-auth-callback` still works**
+- Verify the edge function has the required secrets (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`)
+- The edge function is already deployed and handles token exchange + session creation
 
-**1. Account page - Privacy Settings card:**
-- Radio group: Public / Approval Required / Private
-- Saved to `profiles.profile_visibility`
-- Description text explaining each mode
+**Step 5: Add iPad-specific error handling**
+- Show a user-visible toast if Apple Sign In fails silently (no action detected after timeout)
+- Add a retry mechanism
 
-**2. Following page - Follow button logic:**
-- Check target's `profile_visibility` before inserting
-- If `approval_required`: insert with `pending` status, show "Requested" button state
-- If `private`: hide follow button entirely (user shouldn't appear in search)
-- If `public`: current instant-follow behavior
-
-**3. Following page - New "Requests" tab:**
-- Shows pending follow requests where current user is the target
-- Accept/Reject buttons per request
-- Badge count on tab for pending requests
-
-**4. Notifications indicator:**
-- Bell icon in Navigation showing unread notification count
-- Dropdown or page listing: "X wants to follow you", "Y accepted your follow request", "Z started following you"
-
-**5. UserPublicAlbums page:**
-- If not following (or pending), hide albums and show "Follow to see albums" or "Request sent, waiting for approval"
-
-### Implementation Steps
-
-1. Run migration: add `profile_visibility` to profiles, add `status` to user_follows, create `follow_notifications` table with RLS
-2. Update `handleFollow` in Following.tsx and Account.tsx to check target visibility and set appropriate status
-3. Add privacy settings UI in Account.tsx with radio group
-4. Add "Requests" tab in Following.tsx showing pending incoming requests with accept/reject
-5. Add notification bell to Navigation.tsx with unread count badge
-6. Update UserPublicAlbums.tsx to respect follow status
-7. Add i18n translations for new strings (en + pt)
+### Files to Change
+- `src/components/Auth.tsx` -- conditional Apple auth based on `isNative`
+- `src/hooks/useAppleAuth.ts` -- no changes needed (already functional)
+- Potentially clean up `src/pages/AppleCallback.tsx` route (keep for redirect fallback)
 
 ### Technical Details
-
-- `profile_visibility` defaults to `public` to preserve current behavior for existing users
-- A security definer function `get_profile_visibility(user_id)` avoids RLS recursion when checking visibility during follow
-- Follow notifications are created via a database trigger on `user_follows` insert/update to keep logic server-side
-- The `search_users_fuzzy` function will be updated to exclude users with `private` visibility
-- Pending follows do NOT grant access to albums -- RLS checks `status = 'accepted'`
+- The old Apple popup flow uses Apple's JS SDK (`appleid.auth.js`) loaded dynamically
+- It calls the `apple-auth-callback` edge function to exchange the authorization code for a session
+- This approach avoids the full-page redirect that breaks in iPad webviews
+- Existing secrets (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`) must be configured for this to work
 
