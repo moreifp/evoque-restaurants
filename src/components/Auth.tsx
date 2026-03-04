@@ -13,6 +13,7 @@ import evoqueLogo from "@/assets/evoque-logo.svg";
 import { z } from "zod";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
+import { useAppleAuth } from "@/hooks/useAppleAuth";
 import { Fingerprint } from "lucide-react";
 
 const GoogleIcon = () => (
