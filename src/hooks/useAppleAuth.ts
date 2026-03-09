@@ -96,12 +96,17 @@ export function useAppleAuth() {
 
     try {
       // Trigger Apple Sign In popup
+      console.log('[AppleAuth] Calling window.AppleID.auth.signIn()...');
       const response = await window.AppleID.auth.signIn();
+      console.log('[AppleAuth] Apple popup returned successfully');
+      console.log('[AppleAuth] Has authorization:', !!response.authorization);
+      console.log('[AppleAuth] Has user info:', !!response.user);
 
       const { authorization, user } = response;
 
       // Call our edge function to complete authentication
       const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/apple-auth-callback`;
+      console.log('[AppleAuth] Calling edge function:', edgeFunctionUrl);
       
       const authResponse = await fetch(edgeFunctionUrl, {
         method: "POST",
@@ -117,7 +122,9 @@ export function useAppleAuth() {
         }),
       });
 
+      console.log('[AppleAuth] Edge function response status:', authResponse.status);
       const authData = await authResponse.json();
+      console.log('[AppleAuth] Edge function response:', JSON.stringify(authData).substring(0, 200));
 
       if (!authResponse.ok || authData.error) {
         throw new Error(authData.error || "Authentication failed");
@@ -125,21 +132,26 @@ export function useAppleAuth() {
 
       // Set the session in Supabase client
       if (authData.session) {
+        console.log('[AppleAuth] Setting session...');
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: authData.session.access_token,
           refresh_token: authData.session.refresh_token,
         });
 
         if (sessionError) {
+          console.error('[AppleAuth] Session error:', sessionError);
           throw sessionError;
         }
 
+        console.log('[AppleAuth] Session set successfully!');
         return true;
       }
 
       throw new Error("No session returned from server");
     } catch (error: any) {
-      console.error("Apple Sign In error:", error);
+      console.error("[AppleAuth] Error:", error);
+      console.error("[AppleAuth] Error type:", typeof error);
+      console.error("[AppleAuth] Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
       
       // Don't show error for user cancellation
       if (error.error !== "popup_closed_by_user") {
