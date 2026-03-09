@@ -160,36 +160,17 @@ export const Auth = () => {
   const handleAppleSignIn = async () => {
     try {
       setAppleLoading(true);
-      console.log('[Auth] Apple Sign In started');
-      console.log('[Auth] isNative:', isNative);
-      console.log('[Auth] userAgent:', navigator.userAgent);
-      console.log('[Auth] window.AppleID available:', !!window.AppleID);
+      console.log('[Auth] Apple Sign In started - always using popup flow');
 
-      // Always try native popup flow first when inside Despia webview
-      // OR when AppleID SDK is available (covers iPad edge cases where
-      // isNative detection may fail but redirects still break)
-      const usePopupFlow = isNative || navigator.userAgent.includes('despia');
-      
-      console.log('[Auth] usePopupFlow:', usePopupFlow);
-
-      if (usePopupFlow) {
-        console.log('[Auth] Using popup flow via Apple JS SDK');
-        const success = await signInWithApple();
-        console.log('[Auth] Apple popup result:', success);
-        if (!success) {
-          return;
-        }
-      } else {
-        console.log('[Auth] Using managed OAuth redirect flow');
-        const result = await lovable.auth.signInWithOAuth("apple", {
-          redirect_uri: window.location.origin,
-        });
-        console.log('[Auth] Managed OAuth result:', JSON.stringify(result));
-        if (result.error) throw result.error;
+      // Always use Apple JS SDK popup flow for reliability
+      // The managed OAuth redirect flow fails silently on return for existing users
+      const success = await signInWithApple();
+      console.log('[Auth] Apple popup result:', success);
+      if (!success) {
+        return;
       }
     } catch (error: any) {
       console.error('[Auth] Apple Sign In error:', error);
-      console.error('[Auth] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       toast({
         title: "Error",
         description: "Apple sign-in failed. Please try again.",
