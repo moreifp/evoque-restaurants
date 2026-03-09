@@ -160,28 +160,36 @@ export const Auth = () => {
   const handleAppleSignIn = async () => {
     try {
       setAppleLoading(true);
-      console.log('[Auth] Apple Sign In started, isNative:', isNative);
+      console.log('[Auth] Apple Sign In started');
+      console.log('[Auth] isNative:', isNative);
+      console.log('[Auth] userAgent:', navigator.userAgent);
+      console.log('[Auth] window.AppleID available:', !!window.AppleID);
 
-      if (isNative) {
-        // Use popup-based Apple JS SDK flow for native webview (Despia)
-        // Full-page redirects don't work reliably in native webviews
-        console.log('[Auth] Using native popup flow via Apple JS SDK');
+      // Always try native popup flow first when inside Despia webview
+      // OR when AppleID SDK is available (covers iPad edge cases where
+      // isNative detection may fail but redirects still break)
+      const usePopupFlow = isNative || navigator.userAgent.includes('despia');
+      
+      console.log('[Auth] usePopupFlow:', usePopupFlow);
+
+      if (usePopupFlow) {
+        console.log('[Auth] Using popup flow via Apple JS SDK');
         const success = await signInWithApple();
-        console.log('[Auth] Apple native popup result:', success);
+        console.log('[Auth] Apple popup result:', success);
         if (!success) {
-          // signInWithApple already shows toast on error (except user cancellation)
           return;
         }
       } else {
-        // Use managed Lovable Cloud OAuth redirect for web/PWA
         console.log('[Auth] Using managed OAuth redirect flow');
-        const { error } = await lovable.auth.signInWithOAuth("apple", {
+        const result = await lovable.auth.signInWithOAuth("apple", {
           redirect_uri: window.location.origin,
         });
-        if (error) throw error;
+        console.log('[Auth] Managed OAuth result:', JSON.stringify(result));
+        if (result.error) throw result.error;
       }
     } catch (error: any) {
       console.error('[Auth] Apple Sign In error:', error);
+      console.error('[Auth] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       toast({
         title: "Error",
         description: "Apple sign-in failed. Please try again.",
