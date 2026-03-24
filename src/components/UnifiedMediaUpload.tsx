@@ -311,20 +311,60 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const handleFileSelect = async (category: keyof typeof categoryConfig, useCamera = false) => {
     console.log('[UnifiedMediaUpload] handleFileSelect:', { category, useCamera });
     
-    // Create standard web file input - works in all browsers including iOS WebView
+    // Create standard web file input
+    // IMPORTANT: Attach to DOM before .click() to prevent iOS WebView from
+    // garbage-collecting the element when the camera app opens in foreground
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = category === 'receipt' ? 'image/*' : 'image/*,video/*';
     input.multiple = category !== 'receipt';
+    input.style.display = 'none';
     
     // The capture attribute triggers the native iOS camera when set
     if (useCamera) {
       input.capture = 'environment'; // Opens rear camera directly on iOS
       console.log('[UnifiedMediaUpload] Using camera capture mode');
     }
+
+    // Cleanup helper — removes input from DOM safely
+    const cleanup = () => {
+      try {
+        if (input.parentNode) {
+          input.parentNode.removeChild(input);
+        }
+      } catch (e) {
+        console.warn('[UnifiedMediaUpload] cleanup error:', e);
+      }
+    };
+
+    // Focus-based cancel detection for iOS:
+    // If the user dismisses the camera/picker without selecting, onchange never fires.
+    // We listen for the window regaining focus and check after a short delay.
+    let changeHandled = false;
+    const handleFocusCancel = () => {
+      setTimeout(() => {
+        if (!changeHandled) {
+          console.log('[UnifiedMediaUpload] No file selected (cancel detected via focus)');
+          cleanup();
+        }
+        window.removeEventListener('focus', handleFocusCancel);
+      }, 500);
+    };
+    window.addEventListener('focus', handleFocusCancel);
     
     input.onchange = async (e) => {
+      changeHandled = true;
+      window.removeEventListener('focus', handleFocusCancel);
+      
       const selectedFiles = Array.from((e.target as HTMLInputElement).files || []);
+      
+      // Diagnostic logging for iOS camera debugging
+      console.log('[UnifiedMediaUpload] Files received:', selectedFiles.map(f => ({
+        name: f.name, type: f.type, size: f.size
+      })));
+      
+      // Remove input from DOM now that we have the files
+      cleanup();
       
       if (selectedFiles.length === 0) return;
 
@@ -362,6 +402,8 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       proceedWithUpload(newFiles, category, useCamera);
     };
     
+    // Attach to DOM BEFORE clicking — prevents iOS WebView GC
+    document.body.appendChild(input);
     input.click();
   };
 
