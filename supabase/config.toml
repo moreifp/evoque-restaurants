@@ -34,7 +34,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-google-maps-key]
-verify_jwt = false
+verify_jwt = true
 
 [functions.apple-auth-callback]
 verify_jwt = false
