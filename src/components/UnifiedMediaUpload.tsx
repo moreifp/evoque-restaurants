@@ -337,36 +337,34 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       }
     };
 
-    // Focus-based cancel detection for iOS:
-    // If the user dismisses the camera/picker without selecting, onchange never fires.
-    // We listen for the window regaining focus and check after a short delay.
-    let changeHandled = false;
-    const handleFocusCancel = () => {
-      setTimeout(() => {
-        if (!changeHandled) {
-          console.log('[UnifiedMediaUpload] No file selected (cancel detected via focus)');
-          cleanup();
-        }
-        window.removeEventListener('focus', handleFocusCancel);
-      }, 500);
-    };
-    window.addEventListener('focus', handleFocusCancel);
-    
+    // Safety net: only remove the input if it remains forgotten in the DOM for a long time.
+    // We intentionally do NOT use a focus-based cancel listener because on iOS WebView
+    // the WebView regains focus BEFORE onchange fires, and removing the input mid-flight
+    // causes the file to be silently lost when processing the photo takes >500ms.
+    const safetyTimer = setTimeout(() => {
+      if (document.body.contains(input)) {
+        console.warn('[UnifiedMediaUpload] Safety cleanup of stale file input (5min)');
+        cleanup();
+      }
+    }, 5 * 60 * 1000);
+
     input.onchange = async (e) => {
-      changeHandled = true;
-      window.removeEventListener('focus', handleFocusCancel);
-      
+      clearTimeout(safetyTimer);
+
       const selectedFiles = Array.from((e.target as HTMLInputElement).files || []);
-      
+
       // Diagnostic logging for iOS camera debugging
-      console.log('[UnifiedMediaUpload] Files received:', selectedFiles.map(f => ({
+      console.log('[UnifiedMediaUpload] onchange fired, files:', selectedFiles.length, selectedFiles.map(f => ({
         name: f.name, type: f.type, size: f.size
       })));
-      
-      // Remove input from DOM now that we have the files
+
+      // Remove input from DOM now that we have the files (or confirmed cancellation)
       cleanup();
-      
-      if (selectedFiles.length === 0) return;
+
+      if (selectedFiles.length === 0) {
+        console.log('[UnifiedMediaUpload] User cancelled file selection (empty files list)');
+        return;
+      }
 
       // Validate file sizes
       const { validFiles, rejectedFiles: rejected, totalValidSize } = validateFiles(selectedFiles, t);
