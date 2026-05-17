@@ -1085,10 +1085,11 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
               size="lg"
               className="w-full h-16 text-lg font-semibold bg-navy hover:bg-navy/90 text-white"
               onClick={() => {
-                setShowAddMoreDialog(false);
+                // Synchronous gesture preservation (see camera button above)
                 if (lastCategory) {
-                  setTimeout(() => handleFileSelect(lastCategory, true), 100);
+                  handleFileSelect(lastCategory, true);
                 }
+                setShowAddMoreDialog(false);
               }}
             >
               <Plus className="h-6 w-6 mr-2" />
@@ -1123,10 +1124,14 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
               size="lg"
               className="w-full h-16 text-lg font-semibold bg-navy hover:bg-navy/90 text-white"
               onClick={() => {
-                setShowSourceDialog(false);
+                // IMPORTANT (iOS): trigger the file input SYNCHRONOUSLY within the
+                // user gesture. Any setTimeout/await before input.click() breaks the
+                // gesture context and iOS silently ignores `capture=environment`,
+                // showing only the photo library instead of the camera.
                 if (sourceCategory) {
-                  setTimeout(() => handleFileSelect(sourceCategory, true), 100);
+                  handleFileSelect(sourceCategory, true);
                 }
+                setShowSourceDialog(false);
               }}
             >
               <Camera className="h-6 w-6 mr-3" />
@@ -1137,10 +1142,10 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
               variant="outline"
               className="w-full h-16 text-lg font-semibold"
               onClick={() => {
-                setShowSourceDialog(false);
                 if (sourceCategory) {
-                  setTimeout(() => handleFileSelect(sourceCategory, false), 100);
+                  handleFileSelect(sourceCategory, false);
                 }
+                setShowSourceDialog(false);
               }}
             >
               <Image className="h-6 w-6 mr-3" />
