@@ -64,9 +64,7 @@ export const NotificationBell = () => {
       // Fetch actor profiles
       const actorIds = [...new Set(data.map(n => n.actor_id))];
       const { data: profilesRaw } = await supabase
-        .from("public_profiles" as any)
-        .select("id, display_name, avatar_url")
-        .in("id", actorIds);
+        .rpc("get_public_profiles", { user_ids: actorIds });
       const profiles = (profilesRaw ?? []) as unknown as Array<{ id: string; display_name: string; avatar_url: string }>;
 
       const profileMap = new Map(profiles.map(p => [p.id, p]));
