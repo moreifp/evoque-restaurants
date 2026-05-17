@@ -63,19 +63,20 @@ export const NotificationBell = () => {
     if (data) {
       // Fetch actor profiles
       const actorIds = [...new Set(data.map(n => n.actor_id))];
-      const { data: profiles } = await supabase
+      const { data: profilesRaw } = await supabase
         .from("public_profiles" as any)
         .select("id, display_name, avatar_url")
         .in("id", actorIds);
+      const profiles = (profilesRaw ?? []) as unknown as Array<{ id: string; display_name: string; avatar_url: string }>;
 
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      const profileMap = new Map(profiles.map(p => [p.id, p]));
 
       const enriched = data.map(n => ({
         ...n,
         actor: profileMap.get(n.actor_id) || null,
       }));
 
-      setNotifications(enriched as Notification[]);
+      setNotifications(enriched as unknown as Notification[]);
       setUnreadCount(enriched.filter(n => !n.read).length);
     }
   };

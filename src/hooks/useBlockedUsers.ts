@@ -39,15 +39,16 @@ export function useBlockedUsers() {
       // Fetch profiles for blocked users
       if (data && data.length > 0) {
         const blockedUserIds = data.map((b) => b.blocked_id);
-        const { data: profiles } = await supabase
+        const { data: profilesRaw } = await supabase
           .from("public_profiles" as any)
           .select("id, display_name, avatar_url")
           .in("id", blockedUserIds);
+        const profiles = (profilesRaw ?? []) as unknown as Array<{ id: string; display_name: string; avatar_url: string }>;
 
         const enrichedData = data.map((block) => ({
           ...block,
-          profile: profiles?.find((p) => p.id === block.blocked_id),
-        }));
+          profile: profiles.find((p) => p.id === block.blocked_id),
+        })) as BlockedUser[];
 
         setBlockedUsers(enrichedData);
         setBlockedIds(new Set(blockedUserIds));
