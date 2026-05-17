@@ -47,6 +47,12 @@ interface UploadedFile {
 
 interface UnifiedMediaUploadProps {
   entryId?: string; // Pass when editing existing restaurant for autosave
+  /**
+   * When creating a new restaurant, called lazily right before the first upload
+   * to obtain (or create) a draft entryId so each photo can be persisted to DB
+   * immediately. Avoids losing photos if the WebView refreshes/suspends.
+   */
+  onRequestEntryId?: () => Promise<string | null>;
   initialUploadData?: {
     place: string[];
     food: string[];
