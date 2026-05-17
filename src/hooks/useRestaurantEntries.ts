@@ -14,6 +14,7 @@ async function fetchEntries(): Promise<RestaurantEntry[]> {
     .from("restaurant_entries")
     .select("*")
     .eq("user_id", user.id)
+    .eq("is_draft", false)
     .order("visit_date", { ascending: false });
 
   if (error) throw error;
