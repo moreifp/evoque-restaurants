@@ -463,6 +463,7 @@ export type Database = {
           description: string | null
           google_place_id: string | null
           id: string
+          is_draft: boolean
           is_public: boolean | null
           location_address: string | null
           location_lat: number | null
@@ -483,6 +484,7 @@ export type Database = {
           description?: string | null
           google_place_id?: string | null
           id?: string
+          is_draft?: boolean
           is_public?: boolean | null
           location_address?: string | null
           location_lat?: number | null
@@ -503,6 +505,7 @@ export type Database = {
           description?: string | null
           google_place_id?: string | null
           id?: string
+          is_draft?: boolean
           is_public?: boolean | null
           location_address?: string | null
           location_lat?: number | null
