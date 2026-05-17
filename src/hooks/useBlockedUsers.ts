@@ -40,7 +40,7 @@ export function useBlockedUsers() {
       if (data && data.length > 0) {
         const blockedUserIds = data.map((b) => b.blocked_id);
         const { data: profiles } = await supabase
-          .from("profiles")
+          .from("public_profiles" as any)
           .select("id, display_name, avatar_url")
           .in("id", blockedUserIds);
 
