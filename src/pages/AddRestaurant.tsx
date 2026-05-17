@@ -701,6 +701,8 @@ export default function AddRestaurant() {
 
                 {/* Unified Media Upload */}
                 <UnifiedMediaUpload
+                  entryId={draftEntryId || undefined}
+                  onRequestEntryId={ensureDraftEntry}
                   initialUploadData={uploadData}
                   onUploadsChange={setUploadData}
                   onLocationExtracted={(location) => {
