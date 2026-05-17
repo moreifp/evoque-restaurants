@@ -960,8 +960,13 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
           });
         }
 
-        // If entryId exists (editing existing restaurant), save immediately to DB
-        if (entryId) {
+        // Resolve effective entryId lazily after first successful upload
+        // (creates a draft entry for the new-restaurant flow so photos persist
+        // even if the WebView refreshes before the user taps Save).
+        const effectiveEntryId = await resolveEntryId();
+
+        // If we have an entryId, save photo immediately to DB
+        if (effectiveEntryId) {
           // Detect if file is a video
           const isVideo = fileData.file.type.startsWith('video/');
           
@@ -975,7 +980,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
           const { error: dbError } = await supabase
             .from("restaurant_photos")
             .insert({
-              entry_id: entryId,
+              entry_id: effectiveEntryId,
               photo_url: publicUrl,
               type: photoType,
             });
