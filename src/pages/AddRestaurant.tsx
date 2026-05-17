@@ -52,6 +52,8 @@ export default function AddRestaurant() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [originScheduledVisitId, setOriginScheduledVisitId] = useState<string | null>(null);
   const [prefilledFromAgenda, setPrefilledFromAgenda] = useState(false);
+  const [draftEntryId, setDraftEntryId] = useState<string | null>(null);
+  const draftCreationRef = useRef<Promise<string | null> | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   
   const [uploadData, setUploadData] = useState<{
