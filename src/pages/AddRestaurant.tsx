@@ -95,7 +95,6 @@ export default function AddRestaurant() {
     const visitDate = searchParams.get("visit_date");
 
     if (restaurantName || visitId) {
-      // Prefill from URL params (Agenda flow)
       setPrefilledFromAgenda(true);
       setOriginScheduledVisitId(visitId);
       setFormData(prev => ({
@@ -105,31 +104,167 @@ export default function AddRestaurant() {
         google_place_id: googlePlaceId || prev.google_place_id,
         visit_date: visitDate || prev.visit_date,
       }));
-      // Don't load autosave when coming from Agenda
       return;
     }
 
-    // Load autosaved data on mount (only if not prefilled from Agenda)
-    const saved = localStorage.getItem(AUTOSAVE_KEY);
-    if (saved) {
+    // Try to restore a DB-backed draft first (survives WebView refresh/crash)
+    (async () => {
       try {
-        const parsed = JSON.parse(saved);
-        setFormData(parsed.formData);
-        setSelectedAlbumId(parsed.selectedAlbumId);
-        setSelectedTags(parsed.selectedTags || []);
-        setSocialLinks(parsed.socialLinks || []);
-        if (parsed.uploadData) {
-          setUploadData(parsed.uploadData);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: draft } = await supabase
+          .from("restaurant_entries")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("is_draft", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (draft) {
+          setDraftEntryId(draft.id);
+          setFormData({
+            restaurant_name: draft.restaurant_name === "__draft__" ? "" : (draft.restaurant_name || ""),
+            visit_date: draft.visit_date || new Date().toISOString().split('T')[0],
+            location_address: draft.location_address || "",
+            location_lat: draft.location_lat,
+            location_lng: draft.location_lng,
+            google_place_id: draft.google_place_id,
+            rating: draft.rating || 0,
+            companions: draft.companions || "",
+            notes: draft.notes || "",
+            description: draft.description || "",
+          });
+
+          const { data: photos } = await supabase
+            .from("restaurant_photos")
+            .select("*")
+            .eq("entry_id", draft.id);
+
+          const restored = {
+            place: [] as string[],
+            food: [] as string[],
+            friends: [] as string[],
+            wine: [] as Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>,
+            menu: [] as Array<{ url: string; translation?: string }>,
+            receipt: null as any,
+          };
+          for (const p of (photos || [])) {
+            switch (p.type) {
+              case 'food': restored.food.push(p.photo_url); break;
+              case 'menu': restored.menu.push({ url: p.photo_url, translation: p.menu_translation || undefined }); break;
+              case 'wine': restored.wine.push({ url: p.photo_url, caption: p.caption || '', rating: p.rating || undefined }); break;
+              case 'friends': restored.friends.push(p.photo_url); break;
+              default: restored.place.push(p.photo_url);
+            }
+          }
+
+          const { data: receiptRow } = await supabase
+            .from("receipts")
+            .select("*, receipt_items(*)")
+            .eq("entry_id", draft.id)
+            .maybeSingle();
+          if (receiptRow) {
+            restored.receipt = {
+              photo_url: receiptRow.photo_url,
+              subtotal: receiptRow.subtotal,
+              tax: receiptRow.tax,
+              service_fee: receiptRow.service_fee,
+              total: receiptRow.total,
+              currency: receiptRow.currency,
+              items: receiptRow.receipt_items || [],
+            };
+          }
+
+          setUploadData(restored);
+
+          toast({
+            title: t("addRestaurant.draftRestored"),
+            description: t("addRestaurant.draftRestoredDesc"),
+          });
+          localStorage.removeItem(AUTOSAVE_KEY);
+          return;
         }
-        toast({
-          title: t("addRestaurant.draftRestored"),
-          description: t("addRestaurant.draftRestoredDesc"),
-        });
       } catch (e) {
-        console.error("Failed to restore autosave:", e);
+        console.error("Failed to restore DB draft:", e);
       }
-    }
+
+      // Fallback: legacy localStorage autosave
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setFormData(parsed.formData);
+          setSelectedAlbumId(parsed.selectedAlbumId);
+          setSelectedTags(parsed.selectedTags || []);
+          setSocialLinks(parsed.socialLinks || []);
+          if (parsed.uploadData) {
+            setUploadData(parsed.uploadData);
+          }
+          toast({
+            title: t("addRestaurant.draftRestored"),
+            description: t("addRestaurant.draftRestoredDesc"),
+          });
+        } catch (e) {
+          console.error("Failed to restore autosave:", e);
+        }
+      }
+    })();
   }, [searchParams]);
+
+  /**
+   * Lazily create (or reuse) a draft restaurant_entries row so photos can be
+   * persisted to DB immediately on upload. Survives WebView refresh/crash.
+   */
+  const ensureDraftEntry = async (): Promise<string | null> => {
+    if (draftEntryId) return draftEntryId;
+    if (draftCreationRef.current) return draftCreationRef.current;
+
+    draftCreationRef.current = (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const insertData: any = {
+          user_id: user.id,
+          restaurant_name: formData.restaurant_name || "__draft__",
+          visit_date: formData.visit_date,
+          location_address: formData.location_address || null,
+          location_lat: formData.location_lat,
+          location_lng: formData.location_lng,
+          google_place_id: formData.google_place_id,
+          rating: formData.rating || null,
+          companions: formData.companions || null,
+          notes: formData.notes || null,
+          description: formData.description || null,
+          is_draft: true,
+        };
+        if (originScheduledVisitId) {
+          insertData.origin_scheduled_visit_id = originScheduledVisitId;
+        }
+
+        const { data, error } = await supabase
+          .from("restaurant_entries")
+          .insert(insertData)
+          .select("id")
+          .single();
+
+        if (error) {
+          console.error("Failed to create draft entry:", error);
+          return null;
+        }
+        setDraftEntryId(data.id);
+        return data.id as string;
+      } catch (e) {
+        console.error("ensureDraftEntry exception:", e);
+        return null;
+      }
+    })();
+
+    return draftCreationRef.current;
+  };
+
 
   // Fetch complete place details when prefilled from Agenda with google_place_id but no coordinates
   useEffect(() => {
