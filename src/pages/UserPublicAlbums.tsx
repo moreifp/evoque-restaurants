@@ -42,11 +42,9 @@ export default function UserPublicAlbums() {
     setCurrentUserId(authUser?.id || null);
 
     // Fetch profile
-    const { data: profile } = await supabase
-      .from("public_profiles" as any)
-      .select("id, display_name, avatar_url, profile_visibility, created_at")
-      .eq("id", userId)
-      .single();
+    const { data: profileRows } = await supabase
+      .rpc("get_public_profiles", { user_ids: [userId] });
+    const profile = (profileRows as any)?.[0] ?? null;
 
     setUser(profile);
     setProfileVisibility((profile as any)?.profile_visibility || "public");
