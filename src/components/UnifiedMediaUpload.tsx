@@ -1049,8 +1049,8 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
         });
       }
       
-      // Show final summary toast only if NOT editing (no entryId) and some succeeded
-      if (!entryId && successCount > 0) {
+      // Show final summary toast only if neither edit-mode nor draft-mode (i.e. no DB persistence happened)
+      if (!entryId && !onRequestEntryId && successCount > 0) {
         if (failCount > 0) {
           toast({
             title: t("unifiedMediaUpload.toasts.filesUploaded"),
