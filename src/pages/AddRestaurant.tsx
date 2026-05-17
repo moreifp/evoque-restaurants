@@ -346,108 +346,130 @@ export default function AddRestaurant() {
         return;
       }
 
-      // Create restaurant entry with optional origin_scheduled_visit_id
-      const insertData: any = {
-        ...formData,
-        user_id: user.id,
-        rating: formData.rating || null,
-      };
+      let entry: { id: string } | null = null;
 
-      // Link to scheduled visit if coming from Agenda
-      if (originScheduledVisitId) {
-        insertData.origin_scheduled_visit_id = originScheduledVisitId;
-      }
+      if (draftEntryId) {
+        // Finalize existing draft (photos & receipt already persisted via UnifiedMediaUpload)
+        const updateData: any = {
+          ...formData,
+          rating: formData.rating || null,
+          is_draft: false,
+        };
+        if (originScheduledVisitId) {
+          updateData.origin_scheduled_visit_id = originScheduledVisitId;
+        }
 
-      const { data: entry, error: entryError } = await supabase
-        .from("restaurant_entries")
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (entryError) throw entryError;
-
-      // Save receipt if processed
-      if (uploadData.receipt && entry) {
-        const { data: receipt, error: receiptError } = await supabase
-          .from("receipts")
-          .insert({
-            entry_id: entry.id,
-            photo_url: uploadData.receipt.photo_url,
-            subtotal: uploadData.receipt.subtotal,
-            tax: uploadData.receipt.tax,
-            service_fee: uploadData.receipt.service_fee,
-            total: uploadData.receipt.total,
-            currency: uploadData.receipt.currency,
-          })
-          .select()
+        const { data: updated, error: updateError } = await supabase
+          .from("restaurant_entries")
+          .update(updateData)
+          .eq("id", draftEntryId)
+          .select("id")
           .single();
 
-        if (receiptError) throw receiptError;
+        if (updateError) throw updateError;
+        entry = updated;
+      } else {
+        // No draft yet (user typed everything before adding any photo) — insert fresh
+        const insertData: any = {
+          ...formData,
+          user_id: user.id,
+          rating: formData.rating || null,
+        };
+        if (originScheduledVisitId) {
+          insertData.origin_scheduled_visit_id = originScheduledVisitId;
+        }
 
-        // Save receipt items
-        if (uploadData.receipt.items && uploadData.receipt.items.length > 0) {
-          const itemsToInsert = uploadData.receipt.items.map((item: any) => ({
-            receipt_id: receipt.id,
-            item_type: item.item_type,
-            name: item.name,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            line_total: item.line_total,
-          }));
+        const { data: inserted, error: entryError } = await supabase
+          .from("restaurant_entries")
+          .insert(insertData)
+          .select("id")
+          .single();
 
-          const { error: itemsError } = await supabase
-            .from("receipt_items")
-            .insert(itemsToInsert);
+        if (entryError) throw entryError;
+        entry = inserted;
 
-          if (itemsError) throw itemsError;
+        // Save receipt if processed (only for fresh inserts; drafts already have it)
+        if (uploadData.receipt && entry) {
+          const { data: receipt, error: receiptError } = await supabase
+            .from("receipts")
+            .insert({
+              entry_id: entry.id,
+              photo_url: uploadData.receipt.photo_url,
+              subtotal: uploadData.receipt.subtotal,
+              tax: uploadData.receipt.tax,
+              service_fee: uploadData.receipt.service_fee,
+              total: uploadData.receipt.total,
+              currency: uploadData.receipt.currency,
+            })
+            .select()
+            .single();
+
+          if (receiptError) throw receiptError;
+
+          if (uploadData.receipt.items && uploadData.receipt.items.length > 0) {
+            const itemsToInsert = uploadData.receipt.items.map((item: any) => ({
+              receipt_id: receipt.id,
+              item_type: item.item_type,
+              name: item.name,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              line_total: item.line_total,
+            }));
+
+            const { error: itemsError } = await supabase
+              .from("receipt_items")
+              .insert(itemsToInsert);
+
+            if (itemsError) throw itemsError;
+          }
+        }
+
+        // Helper function to detect video from URL
+        const isVideoUrl = (url: string) => {
+          const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.m4v'];
+          return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+        };
+
+        const allPhotos = [
+          ...uploadData.place.map(url => ({
+            entry_id: entry!.id,
+            photo_url: url,
+            type: isVideoUrl(url) ? 'video' : 'restaurant_photo',
+          })),
+          ...uploadData.food.map(url => ({
+            entry_id: entry!.id,
+            photo_url: url,
+            type: 'food',
+          })),
+          ...uploadData.menu.map(menu => ({
+            entry_id: entry!.id,
+            photo_url: menu.url,
+            type: 'menu',
+            menu_translation: menu.translation || null,
+          })),
+          ...uploadData.wine.map(wine => ({
+            entry_id: entry!.id,
+            photo_url: wine.url,
+            type: 'wine',
+            caption: wine.caption,
+            rating: wine.rating || null,
+          })),
+          ...uploadData.friends.map(url => ({
+            entry_id: entry!.id,
+            photo_url: url,
+            type: 'friends',
+          })),
+        ];
+
+        if (allPhotos.length > 0) {
+          const { error: photoError } = await supabase
+            .from("restaurant_photos")
+            .insert(allPhotos);
+
+          if (photoError) throw photoError;
         }
       }
 
-      // Helper function to detect video from URL
-      const isVideoUrl = (url: string) => {
-        const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv', '.m4v'];
-        return videoExtensions.some(ext => url.toLowerCase().includes(ext));
-      };
-
-      // Save all photo types
-      const allPhotos = [
-        ...uploadData.place.map(url => ({
-          entry_id: entry.id,
-          photo_url: url,
-          type: isVideoUrl(url) ? 'video' : 'restaurant_photo',
-        })),
-        ...uploadData.food.map(url => ({
-          entry_id: entry.id,
-          photo_url: url,
-          type: 'food',
-        })),
-        ...uploadData.menu.map(menu => ({
-          entry_id: entry.id,
-          photo_url: menu.url,
-          type: 'menu',
-          menu_translation: menu.translation || null,
-        })),
-        ...uploadData.wine.map(wine => ({
-          entry_id: entry.id,
-          photo_url: wine.url,
-          type: 'wine',
-          caption: wine.caption,
-          rating: wine.rating || null,
-        })),
-        ...uploadData.friends.map(url => ({
-          entry_id: entry.id,
-          photo_url: url,
-          type: 'friends',
-        })),
-      ];
-
-      if (allPhotos.length > 0 && entry) {
-        const { error: photoError } = await supabase
-          .from("restaurant_photos")
-          .insert(allPhotos);
-
-        if (photoError) throw photoError;
-      }
 
       // Add to album if selected
       if (selectedAlbumId && selectedAlbumId !== "none" && entry) {
