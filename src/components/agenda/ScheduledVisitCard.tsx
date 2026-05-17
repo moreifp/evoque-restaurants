@@ -179,6 +179,7 @@ export function ScheduledVisitCard({ visit, onEdit, onRefresh, isPast = false }:
       .from("restaurant_entries")
       .select("id")
       .eq("origin_scheduled_visit_id", visit.id)
+      .eq("is_draft", false)
       .maybeSingle();
 
     if (existingEntry) {
