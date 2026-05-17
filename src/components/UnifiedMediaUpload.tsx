@@ -661,12 +661,15 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
       const extractedWineInfo = resp?.wineInfo ?? null; // normalize shape
       const wineCaption = extractedWineInfo ? `${extractedWineInfo.name || ''} ${extractedWineInfo.vintage || ''}`.trim() : '';
 
-      // If entryId exists, save wine photo immediately to DB
-      if (entryId) {
+      // Resolve effective entryId (creates draft if needed for new-restaurant flow)
+      const effectiveEntryId = await resolveEntryId();
+
+      // If we have an entryId, save wine photo immediately to DB
+      if (effectiveEntryId) {
         const { error: dbError } = await supabase
           .from("restaurant_photos")
           .insert({
-            entry_id: entryId,
+            entry_id: effectiveEntryId,
             photo_url: publicUrl,
             type: 'wine',
             caption: wineCaption,
@@ -702,7 +705,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
         return updated;
       });
 
-      if (!entryId) {
+      if (!effectiveEntryId) {
         toast({
           title: t("unifiedMediaUpload.toasts.wineRecognized"),
           description: extractedWineInfo?.name || t("unifiedMediaUpload.toasts.wineInfo"),
