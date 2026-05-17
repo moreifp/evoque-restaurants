@@ -536,8 +536,10 @@ export default function AddRestaurant() {
         if (linksError) throw linksError;
       }
 
-      // Clear autosave after successful submit
+      // Clear autosave + draft references after successful submit
       localStorage.removeItem(AUTOSAVE_KEY);
+      setDraftEntryId(null);
+      draftCreationRef.current = null;
       
       // Invalidate cache so Dining page shows fresh data
       queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
