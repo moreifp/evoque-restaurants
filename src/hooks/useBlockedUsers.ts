@@ -40,9 +40,7 @@ export function useBlockedUsers() {
       if (data && data.length > 0) {
         const blockedUserIds = data.map((b) => b.blocked_id);
         const { data: profilesRaw } = await supabase
-          .from("public_profiles" as any)
-          .select("id, display_name, avatar_url")
-          .in("id", blockedUserIds);
+          .rpc("get_public_profiles", { user_ids: blockedUserIds });
         const profiles = (profilesRaw ?? []) as unknown as Array<{ id: string; display_name: string; avatar_url: string }>;
 
         const enrichedData = data.map((block) => ({
