@@ -138,7 +138,7 @@ const LANGUAGE_OPTIONS = [
   { value: "Chinese", label: "中文" },
 ];
 
-export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
+export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processingWine, setProcessingWine] = useState<string | null>(null);
