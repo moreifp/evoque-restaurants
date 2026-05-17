@@ -54,6 +54,7 @@ export function PastVisitReminderBanner() {
     const { data: linkedEntries } = await supabase
       .from("restaurant_entries")
       .select("origin_scheduled_visit_id")
+      .eq("is_draft", false)
       .in("origin_scheduled_visit_id", visitIds);
 
     const linkedVisitIds = new Set(linkedEntries?.map(e => e.origin_scheduled_visit_id) || []);

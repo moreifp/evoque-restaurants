@@ -47,6 +47,12 @@ interface UploadedFile {
 
 interface UnifiedMediaUploadProps {
   entryId?: string; // Pass when editing existing restaurant for autosave
+  /**
+   * When creating a new restaurant, called lazily right before the first upload
+   * to obtain (or create) a draft entryId so each photo can be persisted to DB
+   * immediately. Avoids losing photos if the WebView refreshes/suspends.
+   */
+  onRequestEntryId?: () => Promise<string | null>;
   initialUploadData?: {
     place: string[];
     food: string[];
@@ -132,7 +138,7 @@ const LANGUAGE_OPTIONS = [
   { value: "Chinese", label: "中文" },
 ];
 
-export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
+export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadData, onUploadsChange, onLocationExtracted, onPhotoSaved }: UnifiedMediaUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processingWine, setProcessingWine] = useState<string | null>(null);
@@ -159,6 +165,24 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
   const _nativeCamera = useNativeCamera(); // Prefixed with _ to indicate intentionally unused
   const { uploadWithRetry, logUploadError } = useUploadWithRetry();
   const { ensureAIConsent } = useAIConsent();
+
+  /**
+   * Returns an entryId to persist photos against. If we already have one
+   * (edit mode) use it directly; otherwise ask the parent to create/return
+   * a draft entry so each photo is saved to DB immediately on upload.
+   */
+  const resolveEntryId = async (): Promise<string | null> => {
+    if (entryId) return entryId;
+    if (onRequestEntryId) {
+      try {
+        return await onRequestEntryId();
+      } catch (e) {
+        console.error('[UnifiedMediaUpload] onRequestEntryId failed:', e);
+        return null;
+      }
+    }
+    return null;
+  };
 
   // Initialize from saved upload data (for draft restoration)
   useEffect(() => {
@@ -506,12 +530,15 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
 
       const extracted = resp?.data ?? resp; // normalize shape from edge function
 
-      // If entryId exists, save receipt immediately to DB
-      if (entryId) {
+      // Resolve effective entryId (creates draft if needed for new-restaurant flow)
+      const effectiveEntryId = await resolveEntryId();
+
+      // If we have an entryId, save receipt immediately to DB
+      if (effectiveEntryId) {
         const { data: newReceipt, error: receiptError } = await supabase
           .from("receipts")
           .insert({
-            entry_id: entryId,
+            entry_id: effectiveEntryId,
             photo_url: publicUrl,
             subtotal: extracted.subtotal,
             tax: extracted.tax,
@@ -569,7 +596,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         return updated;
       });
 
-      if (!entryId) {
+      if (!effectiveEntryId) {
         toast({
           title: "✅ " + t("unifiedMediaUpload.toasts.receiptProcessed"),
           description: extracted.total 
@@ -634,12 +661,15 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
       const extractedWineInfo = resp?.wineInfo ?? null; // normalize shape
       const wineCaption = extractedWineInfo ? `${extractedWineInfo.name || ''} ${extractedWineInfo.vintage || ''}`.trim() : '';
 
-      // If entryId exists, save wine photo immediately to DB
-      if (entryId) {
+      // Resolve effective entryId (creates draft if needed for new-restaurant flow)
+      const effectiveEntryId = await resolveEntryId();
+
+      // If we have an entryId, save wine photo immediately to DB
+      if (effectiveEntryId) {
         const { error: dbError } = await supabase
           .from("restaurant_photos")
           .insert({
-            entry_id: entryId,
+            entry_id: effectiveEntryId,
             photo_url: publicUrl,
             type: 'wine',
             caption: wineCaption,
@@ -675,7 +705,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         return updated;
       });
 
-      if (!entryId) {
+      if (!effectiveEntryId) {
         toast({
           title: t("unifiedMediaUpload.toasts.wineRecognized"),
           description: extractedWineInfo?.name || t("unifiedMediaUpload.toasts.wineInfo"),
@@ -930,8 +960,13 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
           });
         }
 
-        // If entryId exists (editing existing restaurant), save immediately to DB
-        if (entryId) {
+        // Resolve effective entryId lazily after first successful upload
+        // (creates a draft entry for the new-restaurant flow so photos persist
+        // even if the WebView refreshes before the user taps Save).
+        const effectiveEntryId = await resolveEntryId();
+
+        // If we have an entryId, save photo immediately to DB
+        if (effectiveEntryId) {
           // Detect if file is a video
           const isVideo = fileData.file.type.startsWith('video/');
           
@@ -945,7 +980,7 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
           const { error: dbError } = await supabase
             .from("restaurant_photos")
             .insert({
-              entry_id: entryId,
+              entry_id: effectiveEntryId,
               photo_url: publicUrl,
               type: photoType,
             });
@@ -1014,8 +1049,8 @@ export function UnifiedMediaUpload({ entryId, initialUploadData, onUploadsChange
         });
       }
       
-      // Show final summary toast only if NOT editing (no entryId) and some succeeded
-      if (!entryId && successCount > 0) {
+      // Show final summary toast only if neither edit-mode nor draft-mode (i.e. no DB persistence happened)
+      if (!entryId && !onRequestEntryId && successCount > 0) {
         if (failCount > 0) {
           toast({
             title: t("unifiedMediaUpload.toasts.filesUploaded"),
