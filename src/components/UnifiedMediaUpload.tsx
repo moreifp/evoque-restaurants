@@ -166,6 +166,24 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
   const { uploadWithRetry, logUploadError } = useUploadWithRetry();
   const { ensureAIConsent } = useAIConsent();
 
+  /**
+   * Returns an entryId to persist photos against. If we already have one
+   * (edit mode) use it directly; otherwise ask the parent to create/return
+   * a draft entry so each photo is saved to DB immediately on upload.
+   */
+  const resolveEntryId = async (): Promise<string | null> => {
+    if (entryId) return entryId;
+    if (onRequestEntryId) {
+      try {
+        return await onRequestEntryId();
+      } catch (e) {
+        console.error('[UnifiedMediaUpload] onRequestEntryId failed:', e);
+        return null;
+      }
+    }
+    return null;
+  };
+
   // Initialize from saved upload data (for draft restoration)
   useEffect(() => {
     if (initialUploadData && !initialized) {
