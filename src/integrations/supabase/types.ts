@@ -887,59 +887,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "user_follows_following_id_fkey"
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_follows_following_id_fkey"
-            columns: ["following_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string | null
-          display_name: string | null
-          id: string | null
-          profile_visibility: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          id?: string | null
-          profile_visibility?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          display_name?: string | null
-          id?: string | null
-          profile_visibility?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_profile_visibility: {
         Args: { target_user_id: string }
         Returns: string
+      }
+      get_public_profiles: {
+        Args: { user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          id: string
+          profile_visibility: string
+        }[]
       }
       is_accepted_follower: {
         Args: { follower: string; target: string }
