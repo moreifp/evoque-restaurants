@@ -53,7 +53,7 @@ export default function Notifications() {
     if (data) {
       const actorIds = [...new Set(data.map(n => n.actor_id))];
       const { data: profiles } = await supabase
-        .from("profiles")
+        .from("public_profiles" as any)
         .select("id, display_name, avatar_url")
         .in("id", actorIds);
 

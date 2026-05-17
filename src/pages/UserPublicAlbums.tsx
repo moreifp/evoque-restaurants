@@ -43,8 +43,8 @@ export default function UserPublicAlbums() {
 
     // Fetch profile
     const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
+      .from("public_profiles" as any)
+      .select("id, display_name, avatar_url, profile_visibility, created_at")
       .eq("id", userId)
       .single();
 
