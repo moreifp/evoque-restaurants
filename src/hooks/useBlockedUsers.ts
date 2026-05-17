@@ -43,7 +43,7 @@ export function useBlockedUsers() {
           .from("public_profiles" as any)
           .select("id, display_name, avatar_url")
           .in("id", blockedUserIds);
-        const profiles = (profilesRaw ?? []) as Array<{ id: string; display_name: string; avatar_url: string }>;
+        const profiles = (profilesRaw ?? []) as unknown as Array<{ id: string; display_name: string; avatar_url: string }>;
 
         const enrichedData = data.map((block) => ({
           ...block,
