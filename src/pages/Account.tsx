@@ -117,17 +117,17 @@ export default function Account() {
       if (!user) throw new Error("Not authenticated");
 
       const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${user.id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("restaurant-photos")
-        .upload(`avatars/${fileName}`, file);
+        .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from("restaurant-photos")
-        .getPublicUrl(`avatars/${fileName}`);
+        .getPublicUrl(filePath);
 
       const { error: updateError } = await supabase
         .from("profiles")
