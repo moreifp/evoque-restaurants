@@ -35,13 +35,16 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get user's top-rated restaurants
+    // Validate JWT
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(jwt);
-    if (userError) {
-      console.warn('Auth error in restaurant-planner:', userError.message);
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     let userTopRated: any[] = [];
-    
+
     if (user) {
       const { data: topRated } = await supabaseClient
         .from('restaurant_entries')
