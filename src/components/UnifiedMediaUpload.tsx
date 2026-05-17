@@ -530,12 +530,15 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
 
       const extracted = resp?.data ?? resp; // normalize shape from edge function
 
-      // If entryId exists, save receipt immediately to DB
-      if (entryId) {
+      // Resolve effective entryId (creates draft if needed for new-restaurant flow)
+      const effectiveEntryId = await resolveEntryId();
+
+      // If we have an entryId, save receipt immediately to DB
+      if (effectiveEntryId) {
         const { data: newReceipt, error: receiptError } = await supabase
           .from("receipts")
           .insert({
-            entry_id: entryId,
+            entry_id: effectiveEntryId,
             photo_url: publicUrl,
             subtotal: extracted.subtotal,
             tax: extracted.tax,
@@ -593,7 +596,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
         return updated;
       });
 
-      if (!entryId) {
+      if (!effectiveEntryId) {
         toast({
           title: "✅ " + t("unifiedMediaUpload.toasts.receiptProcessed"),
           description: extracted.total 
