@@ -133,28 +133,41 @@ export default function AlbumsMap() {
         animation: window.google.maps.Animation.DROP,
       });
 
+      // Escape user-controlled values to prevent stored XSS in InfoWindow HTML
+      const escHtml = (s: unknown): string =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+
+      const ratingNum = Number(restaurant.rating) || 0;
+      const safeRating = Math.max(0, Math.min(5, Math.floor(ratingNum)));
+      const safeId = encodeURIComponent(String(restaurant.id));
+
       // Create info window
       const infoContent = `
         <div style="padding: 8px; max-width: 250px;">
           <h3 style="font-weight: 600; font-size: 16px; margin: 0 0 8px 0; color: #000;">
-            ${restaurant.restaurant_name}
+            ${escHtml(restaurant.restaurant_name)}
           </h3>
-          ${restaurant.rating ? `
+          ${safeRating ? `
             <div style="margin-bottom: 6px; color: #666;">
-              ${"⭐".repeat(restaurant.rating)}
+              ${"⭐".repeat(safeRating)}
             </div>
           ` : ""}
           <p style="margin: 4px 0; font-size: 14px; color: #666;">
-            ${restaurant.location_address}
+            ${escHtml(restaurant.location_address)}
           </p>
           <p style="margin: 4px 0; font-size: 12px; color: #999;">
-            ${t("restaurantMap.visited")}: ${new Date(restaurant.visit_date).toLocaleDateString()}
+            ${escHtml(t("restaurantMap.visited"))}: ${escHtml(new Date(restaurant.visit_date).toLocaleDateString())}
           </p>
           <button 
-            onclick="window.location.href='/dining/${restaurant.id}'" 
+            onclick="window.location.href='/dining/${safeId}'" 
             style="margin-top: 8px; padding: 6px 12px; background: hsl(var(--primary)); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;"
           >
-            ${t("restaurantMap.viewDetails")}
+            ${escHtml(t("restaurantMap.viewDetails"))}
           </button>
         </div>
       `;
