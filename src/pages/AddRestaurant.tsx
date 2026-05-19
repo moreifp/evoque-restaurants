@@ -802,16 +802,26 @@ export default function AddRestaurant() {
                 {/* Notes */}
                 <div className="space-y-2">
                   <Label htmlFor="notes" className="text-lg">{t("addRestaurant.notes")}</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder={t("addRestaurant.notesPlaceholder")}
-                    rows={5}
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    className="text-lg min-h-[120px]"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      id="notes"
+                      placeholder={t("addRestaurant.notesPlaceholder")}
+                      rows={5}
+                      value={formData.notes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, notes: e.target.value })
+                      }
+                      className="text-lg min-h-[120px] pr-12"
+                    />
+                    <VoiceNoteButton
+                      onTranscribed={(text) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          notes: prev.notes ? `${prev.notes}\n\n${text}` : text,
+                        }))
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Social Links */}
