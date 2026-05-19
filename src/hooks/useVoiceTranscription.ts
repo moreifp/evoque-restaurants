@@ -13,7 +13,6 @@ function pickMimeType(): string | null {
     "audio/mpeg",
     "audio/ogg;codecs=opus",
   ];
-  // @ts-expect-error - isTypeSupported exists at runtime
   const supports = (t: string) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(t);
   for (const c of candidates) if (supports(c)) return c;
   return null;
