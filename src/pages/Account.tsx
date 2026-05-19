@@ -963,6 +963,7 @@ export default function Account() {
           </Button>
         </div>
       </main>
+      <PhotoTrashDialog open={trashOpen} onOpenChange={setTrashOpen} />
     </div>
   );
 }
