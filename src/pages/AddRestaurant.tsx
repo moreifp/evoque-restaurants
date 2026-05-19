@@ -16,6 +16,7 @@ import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
+import { VoiceNoteButton } from "@/components/VoiceNoteButton";
 import { z } from "zod";
 import { useI18n } from "@/i18n/i18n";
 import { useAIConsent } from "@/hooks/useAIConsent";
