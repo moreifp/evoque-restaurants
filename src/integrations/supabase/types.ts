@@ -200,6 +200,57 @@ export type Database = {
         }
         Relationships: []
       }
+      photo_backups: {
+        Row: {
+          caption: string | null
+          deleted_at: string
+          entry_id: string
+          id: string
+          menu_translation: string | null
+          original_created_at: string | null
+          original_photo_id: string
+          photo_url: string
+          rating: number | null
+          restaurant_name: string | null
+          restored: boolean
+          restored_at: string | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          deleted_at?: string
+          entry_id: string
+          id?: string
+          menu_translation?: string | null
+          original_created_at?: string | null
+          original_photo_id: string
+          photo_url: string
+          rating?: number | null
+          restaurant_name?: string | null
+          restored?: boolean
+          restored_at?: string | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          deleted_at?: string
+          entry_id?: string
+          id?: string
+          menu_translation?: string | null
+          original_created_at?: string | null
+          original_photo_id?: string
+          photo_url?: string
+          rating?: number | null
+          restaurant_name?: string | null
+          restored?: boolean
+          restored_at?: string | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_slots: {
         Row: {
           created_at: string

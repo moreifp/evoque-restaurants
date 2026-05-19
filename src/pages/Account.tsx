@@ -21,6 +21,7 @@ import { useI18n } from "@/i18n/i18n";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { useNativeNotifications } from "@/hooks/useNativeNotifications";
+import { PhotoTrashDialog } from "@/components/PhotoTrashDialog";
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -40,6 +41,7 @@ export default function Account() {
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   
   // Profile state
   const [email, setEmail] = useState("");
@@ -871,6 +873,23 @@ export default function Account() {
             </CardContent>
           </Card>
 
+          {/* Photo Backup / Trash */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                {t("photoTrash.settingsTitle")}
+              </CardTitle>
+              <CardDescription>{t("photoTrash.settingsDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={() => setTrashOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t("photoTrash.open")}
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Danger Zone - Account Deletion */}
           <Card className="border-destructive/50">
             <CardHeader>
@@ -944,6 +963,7 @@ export default function Account() {
           </Button>
         </div>
       </main>
+      <PhotoTrashDialog open={trashOpen} onOpenChange={setTrashOpen} />
     </div>
   );
 }
