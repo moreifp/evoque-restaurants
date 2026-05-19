@@ -87,29 +87,50 @@ Deno.serve(async (req) => {
       });
     }
 
-    const bytes = base64ToBytes(audio);
-    const ext = baseMime === "audio/mp4" || baseMime === "audio/m4a" || baseMime === "audio/x-m4a"
-      ? "m4a"
-      : baseMime === "audio/mpeg" || baseMime === "audio/mp3"
-        ? "mp3"
-        : baseMime === "audio/wav"
-          ? "wav"
-          : baseMime === "audio/ogg"
-            ? "ogg"
-            : "webm";
-    const blob = new Blob([bytes], { type: baseMime });
+    const formatMap: Record<string, string> = {
+      "audio/webm": "webm",
+      "audio/mp4": "mp4",
+      "audio/m4a": "mp4",
+      "audio/x-m4a": "mp4",
+      "audio/mpeg": "mp3",
+      "audio/mp3": "mp3",
+      "audio/wav": "wav",
+      "audio/ogg": "ogg",
+    };
+    const audioFormat = formatMap[baseMime] ?? "webm";
 
-    const form = new FormData();
-    form.append("file", blob, `audio.${ext}`);
-    form.append("model", "whisper-1");
-    if (language) form.append("language", language);
+    const langInstr = language === "pt"
+      ? "The audio is in Portuguese (pt-BR or pt-PT)."
+      : language === "en"
+        ? "The audio is in English."
+        : "Detect the spoken language.";
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Lovable-API-Key": LOVABLE_API_KEY,
+        "Content-Type": "application/json",
       },
-      body: form,
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a speech-to-text transcription engine. Return ONLY the verbatim transcription of the audio as plain text. No quotes, no labels, no commentary, no markdown. If there is no speech, return an empty string.",
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Transcribe this audio. ${langInstr}` },
+              {
+                type: "input_audio",
+                input_audio: { data: audio, format: audioFormat },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     if (!aiResp.ok) {
@@ -134,7 +155,7 @@ Deno.serve(async (req) => {
     }
 
     const data = await aiResp.json();
-    const text = (data?.text ?? "").toString().trim();
+    const text = (data?.choices?.[0]?.message?.content ?? "").toString().trim();
 
     return new Response(JSON.stringify({ text }), {
       status: 200,
