@@ -41,6 +41,7 @@ export default function Account() {
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   
   // Profile state
   const [email, setEmail] = useState("");
