@@ -21,6 +21,7 @@ import { useI18n } from "@/i18n/i18n";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { useNativeNotifications } from "@/hooks/useNativeNotifications";
+import { PhotoTrashDialog } from "@/components/PhotoTrashDialog";
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
