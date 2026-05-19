@@ -414,6 +414,20 @@ export const en = {
   unifiedMediaUpload: { title: "Add your photos", subtitle: "Tap a button then upload", categories: { place: "Place", food: "Food", friends: "Friends", wine: "Wine", menu: "Menu", receipt: "Receipt" }, sourceDialog: { description: "Choose where to get your photo from", camera: "Take Photo", photoLibrary: "Photo Library" }, addMoreDialog: { title: "Add more photos?", description: "Would you like to add another {category} photo?", addMore: "Add More", done: "I'm Done" }, fileLimits: { title: "Some files could not be added", description: "The following files exceed size limits and cannot be uploaded:", imageTooLarge: "Image exceeds {size} MB limit", videoTooLarge: "Video exceeds {size} MB limit", batchLimitExceeded: "Total batch exceeds {size} MB limit", validFilesCount: "{count} file(s) will be uploaded", continueWithValid: "Continue with valid files" }, wine: { collectionTitle: "Wine Collection", analyzing: "Analyzing...", recognize: "Recognize Wine", rating: "Rating", tastingNotes: "Tasting Notes", vintage: "Vintage:", region: "Region:", type: "Type:" }, menu: { collectionTitle: "Menus", translateMenu: "AI Translate", translating: "Translating...", menuTranslation: "Menu Translation", selectLanguage: "Select language" }, toasts: { receiptProcessed: "Receipt processed!", receiptSuccess: "Receipt data extracted successfully", receiptError: "Error processing receipt", filesUploaded: "Files uploaded!", filesSuccess: "{count} file(s) uploaded successfully", uploadFailed: "Upload failed", wineRecognized: "Wine recognized!", wineInfo: "Wine information extracted", wineError: "Error analyzing wine", menuTranslated: "Menu translated!", menuTranslationSaved: "Menu translation saved", menuTranslationError: "Failed to translate menu" }, errors: { processingFailed: "Error processing image", tryCamera: "Could not process selected image. Try taking a photo with the camera instead.", galleryAccess: "Error accessing gallery" } },
   
   receiptUpload: { label: "Upload Receipt/Invoice", selectImage: "Select Receipt Image", processing: "Processing...", processReceipt: "Process Receipt", helpText: "Upload a photo of your receipt to automatically extract dishes, drinks, and prices", extractedItems: "Extracted Items", quantity: "Qty:", subtotal: "Subtotal", tax: "Tax", serviceFee: "Service Fee", total: "Total", toasts: { processing: "Processing receipt...", processingWait: "This may take a few seconds", success: "Receipt processed!", extracted: "Extracted {count} items from your receipt", failed: "Processing failed", rateLimit: "Rate limit reached. Please wait a moment and try again.", noCredits: "AI credits exhausted. Please add credits to your Lovable workspace." } },
+  voiceNote: {
+    start: "Record voice note",
+    stop: "Stop recording",
+    cancel: "Cancel",
+    recording: "Recording…",
+    transcribing: "Transcribing…",
+    permissionDenied: "Microphone permission denied. Enable it in settings.",
+    error: "Couldn't transcribe the audio. Please try again.",
+    tooLong: "2-minute limit reached. Stopping recording.",
+    notSupported: "Voice recording isn't supported on this device.",
+    empty: "We didn't catch any speech. Please try again.",
+    rateLimit: "Too many requests. Wait a moment and try again.",
+    noCredits: "AI credits exhausted. Add credits to your workspace.",
+  },
   
   receiptSection: {
     title: "My Receipt (Private)",

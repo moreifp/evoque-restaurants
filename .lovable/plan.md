@@ -1,52 +1,96 @@
-## Problema
+# Plano: Transcrição de voz no campo Notas
 
-Em `AddRestaurant`, o autosave atual só grava em `localStorage` as URLs das fotos já enviadas (debounce 1s). No WebView iOS do Despia, o `localStorage` pode ser purgado em refresh por memory-pressure, e o `File`/blob local não pode ser persistido. Resultado: usuário sobe várias fotos, app é refrescado antes do "Save" → tudo perde.
+## Objetivo
+Adicionar um ícone de microfone discreto dentro do campo "Notas" em `AddRestaurant`. Ao tocar, o usuário grava áudio; ao parar, o áudio é enviado ao Whisper via Lovable AI Gateway e o texto transcrito é anexado ao final do conteúdo existente.
 
-## Solução: rascunho real no banco
+## Padrão UX/UI (benchmark: Apple Notes + Gboard)
 
-Criar a entrada do restaurante como **rascunho** na primeira foto enviada, e passar `entryId` para `UnifiedMediaUpload`. A partir daí cada foto cai direto em `restaurant_photos` (mesmo fluxo do modo edição). Se o usuário fechar/refrescar, o rascunho fica salvo no banco e é restaurado na próxima abertura.
+- **Estado idle**: ícone `Mic` (lucide-react) posicionado absoluto no canto superior direito do `<Textarea>`, semi-transparente, tamanho 18px.
+- **Estado gravando**: ícone vira `Square` (parar) em `text-destructive` com animação `animate-pulse`. Aparece overlay discreto no rodapé do textarea com:
+  - waveform animada (3-4 barras CSS oscilando — sem libs externas)
+  - timer `mm:ss`
+  - botão "Cancelar" em texto pequeno
+- **Estado transcrevendo**: spinner `Loader2` substitui o ícone + toast "Transcrevendo…".
+- **Erro/permissão negada**: toast destrutivo com instrução clara em PT/EN.
+- **Limite**: auto-stop em 2 minutos para evitar áudios gigantes.
 
-## Mudanças
+Acessibilidade: `aria-label` traduzido, `aria-pressed` no botão, foco visível.
 
-### 1. Migração (banco)
-- Adicionar coluna `is_draft boolean NOT NULL DEFAULT false` em `restaurant_entries`.
-- Index parcial `(user_id) WHERE is_draft = true` para lookup rápido do rascunho do usuário.
-- Filtrar `is_draft = false` em todos os pontos de leitura usados pelo Dining/Home/Albums (vou listar e ajustar).
+## Arquitetura técnica
 
-### 2. `src/pages/AddRestaurant.tsx`
-- **Mount**:
-  - Buscar rascunho existente do usuário (`is_draft = true`, ordenado por `updated_at` desc, limit 1).
-  - Se houver: carregar `formData`, fotos (de `restaurant_photos`), receipt, álbum, tags, social links — substitui o restore via localStorage para fotos.
-  - Toast: "Rascunho restaurado".
-- **Criar rascunho on-demand**: hook `ensureDraftEntry()` que faz `INSERT` com `is_draft=true` e nome temporário `""` se ainda não existir, retornando `entry.id`. É chamado:
-  - Quando o usuário envia a primeira foto (handler injetado em `UnifiedMediaUpload` via novo prop `onBeforeFirstUpload`).
-  - Quando o usuário começa a digitar campos (debounce).
-- **`handleSubmit`**:
-  - Se já existe `draftEntryId`: `UPDATE restaurant_entries SET ..., is_draft = false WHERE id = draftEntryId`.
-  - Não reinserir fotos (já estão em `restaurant_photos` ligadas ao `entry_id`).
-  - Receipt/álbum/tags/social links: inserir se ainda não inseridos (UnifiedMediaUpload já salva receipt; ajustar lógica).
-- Manter `localStorage` apenas para campos de texto curtos (segurança extra), mas fotos passam a viver no banco.
+```text
+[User tap mic]
+   → MediaRecorder API (browser nativo, funciona em iOS WebView/Despia)
+   → grava em audio/webm ou audio/mp4 (iOS) 
+   → user tap stop
+   → blob → base64 → supabase.functions.invoke('transcribe-audio')
+   → edge function chama Lovable AI Gateway (Whisper)
+   → retorna texto
+   → append ao formData.notes com '\n\n' separador
+```
 
-### 3. `src/components/UnifiedMediaUpload.tsx`
-- Aceitar novo prop opcional `onRequestEntryId?: () => Promise<string>`.
-- Em `autoUploadFiles`: se não houver `entryId` mas houver `onRequestEntryId`, chamar para obter um e tratar como modo edição (insert em `restaurant_photos`).
-- Sem mudanças no fluxo iOS.
+### Por que MediaRecorder e não Despia SDK?
+Despia não expõe API de gravação de áudio. MediaRecorder funciona no WebView do iOS 14.3+ (Despia roda iOS ≥14). Pede permissão de microfone via `getUserMedia({audio:true})`.
 
-### 4. Filtros `is_draft = false`
-Ajustar queries que listam restaurantes:
-- `src/hooks/useRestaurantEntries.ts`
-- `src/pages/Dining.tsx`, `src/pages/Index.tsx`, `src/pages/AlbumDetail.tsx`, `src/pages/AlbumsMap.tsx`, `src/pages/UserPublicAlbums.tsx`, `src/pages/SharedByToken.tsx`, `src/pages/SharedRestaurant.tsx`, `src/components/agenda/*`, qualquer JOIN que use `restaurant_entries`.
+### Provider
+Lovable AI Gateway com modelo `openai/whisper-1` (endpoint `/audio/transcriptions`). Envia idioma derivado de `useI18n().language` (`pt` ou `en`) como parâmetro `language` para máxima precisão.
 
-### 5. Limpeza de rascunhos antigos
-- Botão "Descartar rascunho" no topo do `AddRestaurant` quando um rascunho está ativo (DELETE cascata).
-- Não fazer purge automático nesta entrega (evita perder dados do Fausto).
+## Arquivos a criar/modificar
+
+### Novo: `supabase/functions/transcribe-audio/index.ts`
+- Aceita POST com `{ audio: base64, mimeType, language: 'pt'|'en' }`
+- Valida JWT do usuário (verify_jwt = true por padrão)
+- Valida tamanho (máx ~5MB base64 ≈ 2min de áudio)
+- Decodifica base64 → Blob → FormData
+- POST para `https://ai.gateway.lovable.dev/v1/audio/transcriptions` com header `Lovable-API-Key`
+- Retorna `{ text: string }`
+- Tratamento 429/402 com mensagens claras
+- CORS headers
+
+### Novo: `src/hooks/useVoiceTranscription.ts`
+Hook reutilizável encapsulando:
+- `start()`, `stop()`, `cancel()`
+- estados: `isRecording`, `isTranscribing`, `duration`, `error`
+- gerencia `MediaRecorder`, `MediaStream`, timer, auto-stop 2min
+- detecta mimeType suportado (webm/mp4) automaticamente
+- limpa stream tracks no unmount (importante p/ liberar mic em iOS)
+
+### Modificar: `src/pages/AddRestaurant.tsx`
+- Localizar o `<Textarea>` do campo Notas
+- Envolver num `<div className="relative">`
+- Adicionar botão de mic absoluto (top-right) usando o hook
+- Ao receber texto: `setFormData(p => ({...p, notes: p.notes ? `${p.notes}\n\n${text}` : text }))`
+- Renderizar overlay de gravação (waveform + timer + cancelar) condicionalmente
+
+### Modificar: `src/i18n/translations/{pt,en}.ts`
+Adicionar chaves:
+- `voiceNote.start` / `voiceNote.stop` / `voiceNote.cancel`
+- `voiceNote.recording` / `voiceNote.transcribing`
+- `voiceNote.permissionDenied` / `voiceNote.error` / `voiceNote.tooLong`
+- `voiceNote.notSupported`
+
+### Modificar: `supabase/config.toml`
+Adicionar bloco para a nova função (verify_jwt = true).
+
+## Considerações de segurança
+- JWT obrigatório (verify_jwt = true) — só usuários logados.
+- Limite de tamanho server-side (rejeita >6MB base64).
+- LOVABLE_API_KEY já existe (verificar com `fetch_secrets`; se faltar, criar via `ai_gateway--create`).
+- Sem armazenamento do áudio — transcreve e descarta. Áudio nunca toca o storage bucket nem o banco.
+
+## Custo / Performance
+- Whisper via Lovable AI: ~$0.006/min (cobrado por crédito da workspace).
+- Latência típica: 1-3s para áudios <30s.
+- Áudios até 2min ficam ~1-2MB em webm/opus → upload rápido.
+
+## Fora do escopo (futuro)
+- Streaming realtime (exigiria ElevenLabs Scribe + WebSocket).
+- Edição inline da transcrição antes de inserir.
+- Aplicar o mesmo botão em outros campos de texto (description do album, etc).
+- Diarização / múltiplos falantes.
 
 ## Validação
-
-- Criar restaurante novo no TestFlight, subir 3 fotos, fechar app via swipe up → reabrir `/add` → ver "Rascunho restaurado" com as 3 fotos visíveis.
-- Salvar normalmente → rascunho some, restaurante aparece em `/dining`.
-- Verificar que `/dining`, `/`, `AlbumsMap`, share links **não** mostram rascunhos.
-
-## Risco
-
-Mudança toca muitos pontos de leitura. Vou listar e atualizar todos antes de fechar. Se preferir uma versão mais minimalista (só salvar fotos em banco via draft, sem flag `is_draft` e sem restaurar form), me avise.
+1. Testar no preview web (Chrome/Safari desktop): grava, para, transcreve.
+2. Testar em PWA iOS após deploy.
+3. Testar no TestFlight (Despia WebView) — confirmar que `getUserMedia` pede permissão de mic nativa.
+4. Verificar logs da edge function via `edge_function_logs`.

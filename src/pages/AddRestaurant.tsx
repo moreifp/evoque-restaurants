@@ -16,6 +16,7 @@ import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
+import { VoiceNoteButton } from "@/components/VoiceNoteButton";
 import { z } from "zod";
 import { useI18n } from "@/i18n/i18n";
 import { useAIConsent } from "@/hooks/useAIConsent";
@@ -801,16 +802,26 @@ export default function AddRestaurant() {
                 {/* Notes */}
                 <div className="space-y-2">
                   <Label htmlFor="notes" className="text-lg">{t("addRestaurant.notes")}</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder={t("addRestaurant.notesPlaceholder")}
-                    rows={5}
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    className="text-lg min-h-[120px]"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      id="notes"
+                      placeholder={t("addRestaurant.notesPlaceholder")}
+                      rows={5}
+                      value={formData.notes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, notes: e.target.value })
+                      }
+                      className="text-lg min-h-[120px] pr-12"
+                    />
+                    <VoiceNoteButton
+                      onTranscribed={(text) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          notes: prev.notes ? `${prev.notes}\n\n${text}` : text,
+                        }))
+                      }
+                    />
+                  </div>
                 </div>
 
                 {/* Social Links */}

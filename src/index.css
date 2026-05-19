@@ -253,3 +253,9 @@ body.despia-native {
 .dark .pac-item-query {
   color: hsl(var(--foreground)) !important;
 }
+
+/* Voice note waveform animation */
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
