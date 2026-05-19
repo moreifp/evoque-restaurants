@@ -871,6 +871,23 @@ export default function Account() {
             </CardContent>
           </Card>
 
+          {/* Photo Backup / Trash */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                {t("photoTrash.settingsTitle")}
+              </CardTitle>
+              <CardDescription>{t("photoTrash.settingsDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={() => setTrashOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t("photoTrash.open")}
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Danger Zone - Account Deletion */}
           <Card className="border-destructive/50">
             <CardHeader>
