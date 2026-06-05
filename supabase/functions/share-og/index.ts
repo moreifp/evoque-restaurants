@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
     : `${APP_URL}/share/${entryId}`;
 
   const ua = req.headers.get("user-agent") ?? "";
+  console.log("share-og UA:", ua, "isBot:", isBot(ua), "entry:", entryId);
 
   // Humans: bounce to the SPA. Bots: serve OG HTML.
   if (!isBot(ua)) {
