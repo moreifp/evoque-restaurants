@@ -93,18 +93,28 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   }
 }
 
-function renderStars(rating: number | null): string {
-  if (!rating) return "";
+function ratingDots(rating: number | null): any[] {
+  if (!rating) return [];
   const full = Math.round(rating);
-  return "★".repeat(Math.min(5, full)) + "☆".repeat(Math.max(0, 5 - full));
+  const dots: any[] = [];
+  for (let i = 0; i < 5; i++) {
+    dots.push({
+      type: "div",
+      props: {
+        style: {
+          width: 14, height: 14, borderRadius: 14,
+          marginRight: 6,
+          backgroundColor: i < full ? "#FFD166" : "rgba(255,255,255,0.3)",
+        },
+      },
+    });
+  }
+  return dots;
 }
 
 function buildTree(data: PreviewData, photoDataUrl: string | null): any {
   const displayName = data.is_private ? "Restaurante compartilhado" : (data.name || "Evoque");
-  const metaParts: string[] = [];
-  if (data.rating) metaParts.push(`${renderStars(data.rating)}  ${data.rating.toFixed(1)}`);
-  if (data.city && !data.is_private) metaParts.push(data.city);
-  const meta = metaParts.join("   ·   ");
+  const cityText = data.city && !data.is_private ? data.city : "";
   const footer = data.is_private
     ? "Evoque · food.evoque.guru"
     : data.author
@@ -118,14 +128,14 @@ function buildTree(data: PreviewData, photoDataUrl: string | null): any {
           src: photoDataUrl,
           width: 1200,
           height: 630,
-          style: { position: "absolute", top: 0, left: 0, width: "1200px", height: "630px", objectFit: "cover" },
+          style: { position: "absolute", top: 0, left: 0, width: 1200, height: 630, objectFit: "cover" },
         },
       }
     : {
         type: "div",
         props: {
           style: {
-            position: "absolute", top: 0, left: 0, width: "1200px", height: "630px",
+            position: "absolute", top: 0, left: 0, width: 1200, height: 630,
             backgroundImage: "linear-gradient(135deg, #6b8e23, #4d8a4d, #2f8a73, #2c7d8a)",
             display: "flex",
           },
@@ -136,18 +146,56 @@ function buildTree(data: PreviewData, photoDataUrl: string | null): any {
     type: "div",
     props: {
       style: {
-        position: "absolute", top: 0, left: 0, width: "1200px", height: "630px",
-        backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.85) 100%)",
+        position: "absolute", top: 0, left: 0, width: 1200, height: 630,
+        backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0.88) 100%)",
         display: "flex",
       },
     },
   };
 
+  // Rating + city row
+  const metaChildren: any[] = [];
+  if (data.rating) {
+    metaChildren.push({
+      type: "div",
+      props: {
+        style: { display: "flex", alignItems: "center", marginRight: 18 },
+        children: ratingDots(data.rating),
+      },
+    });
+    metaChildren.push({
+      type: "div",
+      props: {
+        style: { fontSize: 32, fontWeight: 700, marginRight: 18 },
+        children: data.rating.toFixed(1),
+      },
+    });
+  }
+  if (cityText) {
+    if (metaChildren.length) {
+      metaChildren.push({
+        type: "div",
+        props: { style: { fontSize: 32, opacity: 0.6, marginRight: 18 }, children: "·" },
+      });
+    }
+    metaChildren.push({
+      type: "div",
+      props: {
+        style: {
+          fontSize: 30, fontWeight: 400, opacity: 0.92,
+          maxWidth: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        },
+        children: cityText,
+      },
+    });
+  }
+
   const content = {
     type: "div",
     props: {
       style: {
-        position: "absolute", inset: 0, padding: "60px 70px",
+        position: "absolute", top: 0, left: 0, width: 1200, height: 630,
+        padding: "60px 70px",
         display: "flex", flexDirection: "column", justifyContent: "space-between",
         color: "white",
       },
@@ -156,34 +204,38 @@ function buildTree(data: PreviewData, photoDataUrl: string | null): any {
         {
           type: "div",
           props: {
-            style: { display: "flex", alignItems: "center", fontSize: 28, fontWeight: 700, letterSpacing: 4, textTransform: "uppercase", opacity: 0.95 },
+            style: { display: "flex", fontSize: 26, fontWeight: 700, letterSpacing: 6, textTransform: "uppercase", opacity: 0.95 },
             children: "Evoque",
           },
         },
-        // Bottom: name + meta + footer
+        // Bottom block
         {
           type: "div",
           props: {
-            style: { display: "flex", flexDirection: "column", gap: 18 },
+            style: { display: "flex", flexDirection: "column" },
             children: [
               {
                 type: "div",
                 props: {
-                  style: { fontSize: 84, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2, textShadow: "0 2px 20px rgba(0,0,0,0.4)" },
+                  style: {
+                    fontSize: 78, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2,
+                    maxWidth: 1060,
+                    marginBottom: 24,
+                  },
                   children: displayName,
                 },
               },
-              meta ? {
+              metaChildren.length ? {
                 type: "div",
                 props: {
-                  style: { fontSize: 34, fontWeight: 400, opacity: 0.95 },
-                  children: meta,
+                  style: { display: "flex", alignItems: "center", marginBottom: 22 },
+                  children: metaChildren,
                 },
               } : null,
               {
                 type: "div",
                 props: {
-                  style: { fontSize: 24, fontWeight: 400, opacity: 0.75, marginTop: 6 },
+                  style: { fontSize: 24, fontWeight: 400, opacity: 0.78 },
                   children: footer,
                 },
               },
@@ -197,11 +249,12 @@ function buildTree(data: PreviewData, photoDataUrl: string | null): any {
   return {
     type: "div",
     props: {
-      style: { position: "relative", display: "flex", width: "1200px", height: "630px", backgroundColor: "#0F172A" },
+      style: { position: "relative", display: "flex", width: 1200, height: 630, backgroundColor: "#0F172A" },
       children: [background, overlay, content],
     },
   };
 }
+
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
