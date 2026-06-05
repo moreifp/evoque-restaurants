@@ -42,7 +42,7 @@ interface PreviewData {
 async function loadPreview(supabase: ReturnType<typeof createClient>, entryId: string): Promise<PreviewData | null> {
   const { data: entry } = await supabase
     .from("restaurant_entries")
-    .select("id, restaurant_name, city, rating, user_id, is_draft")
+    .select("id, restaurant_name, location_address, rating, user_id, is_draft")
     .eq("id", entryId)
     .maybeSingle();
 
@@ -69,7 +69,7 @@ async function loadPreview(supabase: ReturnType<typeof createClient>, entryId: s
 
   return {
     name: entry.restaurant_name ?? "",
-    city: entry.city ?? null,
+    city: entry.location_address ?? null,
     rating: entry.rating ?? null,
     author: isPrivate ? null : profile?.display_name ?? null,
     photo_url: photo?.photo_url ?? null,
