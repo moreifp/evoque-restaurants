@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.transcribe-audio]
 verify_jwt = true
+
+[functions.share-og]
+verify_jwt = false
+
+[functions.share-og-image]
+verify_jwt = false
