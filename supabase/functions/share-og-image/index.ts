@@ -17,8 +17,8 @@ async function ensureInit() {
   const [yogaWasm, resvgWasm, regular, bold] = await Promise.all([
     fetch("https://unpkg.com/yoga-wasm-web@0.3.3/dist/yoga.wasm").then((r) => r.arrayBuffer()),
     fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm").then((r) => r.arrayBuffer()),
-    fetch("https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff").then((r) => r.arrayBuffer()),
-    fetch("https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa2JL7SUc.woff").then((r) => r.arrayBuffer()),
+    fetch("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/files/inter-latin-400-normal.woff").then((r) => r.arrayBuffer()),
+    fetch("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/files/inter-latin-700-normal.woff").then((r) => r.arrayBuffer()),
   ]);
 
   const yoga = await initYogaWasm(yogaWasm);
