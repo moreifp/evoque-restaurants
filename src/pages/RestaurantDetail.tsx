@@ -26,6 +26,7 @@ import { useI18n } from "@/i18n/i18n";
 import { format } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
 import { useAIConsent } from "@/hooks/useAIConsent";
+import { getShareUrl } from "@/lib/shareUrl";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -448,15 +449,13 @@ export default function RestaurantDetail() {
       if (tokenError) throw tokenError;
 
       const token = tokenData?.token;
-      const url = token 
-        ? `https://food.evoque.guru/s/${token}`
-        : `https://food.evoque.guru/share/${id}`;
+      const url = getShareUrl(id!, token);
       
       setShareUrl(url);
     } catch (error) {
       console.error('Error generating share token:', error);
-      // Fallback to full share URL (not short token URL)
-      setShareUrl(`https://food.evoque.guru/share/${id}`);
+      // Fallback to entry-id share URL (still gets OG preview)
+      setShareUrl(getShareUrl(id!));
     } finally {
       setShareUrlLoading(false);
     }
