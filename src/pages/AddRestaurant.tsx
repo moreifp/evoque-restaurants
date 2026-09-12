@@ -297,7 +297,7 @@ export default function AddRestaurant() {
     );
   }, [prefilledFromAgenda, formData.google_place_id, formData.location_lat]);
 
-  // Autosave to localStorage (debounced)
+  // Autosave to localStorage + DB draft (debounced)
   useEffect(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -313,14 +313,51 @@ export default function AddRestaurant() {
       };
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(dataToSave));
       setLastSaved(new Date());
-    }, 1000);
+
+      // Persist typed fields into the DB draft so nothing is lost on refresh/crash
+      (async () => {
+        try {
+          const hasContent =
+            !!formData.restaurant_name.trim() ||
+            !!formData.notes.trim() ||
+            !!formData.description.trim() ||
+            !!formData.companions.trim() ||
+            !!formData.location_address.trim() ||
+            !!formData.rating;
+          if (!draftEntryId && !hasContent) return;
+
+          const entryId = draftEntryId || (await ensureDraftEntry());
+          if (!entryId) return;
+
+          await supabase
+            .from("restaurant_entries")
+            .update({
+              restaurant_name: formData.restaurant_name || "__draft__",
+              visit_date: formData.visit_date,
+              location_address: formData.location_address || null,
+              location_lat: formData.location_lat,
+              location_lng: formData.location_lng,
+              google_place_id: formData.google_place_id,
+              rating: formData.rating || null,
+              companions: formData.companions || null,
+              notes: formData.notes || null,
+              description: formData.description || null,
+            })
+            .eq("id", entryId)
+            .eq("is_draft", true);
+        } catch (e) {
+          console.error("Draft autosave failed:", e);
+        }
+      })();
+    }, 2000);
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formData, selectedAlbumId, selectedTags, socialLinks, uploadData]);
+  }, [formData, selectedAlbumId, selectedTags, socialLinks, uploadData, draftEntryId]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
