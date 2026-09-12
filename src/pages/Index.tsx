@@ -17,7 +17,7 @@ export default function Index() {
   
   // Use shared hook for consistent cache with Dining page
   const { data: allEntries = [], isLoading: loading } = useRestaurantEntries();
-  const recentEntries = allEntries.slice(0, 6);
+  const recentEntries = allEntries.filter((e) => !e.is_draft).slice(0, 6);
 
   useEffect(() => {
     fetchPopularTags();

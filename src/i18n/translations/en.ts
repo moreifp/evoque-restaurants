@@ -266,6 +266,9 @@ export const en = {
   },
   dining: {
     title: "My Dining Experiences",
+    draft: "Draft",
+    untitledDraft: "Untitled draft",
+
     addRestaurant: "Add Restaurant",
     searchPlaceholder: "Search by name, location, or notes...",
     filterByRating: "Filter by rating",

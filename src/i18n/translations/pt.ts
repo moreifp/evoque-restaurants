@@ -266,6 +266,9 @@ export const pt = {
   },
   dining: {
     title: "Minhas Experiências Gastronômicas",
+    draft: "Rascunho",
+    untitledDraft: "Rascunho sem nome",
+
     addRestaurant: "Adicionar Restaurante",
     searchPlaceholder: "Buscar por nome, localização ou notas...",
     filterByRating: "Filtrar por avaliação",
