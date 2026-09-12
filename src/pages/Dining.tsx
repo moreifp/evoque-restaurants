@@ -235,7 +235,18 @@ function RestaurantCard({ entry, onClick }: { entry: RestaurantEntry; onClick: (
     >
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-3">
-          <h3 className="font-semibold text-lg">{entry.restaurant_name}</h3>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-lg truncate">
+              {!entry.restaurant_name || entry.restaurant_name === "__draft__"
+                ? t("dining.untitledDraft")
+                : entry.restaurant_name}
+            </h3>
+            {entry.is_draft && (
+              <Badge variant="secondary" className="mt-1">
+                {t("dining.draft")}
+              </Badge>
+            )}
+          </div>
           {entry.rating && (
             <div className="flex items-center gap-1">
               <Star className="h-4 w-4 fill-accent text-accent" />
@@ -243,6 +254,7 @@ function RestaurantCard({ entry, onClick }: { entry: RestaurantEntry; onClick: (
             </div>
           )}
         </div>
+
         
         {entry.location_address && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3">
