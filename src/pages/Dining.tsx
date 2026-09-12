@@ -152,8 +152,13 @@ export default function Dining() {
             ) : filteredEntries.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEntries.map((entry) => (
-                  <RestaurantCard key={entry.id} entry={entry} onClick={() => navigate(`/dining/${entry.id}`)} />
+                  <RestaurantCard
+                    key={entry.id}
+                    entry={entry}
+                    onClick={() => navigate(entry.is_draft ? "/dining/add" : `/dining/${entry.id}`)}
+                  />
                 ))}
+
               </div>
             ) : (
               <Card className="p-12 text-center">
