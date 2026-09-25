@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: "magiclink", email: claims.email });
     let hashed = link?.properties?.hashed_token;
     if (linkErr || !hashed) {
+      console.log("generate_link_first_attempt", linkErr?.message);
       const { error: createErr } = await admin.auth.admin.createUser({
         email: claims.email,
         email_confirm: true,
