@@ -143,6 +143,30 @@ export type Database = {
         }
         Relationships: []
       }
+      embed_pass_uses: {
+        Row: {
+          client_id: string
+          email: string | null
+          expires_at: string | null
+          jti: string
+          used_at: string
+        }
+        Insert: {
+          client_id: string
+          email?: string | null
+          expires_at?: string | null
+          jti: string
+          used_at?: string
+        }
+        Update: {
+          client_id?: string
+          email?: string | null
+          expires_at?: string | null
+          jti?: string
+          used_at?: string
+        }
+        Relationships: []
+      }
       entry_tags: {
         Row: {
           entry_id: string
