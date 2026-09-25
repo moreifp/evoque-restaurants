@@ -166,7 +166,13 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <BlockedUsersProvider>
-                <AppRoutes />
+                {blockedFrame ? (
+                  <div className="min-h-screen flex items-center justify-center p-6 text-center text-muted-foreground">
+                    Evoque Restaurants
+                  </div>
+                ) : (
+                  <AppRoutes />
+                )}
               </BlockedUsersProvider>
               {!isEmbedded && (
                 <>
