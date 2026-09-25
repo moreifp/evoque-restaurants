@@ -44,6 +44,25 @@ const Embed = lazy(() => import("./pages/Embed"));
 
 const isEmbedded = typeof window !== "undefined" && window.self !== window.top;
 
+// Best-effort frame protection: only these sites may embed the app.
+const ALLOWED_EMBED_ORIGINS = [
+  "https://app.evoque.global",
+  "https://evoqueviagens.lovable.app",
+  "https://id-preview--ed787434-5ecb-4cd1-86c6-bb105f4dda51.lovable.app",
+];
+const isLovableEditor = (o: string) => /^https:\/\/([a-z0-9-]+\.)*(lovable\.dev|lovable\.app|lovableproject\.com)$/.test(o);
+function embedBlocked(): boolean {
+  if (!isEmbedded) return false;
+  const a = (window.location as any).ancestorOrigins as DOMStringList | undefined;
+  let chain: string[] = [];
+  if (a && a.length) chain = Array.from({ length: a.length }, (_, i) => a.item(i)!);
+  else {
+    try { if (document.referrer) chain = [new URL(document.referrer).origin]; } catch { /* ignore */ }
+  }
+  return chain.some((o) => !ALLOWED_EMBED_ORIGINS.includes(o) && !isLovableEditor(o));
+}
+const blockedFrame = embedBlocked();
+
 // Create QueryClient outside component to prevent re-creation on renders
 const queryClient = new QueryClient({
   defaultOptions: {
