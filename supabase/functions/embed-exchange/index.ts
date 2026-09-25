@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.58.0";
 
 // Connection ID Evoque Viagens must use as the JWT "aud" claim.
 const CLIENT_ID = "evoque-viagens";
@@ -108,13 +108,35 @@ Deno.serve(async (req) => {
       if (!hashed) return json({ error: "internal_error" }, 500);
     }
 
-    const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    let anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    if (!anonKey) {
+      const raw = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "";
+      try {
+        const parsed = JSON.parse(raw);
+        anonKey = typeof parsed === "string" ? parsed : Array.isArray(parsed) ? parsed[0] : (Object.values(parsed)[0] as string);
+      } catch {
+        anonKey = raw.split(",")[0]?.trim() || "";
+      }
+    }
+    if (!anonKey) console.error("no_anon_key");
+    const anon = createClient(Deno.env.get("SUPABASE_URL")!, anonKey || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: s, error: sErr } = await anon.auth.verifyOtp({ token_hash: hashed, type: "magiclink" });
-    if (sErr || !s.session) {
-      console.error("verify_otp_failed", sErr?.message);
-      return json({ error: "internal_error" }, 500);
+    let { data: s, error: sErr } = await anon.auth.verifyOtp({ token_hash: hashed, type: "magiclink" });
+    if (sErr || !s?.session) {
+      console.error("verify_otp_failed_anon", sErr?.message, sErr?.status);
+      // Fallback: fresh link, verify with an isolated admin-keyed client
+      const again = await admin.auth.admin.generateLink({ type: "magiclink", email: claims.email });
+      const h2 = again.data?.properties?.hashed_token;
+      const iso = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const r = h2 ? await iso.auth.verifyOtp({ token_hash: h2, type: "magiclink" }) : null;
+      s = r?.data as any;
+      if (!r || r.error || !s?.session) {
+        console.error("verify_otp_failed", r?.error?.message ?? again.error?.message);
+        return json({ error: "internal_error" }, 500);
+      }
     }
 
     return json({ access_token: s.session.access_token, refresh_token: s.session.refresh_token });
