@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.share-og-image]
 verify_jwt = false
+
+[functions.embed-exchange]
+verify_jwt = false
