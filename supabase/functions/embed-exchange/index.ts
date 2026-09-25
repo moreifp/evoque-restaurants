@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
     // Optional origin allowlist (comma separated) for the embedding host.
     const allowed = (Deno.env.get("EVOQUE_VIAGENS_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-    if (allowed.length && hostOrigin && !allowed.includes(hostOrigin)) return fail("host_origin");
+    if (allowed.length && (typeof hostOrigin !== "string" || !allowed.includes(hostOrigin))) return fail(`host_origin:${hostOrigin}`);
 
     let claims;
     try {
