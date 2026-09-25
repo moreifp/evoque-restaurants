@@ -40,6 +40,9 @@ const MapsDebug = lazy(() => import("./pages/MapsDebug"));
 const AppleCallback = lazy(() => import("./pages/AppleCallback"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const Embed = lazy(() => import("./pages/Embed"));
+
+const isEmbedded = typeof window !== "undefined" && window.self !== window.top;
 
 // Create QueryClient outside component to prevent re-creation on renders
 const queryClient = new QueryClient({
@@ -85,6 +88,7 @@ function AppRoutes() {
           <Route path="/token" element={<TokenInput />} />
           <Route path="/maps-debug" element={<MapsDebug />} />
           <Route path="/callback/apple" element={<AppleCallback />} />
+          <Route path="/embed" element={<Embed />} />
 
           {/* Redirects for old routes */}
           <Route
@@ -138,16 +142,20 @@ const App = () => {
       <TooltipProvider>
         <DespiaProvider>
           <ErrorBoundary>
-            <SplashScreen />
+            {!isEmbedded && <SplashScreen />}
             <Toaster />
             <Sonner />
             <BrowserRouter>
               <BlockedUsersProvider>
                 <AppRoutes />
               </BlockedUsersProvider>
-              <PWAInstallPrompt />
-              <IOSInstallPrompt />
-              <PWAUpdatePrompt />
+              {!isEmbedded && (
+                <>
+                  <PWAInstallPrompt />
+                  <IOSInstallPrompt />
+                  <PWAUpdatePrompt />
+                </>
+              )}
             </BrowserRouter>
           </ErrorBoundary>
         </DespiaProvider>
