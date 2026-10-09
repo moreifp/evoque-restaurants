@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, X, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/imageVariants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n } from "@/i18n/i18n";
 
@@ -79,12 +80,16 @@ export const ReceiptUpload = ({ entryId, onReceiptProcessed }: ReceiptUploadProp
       const user = session.user;
 
       // Upload to storage first
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}/receipt-${Date.now()}.${fileExt}`;
+      // Recibo: JPEG 1600 px q0.85 (sem miniatura, sem Drive)
+      const compressed = await compressImage(file, 1600, 0.85);
+      const fileName = `${user.id}/receipt-${Date.now()}.${compressed.ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from("restaurant-photos")
-        .upload(fileName, file);
+        .upload(fileName, compressed.file, {
+          cacheControl: "31536000",
+          contentType: compressed.file.type || undefined,
+        });
 
       if (uploadError) throw uploadError;
 

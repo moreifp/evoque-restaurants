@@ -10,6 +10,8 @@ import evoqueIcon from "@/assets/evoque-icon.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReportDialog } from "@/components/ReportDialog";
+import { PhotoThumb } from "@/components/photos/PhotoThumb";
+import { SaveToPhotosButton } from "@/components/photos/SaveToPhotosButton";
 import { useI18n } from "@/i18n/i18n";
 
 export default function SharedRestaurant() {
@@ -338,8 +340,8 @@ export default function SharedRestaurant() {
                         className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => openLightbox(photoIndex)}
                       >
-                        <img
-                          src={photo.photo_url}
+                        <PhotoThumb
+                          photo={photo}
                           alt="Place"
                           className="w-full h-full object-cover"
                         />
@@ -370,8 +372,8 @@ export default function SharedRestaurant() {
                         className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => openLightbox(photoIndex)}
                       >
-                        <img
-                          src={photo.photo_url}
+                        <PhotoThumb
+                          photo={photo}
                           alt="Food"
                           className="w-full h-full object-cover"
                         />
@@ -402,8 +404,8 @@ export default function SharedRestaurant() {
                         className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => openLightbox(photoIndex)}
                       >
-                        <img
-                          src={photo.photo_url}
+                        <PhotoThumb
+                          photo={photo}
                           alt="Friends"
                           className="w-full h-full object-cover"
                         />
@@ -434,8 +436,9 @@ export default function SharedRestaurant() {
                           className="aspect-[3/4] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => openLightbox(photoIndex)}
                         >
-                          <img
-                            src={photo.photo_url}
+                          <PhotoThumb
+                            photo={photo}
+                            sizes="(min-width: 768px) 50vw, 100vw"
                             alt="Wine"
                             className="w-full h-full object-cover"
                           />
@@ -480,8 +483,8 @@ export default function SharedRestaurant() {
                           className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => openLightbox(photoIndex)}
                         >
-                          <img
-                            src={photo.photo_url}
+                          <PhotoThumb
+                            photo={photo}
                             alt="Menu"
                             className="w-full h-full object-cover"
                           />
@@ -552,8 +555,11 @@ export default function SharedRestaurant() {
                 <img
                   src={photos[selectedPhotoIndex].photo_url}
                   alt={photos[selectedPhotoIndex].type}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-[75vh] object-contain"
                 />
+                <div className="mt-4 w-full max-w-xs">
+                  <SaveToPhotosButton url={photos[selectedPhotoIndex].photo_url} tone="light" />
+                </div>
                 
                 {/* Photo metadata */}
                 {(photos[selectedPhotoIndex].rating > 0 || photos[selectedPhotoIndex].caption || photos[selectedPhotoIndex].menu_translation) && (

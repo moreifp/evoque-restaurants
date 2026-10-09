@@ -769,4 +769,16 @@ export const en = {
     missingDesc: "{n} photo(s) belong to a restaurant that was permanently deleted.",
     purged: "Removed from trash",
   },
+  savePhotos: {
+    saveOne: "Save to Photos",
+    saveOriginals: "Save originals to Photos",
+    count: "{n} photo(s)",
+    downloadOne: "Download {n}",
+    dismiss: "Close",
+    preparing: "Preparing...",
+    saved: "Done",
+    error: "Couldn't save the photo",
+    driveSaving: "Originals are going to your Google Drive",
+    uploadingWait: "Wait for the upload to finish",
+  },
 };

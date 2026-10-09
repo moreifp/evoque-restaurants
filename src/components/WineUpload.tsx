@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import { useAIConsent } from "@/hooks/useAIConsent";
+import { uploadPhotoVariants } from "@/lib/photoStorage";
 
 interface WineData {
   url: string;
@@ -26,6 +27,8 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
   const [captions, setCaptions] = useState<string[]>([]);
   const [ratings, setRatings] = useState<number[]>([]);
   const [wineInfos, setWineInfos] = useState<any[]>([]);
+  // URL já enviada por índice: a análise e o envio final usam o mesmo upload
+  const [uploadedUrls, setUploadedUrls] = useState<Array<string | undefined>>([]);
   const [uploading, setUploading] = useState(false);
   const [analyzingIndex, setAnalyzingIndex] = useState<number | null>(null);
   const { toast } = useToast();
@@ -70,6 +73,22 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
     setCaptions(captions.filter((_, i) => i !== index));
     setRatings(ratings.filter((_, i) => i !== index));
     setWineInfos(wineInfos.filter((_, i) => i !== index));
+    setUploadedUrls(uploadedUrls.filter((_, i) => i !== index));
+  };
+
+  /** Envia a versão leve uma única vez e guarda a URL. */
+  const ensureUploaded = async (index: number, userId: string): Promise<string> => {
+    const existing = uploadedUrls[index];
+    if (existing) return existing;
+    const res = await uploadPhotoVariants({ userId, entryId: null, file: files[index], kind: "wine" });
+    if (!res.value) throw new Error(res.error || "Upload failed");
+    const url = res.value.photoUrl;
+    setUploadedUrls((prev) => {
+      const next = [...prev];
+      next[index] = url;
+      return next;
+    });
+    return url;
   };
 
   const updateCaption = (index: number, value: string) => {
@@ -89,24 +108,10 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
     if (!allowed) return;
     setAnalyzingIndex(index);
     try {
-      const file = files[index];
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Upload file temporarily to get a URL
-      const fileExt = file.name.split('.').pop();
-      const fileName = `temp_${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('restaurant-photos')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('restaurant-photos')
-        .getPublicUrl(filePath);
+      const publicUrl = await ensureUploaded(index, user.id);
 
       // Call AI analysis
       const { data, error } = await supabase.functions.invoke('analyze-wine-label', {
@@ -159,20 +164,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
       if (!user) throw new Error("User not authenticated");
 
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `wine_${Math.random()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('restaurant-photos')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('restaurant-photos')
-          .getPublicUrl(filePath);
+        const publicUrl = await ensureUploaded(i, user.id);
 
         wineData.push({
           url: publicUrl,
@@ -187,6 +179,7 @@ export const WineUpload = ({ onWineUpload }: WineUploadProps) => {
       setPreviews([]);
       setCaptions([]);
       setWineInfos([]);
+      setUploadedUrls([]);
       
       toast({
         title: t("wineUpload.uploadSuccess"),

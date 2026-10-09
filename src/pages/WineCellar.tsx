@@ -6,10 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { Wine, Calendar, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PhotoThumb } from "@/components/photos/PhotoThumb";
 
 interface WineEntry {
   id: string;
   photo_url: string;
+  thumb_url?: string | null;
   caption: string;
   rating: number;
   created_at: string;
@@ -42,6 +44,7 @@ export default function WineCellar() {
         .select(`
           id,
           photo_url,
+          thumb_url,
           caption,
           rating,
           created_at,
@@ -118,8 +121,9 @@ export default function WineCellar() {
                 <Card key={wine.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <Link to={`/dining/${wine.entry.id}`}>
                     <div className="aspect-[3/4] overflow-hidden">
-                      <img
-                        src={wine.photo_url}
+                      <PhotoThumb
+                        photo={wine}
+                        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                         alt="Wine"
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       />

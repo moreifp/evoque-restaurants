@@ -15,6 +15,7 @@ import { LocationPicker } from "@/components/LocationPicker";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
+import { kickDriveBackup, thumbFor } from "@/lib/photoStorage";
 import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
 import { VoiceNoteButton } from "@/components/VoiceNoteButton";
 import { z } from "zod";
@@ -472,22 +473,26 @@ export default function AddRestaurant() {
           ...uploadData.place.map(url => ({
             entry_id: entry!.id,
             photo_url: url,
+            thumb_url: thumbFor(url),
             type: isVideoUrl(url) ? 'video' : 'restaurant_photo',
           })),
           ...uploadData.food.map(url => ({
             entry_id: entry!.id,
             photo_url: url,
+            thumb_url: thumbFor(url),
             type: 'food',
           })),
           ...uploadData.menu.map(menu => ({
             entry_id: entry!.id,
             photo_url: menu.url,
+            thumb_url: thumbFor(menu.url),
             type: 'menu',
             menu_translation: menu.translation || null,
           })),
           ...uploadData.wine.map(wine => ({
             entry_id: entry!.id,
             photo_url: wine.url,
+            thumb_url: thumbFor(wine.url),
             type: 'wine',
             caption: wine.caption,
             rating: wine.rating || null,
@@ -495,6 +500,7 @@ export default function AddRestaurant() {
           ...uploadData.friends.map(url => ({
             entry_id: entry!.id,
             photo_url: url,
+            thumb_url: thumbFor(url),
             type: 'friends',
           })),
         ];
@@ -573,6 +579,9 @@ export default function AddRestaurant() {
 
         if (linksError) throw linksError;
       }
+
+      // Restaurante com nome definitivo: originais pendentes podem ir ao Drive (só o dono)
+      kickDriveBackup(user.id);
 
       // Clear autosave + draft references after successful submit
       localStorage.removeItem(AUTOSAVE_KEY);

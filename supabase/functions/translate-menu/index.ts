@@ -7,6 +7,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isOurStorageUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return false;
+    const ownHost = new URL(Deno.env.get("SUPABASE_URL") ?? "https://invalid.local").hostname;
+    const hostOk = url.hostname === ownHost || url.hostname.endsWith(".supabase.co");
+    return hostOk && url.pathname.startsWith("/storage/v1/object/public/restaurant-photos/");
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -46,9 +60,25 @@ serve(async (req) => {
 
     const { imageUrl, targetLanguage = "Portuguese", photoId } = await req.json();
 
-    if (!imageUrl) {
+    if (!imageUrl || typeof imageUrl !== "string") {
       return new Response(
         JSON.stringify({ success: false, error: "Image URL is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Só aceita imagens do nosso storage (bucket público restaurant-photos)
+    if (!isOurStorageUrl(imageUrl)) {
+      console.error("Untrusted image URL host");
+      return new Response(
+        JSON.stringify({ success: false, error: "URL must be from trusted storage" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (photoId !== undefined && photoId !== null && (typeof photoId !== "string" || !UUID_RE.test(photoId))) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid photoId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -150,6 +180,7 @@ Format the output with emoji category headers for easy reading.`;
 
     // Save translation to database if photoId provided
     if (photoId) {
+      // RLS garante que só o dono da entrada consegue atualizar
       const { error: updateError } = await supabase
         .from("restaurant_photos")
         .update({ menu_translation: translation })

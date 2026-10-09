@@ -149,7 +149,7 @@ export function PhotoTrashDialog({ open, onOpenChange, entryId }: Props) {
                           {isVideo ? (
                             <video src={b.photo_url} className="w-full aspect-square object-cover bg-muted" muted />
                           ) : (
-                            <img src={b.photo_url} alt={b.caption || ""} className="w-full aspect-square object-cover bg-muted" loading="lazy" />
+                            <img src={b.thumb_url || b.photo_url} alt={b.caption || ""} className="w-full aspect-square object-cover bg-muted" loading="lazy" decoding="async" />
                           )}
                           <div className="absolute top-2 left-2">
                             <Checkbox checked={selected.has(b.id)} className="bg-background/80 backdrop-blur" />

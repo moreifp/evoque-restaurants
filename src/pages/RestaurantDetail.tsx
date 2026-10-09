@@ -18,6 +18,9 @@ import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { LocationPicker } from "@/components/LocationPicker";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
+import { PhotoThumb } from "@/components/photos/PhotoThumb";
+import { SaveToPhotosButton } from "@/components/photos/SaveToPhotosButton";
+import { cleanupInboxForEntry } from "@/lib/photoStorage";
 import { SocialLinksInput, SocialLink } from "@/components/SocialLinksInput";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -375,6 +378,8 @@ export default function RestaurantDetail() {
   };
 
   const handleDelete = async () => {
+    // Originais ainda não copiados ao Drive saem do inbox privado
+    if (id) await cleanupInboxForEntry(id);
     const { error } = await supabase
       .from("restaurant_entries")
       .delete()
@@ -1111,8 +1116,8 @@ export default function RestaurantDetail() {
                             <Dialog key={photo.id}>
                               <DialogTrigger asChild>
                                 <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                  <img
-                                    src={photo.photo_url}
+                                  <PhotoThumb
+                                    photo={photo}
                                     alt="Place"
                                     className="w-full h-full object-cover"
                                   />
@@ -1128,6 +1133,7 @@ export default function RestaurantDetail() {
                                     alt="Place full size"
                                     className="w-full rounded-lg"
                                   />
+                                  <SaveToPhotosButton url={photo.photo_url} className="mt-4" />
                                 </div>
                               </DialogContent>
                             </Dialog>
@@ -1149,8 +1155,8 @@ export default function RestaurantDetail() {
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img
-                                      src={photo.photo_url}
+                                    <PhotoThumb
+                                      photo={photo}
                                       alt={photo.caption || "Food"}
                                       className="w-full h-full object-cover"
                                     />
@@ -1166,6 +1172,7 @@ export default function RestaurantDetail() {
                                       alt={photo.caption || "Food full size"}
                                       className="w-full rounded-lg"
                                     />
+                                    <SaveToPhotosButton url={photo.photo_url} className="mt-4" />
                                   </div>
                                 </DialogContent>
                               </Dialog>
@@ -1209,8 +1216,9 @@ export default function RestaurantDetail() {
                                 <Dialog>
                                   <DialogTrigger asChild>
                                     <div className="aspect-[4/3] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                      <img
-                                        src={photo.photo_url}
+                                      <PhotoThumb
+                                        photo={photo}
+                                        sizes="(min-width: 768px) 60vw, 100vw"
                                         alt={t("common.menu")}
                                         className="w-full h-full object-cover"
                                       />
@@ -1226,6 +1234,7 @@ export default function RestaurantDetail() {
                                         alt="Menu full size"
                                         className="w-full rounded-lg"
                                       />
+                                      <SaveToPhotosButton url={photo.photo_url} className="mt-4" />
                                       {/* Language Picker Dropdown in Dialog */}
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1416,8 +1425,9 @@ export default function RestaurantDetail() {
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <div className="aspect-[3/4] rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img
-                                      src={photo.photo_url}
+                                    <PhotoThumb
+                                      photo={photo}
+                                      sizes="(min-width: 768px) 50vw, 100vw"
                                       alt={t("common.wine")}
                                       className="w-full h-full object-cover"
                                     />
@@ -1433,6 +1443,7 @@ export default function RestaurantDetail() {
                                       alt="Wine full size"
                                       className="w-full rounded-lg"
                                     />
+                                    <SaveToPhotosButton url={photo.photo_url} className="mt-4" />
                                     {photo.rating && photo.rating > 0 && (
                                       <div className="flex items-center space-x-1 mt-4">
                                         {Array.from({ length: photo.rating }).map((_, i) => (
@@ -1480,8 +1491,8 @@ export default function RestaurantDetail() {
                             <Dialog key={photo.id}>
                               <DialogTrigger asChild>
                                 <div className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                                  <img
-                                    src={photo.photo_url}
+                                  <PhotoThumb
+                                    photo={photo}
                                     alt={t("common.friends")}
                                     className="w-full h-full object-cover"
                                   />
@@ -1497,6 +1508,7 @@ export default function RestaurantDetail() {
                                     alt="Friends full size"
                                     className="w-full rounded-lg"
                                   />
+                                  <SaveToPhotosButton url={photo.photo_url} className="mt-4" />
                                 </div>
                               </DialogContent>
                             </Dialog>
@@ -1579,6 +1591,8 @@ export default function RestaurantDetail() {
                                 <img
                                   src={receipt.photo_url}
                                   alt={t("receiptSection.receiptImage")}
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                 />
                               </div>
@@ -1767,8 +1781,8 @@ export default function RestaurantDetail() {
                       <div className="grid grid-cols-2 gap-4">
                         {photos.filter(p => p.type === 'menu').map((photo) => (
                           <div key={photo.id} className="relative rounded-lg overflow-hidden border bg-muted">
-                            <img
-                              src={photo.photo_url}
+                            <PhotoThumb
+                              photo={photo}
                               alt={t("common.menu")}
                               className="w-full h-32 object-cover"
                             />

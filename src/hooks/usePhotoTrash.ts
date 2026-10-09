@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { removePhotoObjects } from "@/lib/photoStorage";
 
 export interface PhotoBackup {
   id: string;
@@ -8,6 +9,7 @@ export interface PhotoBackup {
   user_id: string;
   restaurant_name: string | null;
   photo_url: string;
+  thumb_url?: string | null;
   caption: string | null;
   type: string | null;
   rating: number | null;
@@ -59,6 +61,7 @@ export function usePhotoTrash() {
       const rows = restorable.map((b) => ({
         entry_id: b.entry_id,
         photo_url: b.photo_url,
+        thumb_url: b.thumb_url ?? null,
         caption: b.caption,
         type: b.type ?? "restaurant_photo",
         rating: b.rating,
@@ -83,10 +86,23 @@ export function usePhotoTrash() {
 
   const purge = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
+    const toPurge = backups.filter((b) => ids.includes(b.id));
     const { error } = await supabase.from("photo_backups" as any).delete().in("id", ids);
     if (error) throw error;
+
+    // Apagar definitivamente: remove também os arquivos (display + miniatura)
+    // do bucket, exceto os que ainda estão em uso por alguma foto restaurada.
+    const urls = toPurge.flatMap((b) => [b.photo_url, b.thumb_url]).filter((u): u is string => !!u);
+    if (urls.length) {
+      const { data: inUse } = await supabase
+        .from("restaurant_photos")
+        .select("photo_url, thumb_url")
+        .in("photo_url", toPurge.map((b) => b.photo_url));
+      const keep = new Set((inUse ?? []).flatMap((r) => [r.photo_url, r.thumb_url]));
+      await removePhotoObjects(urls.filter((u) => !keep.has(u)));
+    }
     await fetch();
-  }, [fetch]);
+  }, [backups, fetch]);
 
   return { backups, loading, refresh: fetch, restore, purge, retentionDays: RETENTION_DAYS };
 }
