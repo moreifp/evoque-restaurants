@@ -7,6 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Recibo válido: lista de itens e total numérico (senão o adaptador tenta o modelo padrão).
+function reciboValido(input: unknown): boolean {
+  const r = input as { items?: unknown; total?: unknown } | null;
+  return !!r && Array.isArray(r.items) && r.items.length > 0 && typeof r.total === "number" && Number.isFinite(r.total);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -78,20 +84,14 @@ serve(async (req) => {
 
     console.log("Processing receipt image:", imageUrl);
 
-    const LOVABLE_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
-    }
 
-    // Use Google Gemini to analyze the receipt
-    const response = await aiFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Haiku lê o recibo; se a saída vier vazia/inválida, o adaptador tenta com o Sonnet.
+    const response = await aiFetch("anthropic", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "user",
@@ -179,11 +179,11 @@ serve(async (req) => {
           function: { name: "extract_receipt_data" },
         },
       }),
-    });
+    }, { modelo: "rapido", maxTokens: 1500, reservaPadrao: true, validar: reciboValido });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
+      console.error("AI error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -193,12 +193,12 @@ serve(async (req) => {
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Credits exhausted. Please add funds to your workspace." }),
+          JSON.stringify({ error: "AI service out of credit. Please contact the administrator." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const data = await response.json();

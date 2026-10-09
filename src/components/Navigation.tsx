@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import evoqueLogo from "@/assets/evoque-logo.svg";
+import evoqueLogo from "@/assets/evoque-logo.png";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export const Navigation = () => {
@@ -37,70 +37,53 @@ export const Navigation = () => {
               <span className="text-xl font-semibold text-foreground">Evoque</span>
             </Link>
 
-            {/* Navigation Links - Desktop */}
-            <div className="hidden lg:flex items-center space-x-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                // Check if current path starts with the nav item path (for parent route highlighting)
-                const isActive = item.path === "/" 
-                  ? location.pathname === "/" 
-                  : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
-                return (
-                  <Link key={item.path} to={item.path}>
-                    <Button variant="ghost" className={cn("flex items-center space-x-2", isActive && "bg-secondary")}>
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Button>
-                  </Link>
-                );
-              })}
-              
+            {/* Navigation Links + sino + idioma (tablet e desktop). Um único sino = um único canal realtime. */}
+            <div className="hidden md:flex items-center space-x-1">
+              {/* Desktop: ícone + texto */}
+              <div className="hidden lg:flex items-center space-x-1">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  // Check if current path starts with the nav item path (for parent route highlighting)
+                  const isActive = item.path === "/" 
+                    ? location.pathname === "/" 
+                    : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                  return (
+                    <Link key={item.path} to={item.path}>
+                      <Button variant="ghost" className={cn("flex items-center space-x-2", isActive && "bg-secondary")}>
+                        <Icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Tablet: só ícones */}
+              <div className="flex lg:hidden items-center space-x-1">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.path === "/" 
+                    ? location.pathname === "/" 
+                    : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                  return (
+                    <Link key={item.path} to={item.path}>
+                      <Button variant="ghost" size="icon" className={cn(isActive && "bg-secondary")}>
+                        <Icon className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </div>
+
               {/* Notification Bell */}
               <NotificationBell />
 
               {/* Language Switcher */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="ml-2">
-                    <Globe className="h-4 w-4 mr-2" />
-                    {language.toUpperCase()}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">
-                  <DropdownMenuItem onClick={() => setLanguage("en")} className="cursor-pointer">
-                    🇺🇸 English
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLanguage("pt")} className="cursor-pointer">
-                    🇧🇷 Português
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Navigation Links - Tablet (icons only) */}
-            <div className="hidden md:flex lg:hidden items-center space-x-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.path === "/" 
-                  ? location.pathname === "/" 
-                  : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
-                return (
-                  <Link key={item.path} to={item.path}>
-                    <Button variant="ghost" size="icon" className={cn(isActive && "bg-secondary")}>
-                      <Icon className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                );
-              })}
-              
-              {/* Notification Bell */}
-              <NotificationBell />
-
-              {/* Language Switcher */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Globe className="h-4 w-4" />
+                  <Button variant="ghost" className="h-10 w-10 p-0 lg:h-9 lg:w-auto lg:px-3 lg:ml-2">
+                    <Globe className="h-4 w-4 lg:mr-2" />
+                    <span className="hidden lg:inline">{language.toUpperCase()}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-background/95 backdrop-blur-lg">

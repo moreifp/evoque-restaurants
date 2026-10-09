@@ -43,10 +43,6 @@ serve(async (req) => {
     
     console.log('Generating note for:', restaurantName);
 
-    const LOVABLE_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
     const systemPrompt = "You are a helpful assistant that creates personalized restaurant notes based on dining experiences. Write in a natural, conversational tone as if the diner is reflecting on their experience.";
 
@@ -78,20 +74,18 @@ Example: "Had a wonderful dinner here with family. The cozy atmosphere and atten
 
 IMPORTANT: Return ONLY the note text, no quotes, no labels, no explanations.`;
 
-    const response = await aiFetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await aiFetch("anthropic", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
       }),
-    });
+    }, { modelo: "rapido", maxTokens: 300 });
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -102,13 +96,13 @@ IMPORTANT: Return ONLY the note text, no quotes, no labels, no explanations.`;
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
+          JSON.stringify({ error: "AI service out of credit. Please contact the administrator." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
+      console.error("AI error:", response.status, errorText);
+      throw new Error("AI error");
     }
 
     const data = await response.json();

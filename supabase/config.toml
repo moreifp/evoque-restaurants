@@ -3,9 +3,6 @@ project_id = "qmbmifmqnkkiwlshcjzm"
 [functions.process-receipt]
 verify_jwt = true
 
-[functions.generate-album-cover]
-verify_jwt = true
-
 [functions.analyze-wine-label]
 verify_jwt = true
 
@@ -35,9 +32,6 @@ verify_jwt = false
 
 [functions.get-google-maps-key]
 verify_jwt = true
-
-[functions.apple-auth-callback]
-verify_jwt = false
 
 [functions.submit-content-report]
 verify_jwt = false

@@ -98,6 +98,36 @@ serve(async (req) => {
       city: null,
     };
 
+    // Step 0: reaproveita dados que este usuário já salvou para o mesmo place_id (sem chamar o Google).
+    // restaurant_entries só guarda endereço (sem telefone/site); scheduled_visits guarda tudo.
+    if (google_place_id) {
+      const { data: salvo } = await supabase
+        .from('scheduled_visits')
+        .select('google_place_id, location_address, phone, website, maps_url, city')
+        .eq('user_id', user.id)
+        .eq('google_place_id', google_place_id)
+        .not('location_address', 'is', null)
+        .or('phone.not.is.null,website.not.is.null')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (salvo?.location_address) {
+        console.log(`Reusing saved data for place_id: ${google_place_id}`);
+        enrichedData = {
+          google_place_id,
+          location_address: salvo.location_address,
+          phone: salvo.phone ?? null,
+          website: salvo.website ?? null,
+          maps_url: salvo.maps_url ?? `https://www.google.com/maps/place/?q=place_id:${google_place_id}`,
+          city: salvo.city ?? city ?? null,
+        };
+        return new Response(
+          JSON.stringify({ success: true, data: enrichedData, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Step 1: If we have a place_id, get details directly
     if (google_place_id) {
       console.log(`Fetching details for place_id: ${google_place_id}`);

@@ -78,14 +78,36 @@ export default defineConfig(({ mode }) => ({
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         runtimeCaching: [
+          // Fotos do Storage (públicas): cache primeiro, para abrir offline.
+          // Vem antes de qualquer regra do Supabase. Auth e Functions nunca entram no cache.
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            urlPattern: ({ url, request }) =>
+              request.method === "GET" &&
+              /\/storage\/v1\/(object|render\/image)\/public\//.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "supabase-storage-images",
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: {
+                maxEntries: 600,
+                maxAgeSeconds: 60 * 60 * 24 * 60, // 60 dias
+                purgeOnQuotaError: true,
+              },
+            },
+          },
+          // API REST do Supabase: só leituras (GET /rest/v1/), rede primeiro.
+          {
+            urlPattern: ({ url, request }) =>
+              request.method === "GET" && url.pathname.startsWith("/rest/v1/"),
             handler: "NetworkFirst",
+            method: "GET",
             options: {
               cacheName: "supabase-cache",
+              networkTimeoutSeconds: 10,
+              cacheableResponse: { statuses: [200] },
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 5, // 5 minutes
+                maxAgeSeconds: 60 * 5, // 5 minutos
               },
             },
           },
@@ -96,7 +118,8 @@ export default defineConfig(({ mode }) => ({
               cacheName: "image-cache",
               expiration: {
                 maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 dias
+                purgeOnQuotaError: true,
               },
             },
           },

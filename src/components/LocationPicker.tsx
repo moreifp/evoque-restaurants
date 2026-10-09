@@ -230,22 +230,10 @@ export const LocationPicker = ({
         setMarker(newMarker);
       }
 
-      // Show nearby restaurants
-      const service = new (window as any).google.maps.places.PlacesService(map);
-      service.nearbySearch(
-        {
-          location: { lat, lng },
-          radius: 1000,
-          type: "restaurant",
-        },
-        (results: any, status: any) => {
-          console.log('[LocationPicker] Nearby search status:', status, 'Results:', results?.length);
-          toast({
-            title: "Location found",
-            description: "Showing restaurants near you. Click on the map to select one.",
-          });
-        }
-      );
+      toast({
+        title: "Location found",
+        description: "Map centered on your location. Click on the map to select a restaurant.",
+      });
     }
     setLoadingLocation(false);
   }, [map, marker, toast]);

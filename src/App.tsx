@@ -36,8 +36,6 @@ const Agenda = lazy(() => import("./pages/Agenda"));
 const PlanDetail = lazy(() => import("./pages/PlanDetail"));
 const Following = lazy(() => import("./pages/Following"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const MapsDebug = lazy(() => import("./pages/MapsDebug"));
-const AppleCallback = lazy(() => import("./pages/AppleCallback"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Embed = lazy(() => import("./pages/Embed"));
@@ -104,8 +102,6 @@ function AppRoutes() {
           <Route path="/share/:id" element={<SharedRestaurant />} />
           <Route path="/s/:token" element={<SharedByToken />} />
           <Route path="/token" element={<TokenInput />} />
-          <Route path="/maps-debug" element={<MapsDebug />} />
-          <Route path="/callback/apple" element={<AppleCallback />} />
           <Route path="/embed" element={<Embed />} />
 
           {/* Redirects for old routes */}

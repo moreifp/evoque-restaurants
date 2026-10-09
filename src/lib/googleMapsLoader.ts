@@ -188,8 +188,7 @@ export function loadGoogleMaps(): Promise<void> {
       
       // Create and inject script with cache buster
       const script = document.createElement('script');
-      const cacheBuster = Date.now();
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps&v=weekly&_cb=${cacheBuster}`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps&v=weekly`;
       script.async = true;
       script.defer = true;
       

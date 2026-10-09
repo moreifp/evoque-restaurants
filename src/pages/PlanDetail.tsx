@@ -48,6 +48,21 @@ interface ScheduleItem {
   reservation_people?: number;
 }
 
+// O planejador de IA às vezes inventa place ids. Só confiamos nos que parecem ids reais do Google.
+const placeIdConfiavel = (id?: string | null): string | undefined =>
+  id && /^ChIJ[\w-]{10,}$/.test(id) ? id : undefined;
+
+type DadosEnriquecidos = {
+  google_place_id: string | null;
+  location_address: string | null;
+  phone: string | null;
+  website: string | null;
+  maps_url: string | null;
+};
+
+const chaveRestaurante = (nome: string, cidade?: string | null) =>
+  `${nome} | ${cidade ?? ""}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+
 export default function PlanDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -180,8 +195,9 @@ export default function PlanDetail() {
       const rec = recs.find(r => r.name === slot.restaurant);
 
       // Enrich restaurant data with Google Places API
+      const placeId = placeIdConfiavel(rec?.google_place_id);
       let enrichedData = {
-        google_place_id: rec?.google_place_id || null,
+        google_place_id: placeId || null,
         location_address: null as string | null,
         phone: null as string | null,
         website: null as string | null,
@@ -193,7 +209,7 @@ export default function PlanDetail() {
           body: {
             restaurant_name: slot.restaurant,
             city: plan.city,
-            google_place_id: rec?.google_place_id,
+            google_place_id: placeId,
           }
         });
 
@@ -253,15 +269,17 @@ export default function PlanDetail() {
       // Get timezone from plan intake_json (default to UTC)
       const planTimezone = plan?.intake_json?.timezone || 'UTC';
 
-      // Enrich all restaurants in parallel
-      const enrichmentPromises = schedule.map(async (slot) => {
+      // Enrich restaurants in parallel — uma chamada por restaurante (nome + cidade), sem repetir
+      const porRestaurante = new Map<string, Promise<DadosEnriquecidos>>();
+      const enriquecer = async (slot: (typeof schedule)[number]): Promise<DadosEnriquecidos> => {
         const rec = recs.find(r => r.name === slot.restaurant);
+        const placeId = placeIdConfiavel(rec?.google_place_id);
         try {
           const { data: enrichResult, error: enrichError } = await supabase.functions.invoke('enrich-restaurant-data', {
             body: {
               restaurant_name: slot.restaurant,
               city: plan.city,
-              google_place_id: rec?.google_place_id,
+              google_place_id: placeId,
             }
           });
 
@@ -272,12 +290,21 @@ export default function PlanDetail() {
           console.warn(`Error enriching ${slot.restaurant}:`, err);
         }
         return {
-          google_place_id: rec?.google_place_id || null,
+          google_place_id: placeId || null,
           location_address: null,
           phone: null,
           website: null,
           maps_url: null,
         };
+      };
+      const enrichmentPromises = schedule.map((slot) => {
+        const chave = chaveRestaurante(slot.restaurant, plan.city);
+        let p = porRestaurante.get(chave);
+        if (!p) {
+          p = enriquecer(slot);
+          porRestaurante.set(chave, p);
+        }
+        return p;
       });
 
       const enrichedDataArray = await Promise.all(enrichmentPromises);

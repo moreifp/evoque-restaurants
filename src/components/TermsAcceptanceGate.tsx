@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import evoqueLogo from "@/assets/evoque-logo.svg";
+import evoqueLogo from "@/assets/evoque-logo.png";
 
 interface TermsAcceptanceGateProps {
   userId: string;

@@ -77,22 +77,15 @@ serve(async (req) => {
       );
     }
     
-    const LOVABLE_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
-
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
 
     console.log('Analyzing wine label from image:', imageUrl);
 
-    const response = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await aiFetch("anthropic", {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -114,9 +107,8 @@ serve(async (req) => {
             ]
           }
         ],
-        max_tokens: 1000,
       }),
-    });
+    }, { modelo: 'rapido', maxTokens: 800 });
 
     if (!response.ok) {
       const errorText = await response.text();

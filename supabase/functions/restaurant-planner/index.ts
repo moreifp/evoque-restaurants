@@ -15,10 +15,6 @@ serve(async (req) => {
   try {
     const { action, data } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -81,7 +77,6 @@ serve(async (req) => {
 
     // Build request body with structured output for start_planning
     const requestBody: any = {
-      model: 'google/gemini-2.5-flash',
       messages: [
         {
           role: 'user',
@@ -180,18 +175,17 @@ serve(async (req) => {
       };
     }
 
-    const response = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await aiFetch("anthropic", {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
-    });
+    }, { modelo: 'padrao', maxTokens: 4096 });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error('AI error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -202,12 +196,12 @@ serve(async (req) => {
       
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+          JSON.stringify({ error: 'AI service out of credit. Please contact the administrator.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI error: ${response.status}`);
     }
 
     const aiData = await response.json();

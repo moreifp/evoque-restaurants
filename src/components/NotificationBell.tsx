@@ -33,20 +33,29 @@ export const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelado = false;
     fetchNotifications();
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('follow_notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'follow_notifications',
-      }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
+    // Realtime só das notificações deste usuário
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user || cancelado) return;
+      channel = supabase
+        .channel(`follow_notifications:${user.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'follow_notifications',
+          filter: `user_id=eq.${user.id}`,
+        }, () => {
+          fetchNotifications();
+        })
+        .subscribe();
+    });
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      cancelado = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchNotifications = async () => {
