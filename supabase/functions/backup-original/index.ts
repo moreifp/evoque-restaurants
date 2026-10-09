@@ -207,9 +207,14 @@ const TIPO_PT: Record<string, string> = {
   menu: "cardapio", friends: "amigos",
 };
 
+/** Tira caracteres que atrapalham em nomes de pasta/arquivo (ex.: "/"). */
+function limparNome(s: string): string {
+  return s.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Sem nome";
+}
+
 /** Nome do arquivo no Drive: "<Restaurante> 2026-10-08 comida 1a2b3c4d.jpg". */
 export function driveFileName(restaurante: string, date: string, type: string | null, id: string, ext: string): string {
-  const nome = restaurante.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Sem nome";
+  const nome = limparNome(restaurante);
   const tipo = TIPO_PT[type ?? ""] ?? "foto";
   return `${nome} ${date} ${tipo} ${id.slice(0, 8)}.${ext}`;
 }
@@ -217,11 +222,11 @@ export function driveFileName(restaurante: string, date: string, type: string | 
 function folderNameFor(entry: EntryRow): string | null {
   const raw = (entry.restaurant_name ?? "").trim();
   const isPlaceholder = !raw || raw === "__draft__";
-  if (!isPlaceholder && !entry.is_draft) return raw.slice(0, 200);
+  if (!isPlaceholder && !entry.is_draft) return limparNome(raw);
   // Rascunho: espera o nome definitivo por alguns dias.
   const age = Date.now() - new Date(entry.created_at ?? 0).getTime();
   if (age < DRAFT_WAIT_MS) return null;
-  return isPlaceholder ? "Sem nome" : raw.slice(0, 200);
+  return isPlaceholder ? "Sem nome" : limparNome(raw);
 }
 
 async function backupPhoto(
