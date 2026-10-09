@@ -135,6 +135,8 @@ export interface AddDraftForm {
 
 export interface AddDraft {
   v: 1;
+  /** id do rascunho (vários por usuário: o aberto + a fila "para enviar"). */
+  id: string;
   userId: string;
   stage: "pick" | "form" | "originals";
   form: AddDraftForm;
@@ -143,17 +145,140 @@ export interface AddDraft {
   entryId: string | null;
   /** Entrada já finalizada (is_draft=false): falta só cuidar dos originais. */
   saved?: boolean;
+  /** Na fila "para enviar" (Salvar depois no Wi-Fi / sem internet). */
+  queued?: boolean;
   originScheduledVisitId: string | null;
   updatedAt: number;
 }
 
-export const draftKey = (userId: string) => `draft:${userId}`;
+/** Chave antiga (um só rascunho por usuário). Migra para a fila. */
+const legacyDraftKey = (userId: string) => `draft:${userId}`;
+export const draftItemKey = (userId: string, id: string) => `draft:${userId}:${id}`;
+const indexKey = (userId: string) => `drafts:${userId}`;
 export const origKey = (photoId: string) => `orig:${photoId}`;
 export const thumbKey = (photoId: string) => `thumb:${photoId}`;
 
+/** Índice dos rascunhos: ids e qual está aberto na tela "Novo restaurante". */
+interface DraftIndex {
+  ids: string[];
+  current: string | null;
+}
+
+export function newDraftId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
+// Escritas no índice uma de cada vez (evita perder ids em gravações seguidas).
+let indexChain: Promise<unknown> = Promise.resolve();
+function withIndex<T>(userId: string, fn: (ix: DraftIndex) => DraftIndex | null, ret?: (ix: DraftIndex) => T): Promise<T> {
+  const job = indexChain.then(async () => {
+    const cur = (await idbGet<DraftIndex>(indexKey(userId))) ?? { ids: [], current: null };
+    const next = fn({ ids: [...cur.ids], current: cur.current });
+    if (next) await idbSet(indexKey(userId), next);
+    return ret ? ret(next ?? cur) : (undefined as T);
+  });
+  indexChain = job.catch(() => undefined);
+  return job;
+}
+
+const migrated = new Set<string>();
+/** Rascunho único do formato antigo → fila "para enviar". */
+async function migrateLegacy(userId: string): Promise<void> {
+  if (migrated.has(userId)) return;
+  migrated.add(userId);
+  const old = await idbGet<Omit<AddDraft, "id"> & { id?: string }>(legacyDraftKey(userId));
+  if (!old) return;
+  const d: AddDraft = { ...old, id: old.id ?? newDraftId(), queued: true } as AddDraft;
+  await idbSet(draftItemKey(userId, d.id), d);
+  await withIndex(userId, (ix) => ({ ids: ix.ids.includes(d.id) ? ix.ids : [...ix.ids, d.id], current: ix.current }));
+  await idbDel(legacyDraftKey(userId));
+}
+
+let persistAsked = false;
+/** Pede ao navegador para não apagar os dados do site (uma vez por sessão). */
+export function requestPersistentStorage(): void {
+  if (persistAsked) return;
+  persistAsked = true;
+  try {
+    void navigator.storage?.persist?.().catch(() => undefined);
+  } catch {
+    /* sem suporte */
+  }
+}
+
+/** Grava o rascunho e o registra no índice (aberto, se não estiver na fila). */
+export async function putDraft(d: AddDraft): Promise<void> {
+  requestPersistentStorage();
+  await idbSet(draftItemKey(d.userId, d.id), d);
+  await withIndex(d.userId, (ix) => {
+    const ids = ix.ids.includes(d.id) ? ix.ids : [...ix.ids, d.id];
+    const current = d.queued ? (ix.current === d.id ? null : ix.current) : d.id;
+    if (ids === ix.ids && current === ix.current) return null;
+    return { ids, current };
+  });
+}
+
+/** Tira o registro do rascunho (sem fotos) — usado quando ele ficou vazio. */
+export async function forgetDraft(d: AddDraft): Promise<void> {
+  await idbDel(draftItemKey(d.userId, d.id));
+  await withIndex(d.userId, (ix) => ({
+    ids: ix.ids.filter((x) => x !== d.id),
+    current: ix.current === d.id ? null : ix.current,
+  }));
+}
+
 /** Apaga o rascunho e todos os blobs dele. */
-export async function deleteDraft(draft: AddDraft): Promise<void> {
-  const keys = [draftKey(draft.userId)];
-  for (const p of draft.photos) keys.push(origKey(p.id), thumbKey(p.id));
-  await idbDel(keys);
+export async function deleteDraft(d: AddDraft): Promise<void> {
+  const keys: string[] = [];
+  for (const p of d.photos) keys.push(origKey(p.id), thumbKey(p.id));
+  if (keys.length) await idbDel(keys);
+  await forgetDraft(d);
+}
+
+export async function getDraft(userId: string, id: string): Promise<AddDraft | null> {
+  await migrateLegacy(userId);
+  const d = await idbGet<AddDraft>(draftItemKey(userId, id));
+  return d && d.v === 1 && d.userId === userId ? d : null;
+}
+
+/** O rascunho aberto na tela "Novo restaurante" (fora da fila), se houver. */
+export async function getCurrentDraft(userId: string): Promise<AddDraft | null> {
+  await migrateLegacy(userId);
+  const ix = await withIndex(userId, () => null, (x) => x);
+  if (!ix.current) return null;
+  const d = await getDraft(userId, ix.current);
+  return d && !d.queued ? d : null;
+}
+
+/** Fila "para enviar", mais antigos primeiro. */
+export async function listQueuedDrafts(userId: string): Promise<AddDraft[]> {
+  await migrateLegacy(userId);
+  const ix = await withIndex(userId, () => null, (x) => x);
+  const out: AddDraft[] = [];
+  const alive: string[] = [];
+  for (const id of ix.ids) {
+    const d = await getDraft(userId, id);
+    if (!d) continue;
+    alive.push(id);
+    if (d.queued) out.push(d);
+  }
+  // limpa ids sem rascunho
+  if (alive.length !== ix.ids.length) {
+    await withIndex(userId, (x) => ({ ids: x.ids.filter((i) => alive.includes(i)), current: x.current }));
+  }
+  return out.sort((a, b) => a.updatedAt - b.updatedAt);
+}
+
+/** Avisa outras telas (ex.: início) que a fila mudou. */
+export const QUEUE_EVENT = "evoque:drafts-changed";
+export function notifyQueueChanged(): void {
+  try {
+    window.dispatchEvent(new Event(QUEUE_EVENT));
+  } catch {
+    /* sem window */
+  }
 }

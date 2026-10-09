@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n/i18n";
 import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
 import evoqueIcon from "@/assets/evoque-icon.png";
+import { PendingDraftsCard } from "@/components/add/PendingDraftsCard";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -38,6 +39,9 @@ export default function Index() {
       <Navigation />
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
+        {/* Restaurantes guardados no celular, esperando o Wi-Fi */}
+        <PendingDraftsCard />
+
         {/* Branding Header */}
         <div className="flex items-center justify-center gap-3 mb-8 animate-fade-in">
           <img src={evoqueIcon} alt="Evoque" className="w-10 h-10 md:w-12 md:h-12" />

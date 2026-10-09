@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Pencil, Save, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Pencil, Save, Star, Trash2, Wifi, X } from "lucide-react";
 import { z } from "zod";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -22,39 +22,44 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
-import { useAIConsent } from "@/hooks/useAIConsent";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { VoiceNoteButton } from "@/components/VoiceNoteButton";
 import { QuickCamera } from "@/components/camera/QuickCamera";
 import { RestaurantPicker, type PickedRestaurant } from "@/components/add/RestaurantPicker";
 import { AiStatusLine, MenuCard, ReceiptCard, WineCard } from "@/components/add/AiCards";
-import { AI_CATEGORIES, CATEGORIES, CATEGORY_BY_KEY, categoryFromPhotoType } from "@/components/add/categories";
+import { AI_CATEGORIES, CATEGORIES, categoryFromPhotoType } from "@/components/add/categories";
 import { SaveOriginalsBar } from "@/components/photos/SaveOriginalsBar";
 import { compressImage } from "@/lib/imageVariants";
-import {
-  PHOTO_BUCKET,
-  cleanupInboxForEntry,
-  getDriveStatus,
-  kickDriveBackup,
-  removeInboxObjects,
-  removePhotoObjects,
-  uploadOriginalToInbox,
-  uploadPhotoVariants,
-} from "@/lib/photoStorage";
+import { cleanupInboxForEntry, removeInboxObjects, removePhotoObjects } from "@/lib/photoStorage";
 import {
   deleteDraft,
-  draftKey,
+  forgetDraft,
+  getCurrentDraft,
+  getDraft,
   idbDel,
   idbGet,
   idbSet,
+  listQueuedDrafts,
+  newDraftId,
+  notifyQueueChanged,
   origKey,
+  putDraft,
   thumbKey,
   type AddDraft,
   type AddDraftForm,
   type DraftPhoto,
   type PhotoCategory,
-  type ReceiptData,
 } from "@/lib/draftStore";
+import {
+  asFile,
+  finishOriginals,
+  isNetworkError,
+  runAi as engineRunAi,
+  runQueuedAi as engineRunQueuedAi,
+  saveEntry,
+  stampName,
+  type DraftCtx,
+} from "@/lib/draftEngine";
 import { placeDetails } from "@/lib/nearby";
 
 /** Rascunho antigo (só texto) do formulário anterior. */
@@ -84,6 +89,7 @@ function emptyForm(): AddDraftForm {
 function newDraft(userId: string): AddDraft {
   return {
     v: 1,
+    id: newDraftId(),
     userId,
     stage: "pick",
     form: emptyForm(),
@@ -94,6 +100,7 @@ function newDraft(userId: string): AddDraft {
   };
 }
 
+/** Vale guardar no aparelho? (o restaurante escolhido sozinho, pelo GPS, não conta) */
 function isMeaningful(d: AddDraft): boolean {
   return (
     d.photos.length > 0 ||
@@ -101,39 +108,27 @@ function isMeaningful(d: AddDraft): boolean {
     d.form.rating > 0 ||
     !!d.entryId ||
     !!d.saved ||
-    !!d.originScheduledVisitId
+    !!d.queued ||
+    !!d.originScheduledVisitId ||
+    (!!d.form.restaurant_name.trim() && (!d.form.google_place_id || d.stage === "form"))
   );
 }
 
-function stampName(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `Evoque_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}_${Math.random().toString(36).slice(2, 5)}.jpg`;
-}
-
-function asFile(blob: Blob, name?: string): File {
-  if (blob instanceof File) return blob;
-  return new File([blob], name || stampName(), { type: blob.type || "image/jpeg" });
-}
-
 function newId(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
+  return newDraftId();
 }
 
 /** Rascunho do fluxo antigo (entrada is_draft no banco, fotos já enviadas). */
-async function loadLegacyDbDraft(userId: string): Promise<AddDraft | null> {
-  const { data: entry } = await supabase
+async function loadLegacyDbDraft(userId: string, exclude: string[]): Promise<AddDraft | null> {
+  const { data: rows } = await supabase
     .from("restaurant_entries")
     .select("*")
     .eq("user_id", userId)
     .eq("is_draft", true)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
+  // Rascunhos que já estão no aparelho (salvamento interrompido) não entram de novo
+  const entry = (rows ?? []).find((r) => !exclude.includes(r.id));
   if (!entry) return null;
 
   const [{ data: photos }, { data: receipts }] = await Promise.all([
@@ -196,6 +191,7 @@ async function loadLegacyDbDraft(userId: string): Promise<AddDraft | null> {
 
   return {
     v: 1,
+    id: newDraftId(),
     userId,
     stage: "form",
     form: {
@@ -221,7 +217,6 @@ export default function AddRestaurant() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, language } = useI18n();
-  const { ensureAIConsent } = useAIConsent();
   const { uploadWithRetry } = useUploadWithRetry();
 
   const [draft, setDraft] = useState<AddDraft | null>(null);
@@ -239,18 +234,18 @@ export default function AddRestaurant() {
   const thumbsRef = useRef<Record<string, string>>({});
   /** Originais em memória quando o IndexedDB falha (modo privado etc.). */
   const memBlobs = useRef(new Map<string, Blob>());
-  const aiJobs = useRef(new Map<string, Promise<void>>());
-  const uploadJobs = useRef(new Map<string, Promise<string>>());
   const savingRef = useRef(false);
 
   // ---------------------------------------------------------------- estado
+  /** Grava o rascunho no aparelho (cada mudança; fotos já foram gravadas no clique). */
   const persistNow = useCallback(async () => {
     clearTimeout(persistTimer.current);
     const d = draftRef.current;
     if (!d || finishedRef.current) return;
     try {
-      if (isMeaningful(d)) await idbSet(draftKey(d.userId), d);
-      else await idbDel(draftKey(d.userId));
+      if (isMeaningful(d)) await putDraft(d);
+      else await forgetDraft(d);
+      if (d.queued) notifyQueueChanged();
     } catch (e) {
       console.warn("[AddRestaurant] draft persist failed", e);
     }
@@ -258,7 +253,7 @@ export default function AddRestaurant() {
 
   const schedulePersist = useCallback(() => {
     clearTimeout(persistTimer.current);
-    persistTimer.current = setTimeout(() => void persistNow(), 400);
+    persistTimer.current = setTimeout(() => void persistNow(), 300);
   }, [persistNow]);
 
   const update = useCallback(
@@ -295,14 +290,21 @@ export default function AddRestaurant() {
     setThumbs(next);
   };
 
-  const getOriginal = async (id: string): Promise<Blob | null> => {
-    const mem = memBlobs.current.get(id);
-    if (mem) return mem;
-    try {
-      return (await idbGet<Blob>(origKey(id))) ?? null;
-    } catch {
-      return null;
-    }
+  /** Contexto da rotina de envio (src/lib/draftEngine) para o rascunho aberto. */
+  const ctx = (): DraftCtx => ({
+    userId: userIdRef.current!,
+    language,
+    uploader: uploadWithRetry,
+    t,
+    get: () => draftRef.current!,
+    set: update,
+    persist: persistNow,
+    memBlob: (id) => memBlobs.current.get(id),
+    onProgress: (label, pct) => setSaving({ label, pct }),
+  });
+  const runAi = (id: string) => engineRunAi(ctx(), id);
+  const runQueuedAi = () => {
+    if (draftRef.current && userIdRef.current) engineRunQueuedAi(ctx());
   };
 
   // Salva ao sair/ir para segundo plano; libera as miniaturas ao fechar a tela.
@@ -319,6 +321,31 @@ export default function AddRestaurant() {
     };
   }, [persistNow]);
 
+  /** Mostra um rascunho na tela (miniaturas do aparelho, IA interrompida volta à fila). */
+  const showDraft = async (d0: AddDraft) => {
+    const urls: Record<string, string> = {};
+    for (const p of d0.photos) {
+      if (!p.hasThumb && !p.hasOriginal) continue;
+      try {
+        const b = (await idbGet<Blob>(p.hasThumb ? thumbKey(p.id) : origKey(p.id))) ?? null;
+        if (b) urls[p.id] = URL.createObjectURL(b);
+      } catch {
+        /* sem miniatura */
+      }
+    }
+    const d: AddDraft = {
+      ...d0,
+      photos: d0.photos.map((p) => (p.ai?.status === "running" ? { ...p, ai: { status: "queued" } } : p)),
+    };
+    Object.values(thumbsRef.current).forEach((u) => URL.revokeObjectURL(u));
+    thumbsRef.current = urls;
+    setThumbs(urls);
+    finishedRef.current = false;
+    draftRef.current = d;
+    setDraft(d);
+    return d;
+  };
+
   // ---------------------------------------------------------------- abrir
   useEffect(() => {
     let cancelled = false;
@@ -331,6 +358,7 @@ export default function AddRestaurant() {
       }
       userIdRef.current = uid;
 
+      const draftParam = searchParams.get("draft");
       const pre = {
         name: searchParams.get("restaurant_name"),
         address: searchParams.get("location_address") || searchParams.get("city"),
@@ -341,21 +369,27 @@ export default function AddRestaurant() {
       const hasPrefill = !!(pre.name || pre.visitId);
 
       let d: AddDraft | null = null;
+      let restored = false;
       try {
-        const saved = await idbGet<AddDraft>(draftKey(uid));
-        if (saved && saved.v === 1 && saved.userId === uid) d = saved;
+        if (draftParam) {
+          d = await getDraft(uid, draftParam); // item da fila "para enviar"
+        } else {
+          d = await getCurrentDraft(uid);
+          // Veio da Agenda/Viagens com outro restaurante: um rascunho sem fotos dá lugar ao novo.
+          if (d && hasPrefill && !d.saved && !d.entryId && d.photos.length === 0) {
+            await forgetDraft(d);
+            d = null;
+          }
+        }
+        restored = !!d;
       } catch (e) {
         console.warn("[AddRestaurant] IndexedDB unavailable", e);
       }
-      // Veio da Agenda com outro restaurante: um rascunho sem fotos dá lugar ao novo.
-      if (d && hasPrefill && !d.saved && !d.entryId && d.photos.length === 0) {
-        await idbDel(draftKey(uid)).catch(() => undefined);
-        d = null;
-      }
-      let restored = !!d;
-      if (!d && !hasPrefill && navigator.onLine !== false) {
+      if (!d && !draftParam && !hasPrefill && navigator.onLine !== false) {
         try {
-          d = await loadLegacyDbDraft(uid);
+          const local = await listQueuedDrafts(uid).catch(() => [] as AddDraft[]);
+          const exclude = local.map((x) => x.entryId).filter((x): x is string => !!x);
+          d = await loadLegacyDbDraft(uid, exclude);
           restored = !!d;
         } catch (e) {
           console.warn("[AddRestaurant] legacy draft load failed", e);
@@ -400,38 +434,16 @@ export default function AddRestaurant() {
       } catch {
         /* ignora */
       }
-
-      // Miniaturas locais
-      const urls: Record<string, string> = {};
-      for (const p of d.photos) {
-        if (!p.hasThumb && !p.hasOriginal) continue;
-        try {
-          const b = (await idbGet<Blob>(p.hasThumb ? thumbKey(p.id) : origKey(p.id))) ?? null;
-          if (b) urls[p.id] = URL.createObjectURL(b);
-        } catch {
-          /* sem miniatura */
-        }
-      }
-      // IA que estava rodando quando o app fechou volta para a fila
-      d = {
-        ...d,
-        photos: d.photos.map((p) => (p.ai?.status === "running" ? { ...p, ai: { status: "queued" } } : p)),
-      };
-      if (cancelled) {
-        Object.values(urls).forEach((u) => URL.revokeObjectURL(u));
-        return;
-      }
-      thumbsRef.current = urls;
-      setThumbs(urls);
-      draftRef.current = d;
-      setDraft(d);
-      if (restored && isMeaningful(d) && !d.saved) toast({ title: t("quickAdd.draftRestored") });
+      if (cancelled) return;
+      d = await showDraft(d);
+      if (restored && isMeaningful(d) && !d.saved && !draftParam) toast({ title: t("quickAdd.draftRestored") });
 
       // Agenda: tem place_id mas não tem coordenadas
       if (d.form.google_place_id && d.form.location_lat === null && navigator.onLine !== false) {
-        placeDetails(d.form.google_place_id)
+        const pid = d.form.google_place_id;
+        placeDetails(pid)
           .then((p) => {
-            if (!p || draftRef.current?.form.google_place_id !== d!.form.google_place_id) return;
+            if (!p || draftRef.current?.form.google_place_id !== pid) return;
             setForm({
               location_lat: p.lat,
               location_lng: p.lng,
@@ -442,7 +454,7 @@ export default function AddRestaurant() {
       }
 
       // Entrada já salva, faltando os originais: retoma essa etapa
-      if (d.saved && d.entryId) void finishOriginals();
+      if (d.saved && d.entryId) void finishOriginalsStep();
       else runQueuedAi();
     })();
     return () => {
@@ -450,127 +462,6 @@ export default function AddRestaurant() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ---------------------------------------------------------------- upload + IA
-  const ensureUploaded = (id: string): Promise<string> => {
-    const p = getPhoto(id);
-    if (!p) return Promise.reject(new Error("photo gone"));
-    if (p.photoUrl) return Promise.resolve(p.photoUrl);
-    const running = uploadJobs.current.get(id);
-    if (running) return running;
-    const job = (async () => {
-      const uid = userIdRef.current;
-      if (!uid) throw new Error("Not authenticated");
-      const blob = await getOriginal(id);
-      if (!blob) throw new Error("original missing");
-      const file = asFile(blob, p.fileName);
-      let url: string;
-      if (p.category === "receipt") {
-        // Recibo: JPEG 1600 px (sem miniatura, sem Drive) — igual ao fluxo antigo
-        const c = await compressImage(file, 1600, 0.85);
-        const path = `receipts/${uid}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${c.ext}`;
-        const res = await uploadWithRetry({
-          bucket: PHOTO_BUCKET,
-          filePath: path,
-          file: c.file,
-          category: "receipt",
-          maxRetries: 3,
-          cacheControl: "31536000",
-          contentType: c.file.type || undefined,
-        });
-        if (!res.success || !res.publicUrl) throw new Error(res.error || "Upload failed");
-        url = res.publicUrl;
-        updatePhoto(id, { photoUrl: url, thumbUrl: null });
-      } else {
-        const res = await uploadPhotoVariants({
-          userId: uid,
-          entryId: draftRef.current?.entryId ?? null,
-          file,
-          kind: CATEGORY_BY_KEY[p.category].photoType,
-          uploader: uploadWithRetry,
-        });
-        if (!res.value) throw new Error(res.error || "Upload failed");
-        url = res.value.photoUrl;
-        updatePhoto(id, { photoUrl: url, thumbUrl: res.value.thumbUrl });
-      }
-      await persistNow();
-      return url;
-    })();
-    uploadJobs.current.set(id, job);
-    job.finally(() => uploadJobs.current.delete(id)).catch(() => undefined);
-    return job;
-  };
-
-  const runAi = (id: string): Promise<void> => {
-    const existing = aiJobs.current.get(id);
-    if (existing) return existing;
-    const p = getPhoto(id);
-    if (!p || !AI_CATEGORIES.includes(p.category) || p.ai?.status === "done" || !p.ai) return Promise.resolve();
-    if (navigator.onLine === false) {
-      if (p.ai.status !== "queued") updatePhoto(id, { ai: { status: "queued" } });
-      return Promise.resolve();
-    }
-    const job = (async () => {
-      const scope =
-        p.category === "receipt" ? "invoice_transcription" : p.category === "menu" ? "menu_translation" : "wine_recognition";
-      const allowed = await ensureAIConsent(scope);
-      if (!allowed) {
-        updatePhoto(id, { ai: undefined });
-        return;
-      }
-      updatePhoto(id, { ai: { status: "running" } });
-      try {
-        const imageUrl = await ensureUploaded(id);
-        const cur = getPhoto(id);
-        if (!cur) return;
-        if (cur.category === "receipt") {
-          const { data, error } = await supabase.functions.invoke("process-receipt", { body: { imageUrl } });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-          const rec = (data?.data ?? data) as ReceiptData;
-          updatePhoto(id, { receipt: rec, ai: { status: "done" } });
-        } else if (cur.category === "menu") {
-          const { data, error } = await supabase.functions.invoke("translate-menu", {
-            body: {
-              imageUrl,
-              targetLanguage: language === "en" ? "English" : "Portuguese",
-              // com o id a tradução já fica gravada na foto
-              ...(cur.rowId ? { photoId: cur.rowId } : {}),
-            },
-          });
-          if (error) throw error;
-          if (!data?.translation) throw new Error(data?.error || "No translation");
-          updatePhoto(id, { menuTranslation: data.translation as string, ai: { status: "done" } });
-        } else {
-          const { data, error } = await supabase.functions.invoke("analyze-wine-label", { body: { imageUrl } });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-          const info = (data?.wineInfo ?? null) as Record<string, unknown> | null;
-          const caption = info ? `${info.name ?? ""} ${info.vintage ?? ""}`.trim() : "";
-          updatePhoto(id, { wineInfo: info, caption: caption || undefined, ai: { status: "done" } });
-          if (cur.rowId && caption && !cur.remote) {
-            await supabase.from("restaurant_photos").update({ caption }).eq("id", cur.rowId);
-          }
-        }
-      } catch (e) {
-        console.warn("[AddRestaurant] AI failed", e);
-        updatePhoto(id, {
-          ai: { status: navigator.onLine === false ? "queued" : "error", error: (e as Error)?.message },
-        });
-      } finally {
-        await persistNow();
-      }
-    })();
-    aiJobs.current.set(id, job);
-    job.finally(() => aiJobs.current.delete(id)).catch(() => undefined);
-    return job;
-  };
-
-  const runQueuedAi = () => {
-    const d = draftRef.current;
-    if (!d || navigator.onLine === false) return;
-    d.photos.filter((p) => p.ai?.status === "queued").forEach((p) => void runAi(p.id));
-  };
 
   useEffect(() => {
     const onOnline = () => runQueuedAi();
@@ -611,6 +502,7 @@ export default function AddRestaurant() {
     }
   };
 
+  /** Cada toque no obturador: o ORIGINAL vai para o IndexedDB na hora, antes de qualquer outra coisa. */
   const handleCapture = async ({
     blob,
     thumb,
@@ -627,6 +519,12 @@ export default function AddRestaurant() {
     if (!draftRef.current) return null;
     const id = newId();
     const fileName = name || stampName();
+    try {
+      await idbSet(origKey(id), blob);
+    } catch (e) {
+      console.warn("[AddRestaurant] IndexedDB write failed, keeping in memory", e);
+      memBlobs.current.set(id, blob);
+    }
     let small = thumb;
     if (!small) {
       try {
@@ -636,14 +534,14 @@ export default function AddRestaurant() {
         small = null;
       }
     }
-    let stored = true;
-    try {
-      await idbSet(origKey(id), blob);
-      if (small) await idbSet(thumbKey(id), small);
-    } catch (e) {
-      console.warn("[AddRestaurant] IndexedDB write failed, keeping in memory", e);
-      stored = false;
-      memBlobs.current.set(id, blob);
+    let thumbStored = false;
+    if (small && !memBlobs.current.has(id)) {
+      try {
+        await idbSet(thumbKey(id), small);
+        thumbStored = true;
+      } catch {
+        thumbStored = false;
+      }
     }
     setThumb(id, URL.createObjectURL(small ?? blob));
 
@@ -662,13 +560,13 @@ export default function AddRestaurant() {
       createdAt: Date.now(),
       source,
       fileName,
-      hasOriginal: stored,
-      hasThumb: stored && !!small,
+      hasOriginal: true,
+      hasThumb: thumbStored,
       ai: AI_CATEGORIES.includes(category) ? { status: "queued" } : undefined,
     };
     update((d) => ({ ...d, photos: [...d.photos, photo] }));
     await persistNow();
-    if (photo.ai) void runAi(id);
+    if (photo.ai) void runAi(id); // IA na hora (sem internet: fica na fila)
     return id;
   };
 
@@ -681,59 +579,48 @@ export default function AddRestaurant() {
     clearTimeout(persistTimer.current);
     if (d) await deleteDraft(d).catch(() => undefined);
     memBlobs.current.clear();
+    notifyQueueChanged();
   };
 
   const goToEntry = (entryId: string) => navigate(`/dining/${entryId}`, { replace: true });
 
-  const finishOriginals = async () => {
+  /** Depois de salvo: originais ao Drive (dono) ou "Salvar no Fotos"; só então apaga do aparelho. */
+  const finishOriginalsStep = async () => {
     const d = draftRef.current;
-    const uid = userIdRef.current;
-    if (!d?.entryId || !uid) return;
+    if (!d?.entryId || !userIdRef.current) return;
     const entryId = d.entryId;
-    const candidates = d.photos.filter((p) => p.hasOriginal && !p.remote && p.category !== "receipt" && p.rowId);
-    const drive = candidates.length ? await getDriveStatus(uid) : false;
-
-    if (drive) {
-      const todo = candidates.filter((p) => !p.originalStashed);
-      let i = 0;
-      for (const p of todo) {
-        i++;
-        setSaving({
-          label: t("quickAdd.originalsDrive").replace("{i}", String(i)).replace("{n}", String(todo.length)),
-          pct: 80 + (20 * i) / Math.max(1, todo.length),
-        });
-        const blob = await getOriginal(p.id);
-        if (!blob) continue;
-        await uploadOriginalToInbox({ userId: uid, photoId: p.rowId!, file: asFile(blob, p.fileName) });
-        updatePhoto(p.id, { originalStashed: true });
-        await persistNow();
-      }
-      kickDriveBackup(uid);
+    const files = await finishOriginals(ctx());
+    if (!files.length) {
       await cleanupAndFinish();
       setSaving(null);
       setDone({ entryId, originals: [] });
       setTimeout(() => goToEntry(entryId), 1400);
       return;
-    }
-
-    // Sem Drive: oferece guardar no Fotos as que a câmera do app tirou
-    const fromCamera = candidates.filter((p) => p.source === "camera");
-    if (!fromCamera.length) {
-      await cleanupAndFinish();
-      setSaving(null);
-      setDone({ entryId, originals: [] });
-      setTimeout(() => goToEntry(entryId), 1400);
-      return;
-    }
-    const files: File[] = [];
-    for (const p of fromCamera) {
-      const blob = await getOriginal(p.id);
-      if (blob) files.push(asFile(blob, p.fileName));
     }
     update((x) => ({ ...x, stage: "originals" }));
     await persistNow();
     setSaving(null);
     setDone({ entryId, originals: files });
+  };
+
+  /** Recomeça com um "Novo restaurante" vazio (o anterior ficou guardado). */
+  const resetToFresh = () => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    setCamera((c) => ({ ...c, open: false }));
+    void showDraft(newDraft(uid));
+    if (searchParams.get("draft")) navigate("/dining/add", { replace: true });
+    window.scrollTo({ top: 0 });
+  };
+
+  /** Fila "para enviar": guarda no aparelho e envia depois (Wi-Fi). */
+  const moveToQueue = async (reason: "later" | "offline") => {
+    if (!draftRef.current) return;
+    update((x) => ({ ...x, queued: true, stage: "form" }));
+    await persistNow();
+    notifyQueueChanged();
+    toast({ title: reason === "offline" ? t("quickAdd.queuedOffline") : t("quickAdd.queuedLater") });
+    resetToFresh();
   };
 
   const handleSave = async () => {
@@ -743,10 +630,11 @@ export default function AddRestaurant() {
     if (d.saved && d.entryId) {
       savingRef.current = true;
       try {
-        await finishOriginals();
+        await finishOriginalsStep();
       } catch (e) {
         setSaving(null);
-        toast({ title: t("quickAdd.saveError"), description: (e as Error)?.message, variant: "destructive" });
+        if (isNetworkError(e)) await moveToQueue("offline");
+        else toast({ title: t("quickAdd.saveError"), description: (e as Error)?.message, variant: "destructive" });
       } finally {
         savingRef.current = false;
       }
@@ -755,10 +643,6 @@ export default function AddRestaurant() {
     if (!d.form.restaurant_name.trim()) {
       toast({ title: t("quickAdd.chooseRestaurant") });
       update((x) => ({ ...x, stage: "pick" }));
-      return;
-    }
-    if (navigator.onLine === false) {
-      toast({ title: t("quickAdd.offlineSave") });
       return;
     }
     const check = entrySchema.safeParse(d.form);
@@ -770,144 +654,29 @@ export default function AddRestaurant() {
       });
       return;
     }
+    if (navigator.onLine === false) {
+      await moveToQueue("offline");
+      return;
+    }
 
     savingRef.current = true;
     try {
-      // 1) IA que ainda falta (recibo, cardápio, vinho)
-      const aiPending = d.photos.filter((p) => p.ai && p.ai.status !== "done").map((p) => p.id);
-      if (aiPending.length) {
-        setSaving({ label: t("quickAdd.readingAi"), pct: 5 });
-        await Promise.all(aiPending.map((id) => runAi(id)));
-      }
-
-      // 2) Entrada (fica is_draft até as fotos entrarem)
-      setSaving({ label: t("quickAdd.savingEntry"), pct: 10 });
-      const f = draftRef.current!.form;
-      const fields = {
-        restaurant_name: f.restaurant_name.trim().slice(0, 200),
-        visit_date: f.visit_date,
-        location_address: f.location_address || null,
-        location_lat: f.location_lat,
-        location_lng: f.location_lng,
-        google_place_id: f.google_place_id,
-        rating: f.rating || null,
-        notes: f.notes.trim() || null,
-      };
-      let entryId = draftRef.current!.entryId;
-      if (entryId) {
-        const { error } = await supabase.from("restaurant_entries").update(fields).eq("id", entryId);
-        if (error) throw error;
-      } else {
-        const { data: ins, error } = await supabase
-          .from("restaurant_entries")
-          .insert({
-            ...fields,
-            user_id: uid,
-            is_draft: true,
-            ...(draftRef.current!.originScheduledVisitId
-              ? { origin_scheduled_visit_id: draftRef.current!.originScheduledVisitId }
-              : {}),
-          })
-          .select("id")
-          .single();
-        if (error) throw error;
-        entryId = ins.id as string;
-        update((x) => ({ ...x, entryId }));
-        await persistNow();
-      }
-
-      // 3) Fotos (display + miniatura) e linhas no banco
-      const pending = draftRef.current!.photos.filter((p) => !p.rowId);
-      const n = pending.length;
-      if (n > 1) setSaving({ label: t("quickAdd.savingPhotos").replace("{n}", String(n)), pct: 12 });
-      let i = 0;
-      for (const p0 of pending) {
-        i++;
-        if (!getPhoto(p0.id)) continue; // removida durante o salvamento
-        setSaving({
-          label:
-            n > 1
-              ? t("quickAdd.savingPhoto").replace("{i}", String(i)).replace("{n}", String(n))
-              : t("quickAdd.savingPhotos").replace("{n}", "1"),
-          pct: 12 + (68 * i) / Math.max(1, n),
-        });
-        const url = await ensureUploaded(p0.id);
-        const p = getPhoto(p0.id)!;
-        if (p.category === "receipt") {
-          const r = p.receipt;
-          const { data: rec, error } = await supabase
-            .from("receipts")
-            .insert({
-              entry_id: entryId,
-              photo_url: url,
-              subtotal: r?.subtotal ?? null,
-              tax: r?.tax ?? null,
-              service_fee: r?.service_fee ?? null,
-              total: r?.total ?? null,
-              currency: r?.currency ?? null,
-            })
-            .select("id")
-            .single();
-          if (error) throw error;
-          const items = Array.isArray(r?.items) ? r!.items : [];
-          if (items.length) {
-            const { error: itemsError } = await supabase.from("receipt_items").insert(
-              items.map((it) => ({
-                receipt_id: rec.id,
-                item_type: it.item_type,
-                name: it.name,
-                name_pt: it.name_pt ?? null,
-                quantity: it.quantity,
-                unit_price: it.unit_price,
-                line_total: it.line_total,
-              })),
-            );
-            if (itemsError) {
-              await supabase.from("receipts").delete().eq("id", rec.id);
-              throw itemsError;
-            }
-          }
-          updatePhoto(p.id, { rowId: rec.id });
-        } else {
-          const { data: row, error } = await supabase
-            .from("restaurant_photos")
-            .insert({
-              entry_id: entryId,
-              photo_url: url,
-              thumb_url: p.thumbUrl ?? null,
-              type: CATEGORY_BY_KEY[p.category].photoType,
-              menu_translation: p.menuTranslation ?? null,
-              caption: p.caption ?? null,
-            })
-            .select("id")
-            .single();
-          if (error) throw error;
-          updatePhoto(p.id, { rowId: row.id });
-        }
-        await persistNow();
-      }
-
-      // 4) Restaurante pronto
-      const { error: finErr } = await supabase
-        .from("restaurant_entries")
-        .update({ ...fields, is_draft: false })
-        .eq("id", entryId);
-      if (finErr) throw finErr;
-      update((x) => ({ ...x, saved: true }));
-      await persistNow();
+      await saveEntry(ctx());
       queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
-
-      // 5) Originais: Drive do dono, ou "Salvar no Fotos"
       setSaving({ label: t("quickAdd.savingEntry"), pct: 80 });
-      await finishOriginals();
+      await finishOriginalsStep();
     } catch (e) {
       console.error("[AddRestaurant] save failed", e);
       setSaving(null);
-      toast({
-        title: t("quickAdd.saveError"),
-        description: (e as { message?: string })?.message,
-        variant: "destructive",
-      });
+      if (isNetworkError(e)) {
+        await moveToQueue("offline");
+      } else {
+        toast({
+          title: t("quickAdd.saveError"),
+          description: (e as { message?: string })?.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       savingRef.current = false;
     }
@@ -1035,6 +804,7 @@ export default function AddRestaurant() {
                 </p>
                 <div className="rounded-3xl bg-background/70 p-2 shadow-sm">
                   <RestaurantPicker
+                    key={draft.id}
                     selected={picked}
                     autoSelectNearest={!form.restaurant_name}
                     onSelect={(r) =>
@@ -1221,6 +991,18 @@ export default function AddRestaurant() {
                 {saving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
                 {t("quickAdd.save")}
               </Button>
+              {!draft.saved && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!!saving}
+                  onClick={() => void moveToQueue("later")}
+                  className="h-14 w-full gap-3 rounded-2xl border-2 text-lg font-semibold text-[#0d1a2d]"
+                >
+                  <Wifi className="h-6 w-6" />
+                  {t("quickAdd.saveLater")}
+                </Button>
+              )}
             </>
           )}
         </div>

@@ -46,8 +46,9 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
   );
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
   const [expanded, setExpanded] = useState(false);
-  // Nome digitado à mão (restaurado de um rascunho) aparece no campo.
-  const [query, setQuery] = useState(() => (selected && !selected.placeId ? selected.name : ""));
+  // editing = a pessoa está escrevendo; fora disso o campo mostra o restaurante escolhido.
+  const [editing, setEditing] = useState(false);
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<NearbyPlace[]>([]);
   const [searching, setSearching] = useState(false);
   const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -56,6 +57,7 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const typingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!showNearby) return;
@@ -92,7 +94,7 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
   // Busca pelo nome no Google (online), com espera curta entre teclas
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2 || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+    if (!editing || q.length < 2 || (typeof navigator !== "undefined" && navigator.onLine === false)) {
       setResults([]);
       setSearching(false);
       return;
@@ -114,10 +116,11 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, editing]);
 
   const typeName = (value: string) => {
     typingRef.current = true;
+    setEditing(true);
     setQuery(value);
     const name = value.trim();
     // O nome digitado já vale como restaurante (sem endereço/coordenadas)
@@ -126,8 +129,10 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
 
   const pick = (p: NearbyPlace) => {
     typingRef.current = false;
-    setQuery("");
+    setEditing(false);
+    setQuery(p.name);
     setResults([]);
+    inputRef.current?.blur();
     onSelect(toPicked(p));
   };
 
@@ -140,6 +145,7 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
       <button
         key={p.id}
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => pick(p)}
         className={cn(
           "flex min-h-16 w-full items-center gap-3 rounded-2xl border-2 px-4 py-2 text-left transition-colors",
@@ -167,8 +173,9 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
     );
   };
 
-  const typed = query.trim();
-  const manualSelected = !!selected && !selected.placeId && !!selected.name;
+  const typed = editing ? query.trim() : "";
+  const shownValue = editing ? query : (selected?.name ?? "");
+  const hasSelection = !!selected?.name;
 
   // Escolhido de uma busca anterior (fora da lista perto): mostra no topo.
   const selectedOutside =
@@ -195,13 +202,26 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
       <div className="relative">
         <Pencil className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
-          value={query}
+          ref={inputRef}
+          value={shownValue}
           onChange={(e) => typeName(e.target.value)}
+          onFocus={(e) => {
+            // Sem estar escrevendo: seleciona tudo, para a digitação substituir o nome
+            if (!editing) {
+              const el = e.currentTarget;
+              setTimeout(() => el.select(), 0);
+            }
+          }}
+          onBlur={() => {
+            // Terminou de escrever: o campo volta a mostrar o escolhido. Com atraso,
+            // para o toque numa linha da lista chegar antes da lista mudar.
+            if (editing) setTimeout(() => setEditing(false), 250);
+          }}
           placeholder={t("quickAdd.typeName")}
           aria-label={t("quickAdd.typeName")}
           className={cn(
             "h-16 rounded-2xl border-2 pl-12 pr-12 text-lg font-semibold",
-            manualSelected && typed ? "border-[#0d1a2d]" : "border-[#0d1a2d]/20",
+            hasSelection && !editing ? "border-[#0d1a2d]" : "border-[#0d1a2d]/20",
           )}
           autoComplete="off"
           autoCorrect="off"
@@ -212,14 +232,15 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
         />
         {searching ? (
           <Loader2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-muted-foreground" />
-        ) : manualSelected && typed ? (
-          <Check className="absolute right-4 top-1/2 h-6 w-6 -translate-y-1/2 text-[#0d1a2d]" />
-        ) : query ? (
+        ) : hasSelection && !editing ? (
+          <Check className="pointer-events-none absolute right-4 top-1/2 h-6 w-6 -translate-y-1/2 text-[#0d1a2d]" />
+        ) : editing && query ? (
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
-              typingRef.current = false;
               setQuery("");
+              inputRef.current?.focus();
             }}
             className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center"
             aria-label={t("quickAdd.close")}
