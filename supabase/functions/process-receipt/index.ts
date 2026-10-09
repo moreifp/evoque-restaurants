@@ -98,7 +98,7 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: "Analyze this restaurant receipt/bill and extract all the items. For each item, identify if it's a dish or drink, the name, quantity, unit price, and line total. Also extract subtotal, tax, service fee, and total. Return the data in structured format.",
+                text: "Analyze this restaurant receipt/bill and extract all the items. For each item, identify if it's a dish or drink, the name exactly as printed, the name translated to Brazilian Portuguese (name_pt; short and natural, keep proper names and brands; if already Portuguese, repeat it), quantity, unit price, and line total. Also extract subtotal, tax, service fee, and total. Return the data in structured format.",
               },
               {
                 type: "image_url",
@@ -130,7 +130,11 @@ serve(async (req) => {
                         },
                         name: {
                           type: "string",
-                          description: "Name of the dish or drink",
+                          description: "Name of the dish or drink, exactly as printed on the receipt",
+                        },
+                        name_pt: {
+                          type: "string",
+                          description: "Name translated to Brazilian Portuguese (same text if already in Portuguese)",
                         },
                         quantity: {
                           type: "number",
@@ -145,7 +149,7 @@ serve(async (req) => {
                           description: "Total for this line item",
                         },
                       },
-                      required: ["item_type", "name", "quantity", "unit_price", "line_total"],
+                      required: ["item_type", "name", "name_pt", "quantity", "unit_price", "line_total"],
                     },
                   },
                   subtotal: {
@@ -179,7 +183,7 @@ serve(async (req) => {
           function: { name: "extract_receipt_data" },
         },
       }),
-    }, { modelo: "rapido", maxTokens: 1500, reservaPadrao: true, validar: reciboValido });
+    }, { modelo: "rapido", maxTokens: 3000, reservaPadrao: true, validar: reciboValido });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -211,6 +215,14 @@ serve(async (req) => {
     }
 
     const receiptData = JSON.parse(toolCall.function.arguments);
+    // name_pt sempre presente (string): sem tradução, repete o nome original.
+    if (Array.isArray(receiptData?.items)) {
+      for (const item of receiptData.items) {
+        if (item && (typeof item.name_pt !== "string" || !item.name_pt.trim())) {
+          item.name_pt = typeof item.name === "string" ? item.name : "";
+        }
+      }
+    }
     console.log("Extracted receipt data:", receiptData);
 
     return new Response(JSON.stringify({ success: true, data: receiptData }), {

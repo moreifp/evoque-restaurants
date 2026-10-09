@@ -5,6 +5,7 @@ interface ReceiptItem {
   id: string;
   item_type: "dish" | "drink";
   name: string;
+  name_pt?: string | null;
   quantity: number;
   unit_price: number;
   line_total: number;
@@ -40,7 +41,10 @@ export function ReceiptItemsList({ items }: ReceiptItemsListProps) {
                 className="flex justify-between items-start p-3 rounded-lg bg-muted/50"
               >
                 <div className="flex-1">
-                  <p className="font-medium">{item.name}</p>
+                  <p className="font-medium">{item.name_pt || item.name}</p>
+                  {item.name_pt && item.name_pt !== item.name && (
+                    <p className="text-xs text-muted-foreground">{item.name}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     Qty: {item.quantity} × {item.unit_price.toFixed(2)}
                   </p>
@@ -69,7 +73,10 @@ export function ReceiptItemsList({ items }: ReceiptItemsListProps) {
                 className="flex justify-between items-start p-3 rounded-lg bg-muted/50"
               >
                 <div className="flex-1">
-                  <p className="font-medium">{item.name}</p>
+                  <p className="font-medium">{item.name_pt || item.name}</p>
+                  {item.name_pt && item.name_pt !== item.name && (
+                    <p className="text-xs text-muted-foreground">{item.name}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     Qty: {item.quantity} × {item.unit_price.toFixed(2)}
                   </p>

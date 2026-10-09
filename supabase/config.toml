@@ -33,6 +33,9 @@ verify_jwt = false
 [functions.get-google-maps-key]
 verify_jwt = true
 
+[functions.nearby-restaurants]
+verify_jwt = true
+
 [functions.submit-content-report]
 verify_jwt = false
 

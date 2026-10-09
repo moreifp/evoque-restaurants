@@ -453,6 +453,7 @@ export type Database = {
           item_type: string
           line_total: number | null
           name: string
+          name_pt: string | null
           quantity: number | null
           receipt_id: string
           unit_price: number | null
@@ -463,6 +464,7 @@ export type Database = {
           item_type: string
           line_total?: number | null
           name: string
+          name_pt?: string | null
           quantity?: number | null
           receipt_id: string
           unit_price?: number | null
@@ -473,6 +475,7 @@ export type Database = {
           item_type?: string
           line_total?: number | null
           name?: string
+          name_pt?: string | null
           quantity?: number | null
           receipt_id?: string
           unit_price?: number | null

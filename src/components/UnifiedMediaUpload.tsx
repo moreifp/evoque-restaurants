@@ -580,6 +580,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
             receipt_id: newReceipt.id,
             item_type: item.item_type,
             name: item.name,
+            name_pt: item.name_pt ?? null,
             quantity: item.quantity,
             unit_price: item.unit_price,
             line_total: item.line_total,

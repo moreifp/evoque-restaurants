@@ -156,25 +156,42 @@ export function getDriveStatus(userId: string): Promise<boolean> {
  * Envia o ORIGINAL para o inbox privado, marca a linha e pede a cópia ao Drive
  * sem bloquear a interface. Falhas são reprocessadas pela varredura agendada.
  */
+/**
+ * Só a primeira parte: original no inbox privado + linha marcada (original_path,
+ * upload_origin). Não chama o Drive. Lança erro se falhar.
+ * Repetir com o mesmo photoId é seguro (arquivo já existente é aceito).
+ */
+export async function uploadOriginalToInbox(params: {
+  userId: string;
+  photoId: string;
+  file: File;
+}): Promise<string> {
+  const { userId, photoId, file } = params;
+  const path = `${userId}/${photoId}.${originalExtension(file)}`;
+  const { error: upErr } = await supabase.storage.from(INBOX_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+  // Já enviado numa tentativa anterior (mesmo caminho): segue para marcar a linha.
+  const dup = upErr && /exists|duplicate|409/i.test(`${upErr.message} ${(upErr as { statusCode?: string }).statusCode ?? ""}`);
+  if (upErr && !dup) throw upErr;
+  const { error: rowErr } = await supabase
+    .from("restaurant_photos")
+    .update({ original_path: path, upload_origin: uploadOrigin() })
+    .eq("id", photoId);
+  if (rowErr) throw rowErr;
+  return path;
+}
+
 export async function stashOriginalForDrive(params: {
   userId: string;
   photoId: string;
   file: File;
 }): Promise<boolean> {
-  const { userId, photoId, file } = params;
-  const path = `${userId}/${photoId}.${originalExtension(file)}`;
+  const { photoId } = params;
   try {
-    const { error: upErr } = await supabase.storage.from(INBOX_BUCKET).upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: file.type || undefined,
-    });
-    if (upErr) throw upErr;
-    const { error: rowErr } = await supabase
-      .from("restaurant_photos")
-      .update({ original_path: path, upload_origin: uploadOrigin() })
-      .eq("id", photoId);
-    if (rowErr) throw rowErr;
+    await uploadOriginalToInbox(params);
   } catch (e) {
     console.error("[photoStorage] could not stash original", e);
     return false;
