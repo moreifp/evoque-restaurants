@@ -153,6 +153,8 @@ Deno.serve(async (req) => {
         headers,
         body: JSON.stringify({
           includedTypes: TIPOS,
+          // Mercados e postos às vezes têm "bakery"/"cafe" como tipo secundário.
+          excludedTypes: ["supermarket", "grocery_store", "convenience_store", "gas_station", "department_store"],
           maxResultCount: 20,
           rankPreference: "DISTANCE",
           languageCode: lang,
