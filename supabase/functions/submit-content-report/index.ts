@@ -88,8 +88,8 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: "Evoque Reports <onboarding@resend.dev>",
-            to: ["contato@evoque.guru"],
+            from: "Evoque Restaurants <nao-responda@mail.evoque.global>",
+            to: ["fausto.moreira@gmail.com"],
             subject: `[Evoque] Content Report: ${reason} (${target_type})`,
             html: emailBody,
           }),

@@ -3,7 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const APP_URL = "https://food.evoque.guru";
+const APP_URL = "https://restaurantes.evoque.global";
 const FUNCTIONS_URL = `${Deno.env.get("SUPABASE_URL")}/functions/v1`;
 
 const BOT_UA_RE = /facebookexternalhit|facebot|twitterbot|slackbot|slack-imgproxy|linkedinbot|discordbot|telegrambot|whatsapp|skypeuripreview|applebot|googlebot|bingbot|redditbot|pinterest|embedly|quora|outbrain|vkshare|w3c_validator|baiduspider|yandex|imessagebot/i;

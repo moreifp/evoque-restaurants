@@ -41,7 +41,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
-const ADMIN_EMAILS = ["diego@lumnia.dev"];
+const ADMIN_EMAILS = ["fausto.moreira@gmail.com"];
 
 interface OverviewData {
   totalUsers: number;

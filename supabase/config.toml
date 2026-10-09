@@ -1,4 +1,4 @@
-project_id = "ljrtilsqwzebnbizmvis"
+project_id = "qmbmifmqnkkiwlshcjzm"
 
 [functions.process-receipt]
 verify_jwt = true

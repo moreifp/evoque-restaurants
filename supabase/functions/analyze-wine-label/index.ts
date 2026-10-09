@@ -1,3 +1,4 @@
+import { aiFetch } from "../_shared/ai.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -60,7 +61,7 @@ serve(async (req) => {
         );
       }
       // Restrict to trusted storage domains for security
-      const trustedDomains = ['supabase.co', 'supabase.in', 'lovableproject.com'];
+      const trustedDomains = ['supabase.co', 'supabase.in', 'evoque.global'];
       const isTrusted = trustedDomains.some(domain => url.hostname.includes(domain));
       if (!isTrusted) {
         console.error('Untrusted domain:', url.hostname);
@@ -76,7 +77,7 @@ serve(async (req) => {
       );
     }
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -84,7 +85,7 @@ serve(async (req) => {
 
     console.log('Analyzing wine label from image:', imageUrl);
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await aiFetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,

@@ -73,70 +73,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI gateway not configured" }), {
+    // Transcrição pelo ElevenLabs (Scribe). Chave no segredo ELEVENLABS_API_KEY.
+    const ELEVEN = Deno.env.get("ELEVENLABS_API_KEY");
+    if (!ELEVEN) {
+      return new Response(JSON.stringify({ error: "transcription_not_configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const formatMap: Record<string, string> = {
-      "audio/webm": "webm",
-      "audio/mp4": "mp4",
-      "audio/m4a": "mp4",
-      "audio/x-m4a": "mp4",
-      "audio/mpeg": "mp3",
-      "audio/mp3": "mp3",
-      "audio/wav": "wav",
-      "audio/ogg": "ogg",
-    };
-    const audioFormat = formatMap[baseMime] ?? "webm";
-
-    const langInstr = language === "pt"
-      ? "The audio is in Portuguese (pt-BR or pt-PT)."
-      : language === "en"
-        ? "The audio is in English."
-        : "Detect the spoken language.";
-
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const bytes = Uint8Array.from(atob(audio), (c) => c.charCodeAt(0));
+    const form = new FormData();
+    form.append("model_id", "scribe_v1");
+    if (language === "pt") form.append("language_code", "por");
+    else if (language === "en") form.append("language_code", "eng");
+    form.append("tag_audio_events", "false");
+    form.append("file", new Blob([bytes], { type: baseMime || "audio/webm" }), "audio");
+    const aiResp = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
       method: "POST",
-      headers: {
-        "Lovable-API-Key": LOVABLE_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a speech-to-text transcription engine. Return ONLY the verbatim transcription of the audio as plain text. No quotes, no labels, no commentary, no markdown. If there is no speech, return an empty string.",
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: `Transcribe this audio. ${langInstr}` },
-              {
-                type: "input_audio",
-                input_audio: { data: audio, format: audioFormat },
-              },
-            ],
-          },
-        ],
-      }),
+      headers: { "xi-api-key": ELEVEN },
+      body: form,
     });
 
     if (!aiResp.ok) {
       const errText = await aiResp.text();
-      console.error("[transcribe-audio] AI gateway error", aiResp.status, errText);
+      console.error("[transcribe-audio] elevenlabs error", aiResp.status, errText.slice(0, 300));
       if (aiResp.status === 429) {
         return new Response(JSON.stringify({ error: "rate_limit" }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResp.status === 402) {
+      if (aiResp.status === 401 || aiResp.status === 402) {
         return new Response(JSON.stringify({ error: "no_credits" }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -149,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     const data = await aiResp.json();
-    const text = (data?.choices?.[0]?.message?.content ?? "").toString().trim();
+    const text = (data?.text ?? "").toString().trim();
 
     return new Response(JSON.stringify({ text }), {
       status: 200,

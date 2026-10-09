@@ -116,10 +116,10 @@ function buildTree(data: PreviewData, photoDataUrl: string | null): any {
   const displayName = data.is_private ? "Restaurante compartilhado" : (data.name || "Evoque");
   const cityText = data.city && !data.is_private ? data.city : "";
   const footer = data.is_private
-    ? "Evoque · food.evoque.guru"
+    ? "Evoque · restaurantes.evoque.global"
     : data.author
       ? `Compartilhado por ${data.author}  ·  Evoque`
-      : "Evoque · food.evoque.guru";
+      : "Evoque · restaurantes.evoque.global";
 
   const background = photoDataUrl
     ? {

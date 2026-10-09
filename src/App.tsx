@@ -47,10 +47,9 @@ const isEmbedded = typeof window !== "undefined" && window.self !== window.top;
 // Best-effort frame protection: only these sites may embed the app.
 const ALLOWED_EMBED_ORIGINS = [
   "https://app.evoque.global",
-  "https://evoqueviagens.lovable.app",
-  "https://id-preview--ed787434-5ecb-4cd1-86c6-bb105f4dda51.lovable.app",
 ];
-const isLovableEditor = (o: string) => /^https:\/\/([a-z0-9-]+\.)*(lovable\.dev|lovable\.app|lovableproject\.com)$/.test(o);
+// Endereço de testes do Viagens no Cloudflare.
+const isLovableEditor = (o: string) => /^https:\/\/evoque-viagens\.[a-z0-9-]+\.workers\.dev$/.test(o);
 function embedBlocked(): boolean {
   if (!isEmbedded) return false;
   const a = (window.location as any).ancestorOrigins as DOMStringList | undefined;

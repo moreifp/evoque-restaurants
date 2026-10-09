@@ -369,18 +369,6 @@ export const Auth = () => {
                 </div>
               )}
 
-              {/* Apple Sign In Button */}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full mb-2 bg-black text-white hover:bg-black/90 border-black"
-                onClick={handleAppleSignIn}
-                disabled={loading || appleLoading || (isSignUp && !agreedToTerms)}
-              >
-                <AppleIcon />
-                <span className="ml-2">{isSignUp ? t("auth.signUpWithApple") : t("auth.signInWithApple")}</span>
-              </Button>
-
               {/* Google Sign In Button */}
               <Button
                 type="button"

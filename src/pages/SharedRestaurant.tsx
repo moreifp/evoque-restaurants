@@ -176,7 +176,7 @@ export default function SharedRestaurant() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button variant="ghost" size="sm" asChild>
-                <a href="https://food.evoque.guru">Join Community</a>
+                <a href="https://restaurantes.evoque.global">Join Community</a>
               </Button>
             </div>
           </div>
@@ -631,7 +631,7 @@ export default function SharedRestaurant() {
               asChild
               className="font-semibold"
             >
-              <a href="https://food.evoque.guru">
+              <a href="https://restaurantes.evoque.global">
                 Join Evoque Community
               </a>
             </Button>

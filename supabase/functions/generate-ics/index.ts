@@ -72,7 +72,7 @@ PRODID:-//Evoque//Restaurant Agenda//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-UID:${visit.id}@evoque.guru
+UID:${visit.id}@restaurantes.evoque.global
 DTSTAMP:${dtStamp}
 DTSTART:${dtStart}
 DTEND:${dtEnd}
