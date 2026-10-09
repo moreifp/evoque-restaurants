@@ -6,16 +6,7 @@ verify_jwt = true
 [functions.analyze-wine-label]
 verify_jwt = true
 
-[functions.generate-restaurant-description]
-verify_jwt = true
-
-[functions.restaurant-planner]
-verify_jwt = true
-
 [functions.generate-share-token]
-verify_jwt = true
-
-[functions.generate-ics]
 verify_jwt = true
 
 [functions.generate-restaurant-note]
@@ -25,9 +16,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.validate-share-token]
-verify_jwt = false
-
-[functions.enrich-restaurant-data]
 verify_jwt = false
 
 [functions.get-google-maps-key]

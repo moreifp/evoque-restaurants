@@ -4,7 +4,7 @@ import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookImage, Search, UtensilsCrossed, Sparkles } from "lucide-react";
+import { Plus, BookImage, Search, UtensilsCrossed } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n/i18n";
 import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
@@ -65,18 +65,6 @@ export default function Index() {
               <div className="flex-1">
                 <h3 className="font-semibold text-lg">{t("home.addRestaurant")}</h3>
                 <p className="text-sm text-muted-foreground">{t("home.addRestaurantDesc")}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-large transition-all cursor-pointer" onClick={() => navigate("/agenda?tab=aiPlan")}>
-            <CardContent className="flex items-center space-x-4 p-6">
-              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Sparkles className="h-6 w-6 text-accent" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{t("home.aiPlanner")}</h3>
-                <p className="text-sm text-muted-foreground">{t("home.aiPlannerDesc")}</p>
               </div>
             </CardContent>
           </Card>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, UtensilsCrossed, Wine, Calendar, Settings, Globe, Users } from "lucide-react";
+import { Home, UtensilsCrossed, Wine, Settings, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import evoqueLogo from "@/assets/evoque-logo.png";
-import { NotificationBell } from "@/components/NotificationBell";
 
 export const Navigation = () => {
   const location = useLocation();
@@ -19,8 +18,6 @@ export const Navigation = () => {
   const navItems = [
     { path: "/", icon: Home, label: t("navigation.home"), mobileLabel: t("navigation.home") },
     { path: "/dining", icon: UtensilsCrossed, label: t("navigation.dining"), mobileLabel: t("navigation.dining") },
-    { path: "/agenda", icon: Calendar, label: t("navigation.agenda"), mobileLabel: "Agenda" },
-    { path: "/social", icon: Users, label: t("navigation.social"), mobileLabel: t("navigation.social") },
     { path: "/wine-cellar", icon: Wine, label: t("navigation.wineCellar"), mobileLabel: t("navigation.wine") },
     { path: "/account", icon: Settings, label: t("navigation.account"), mobileLabel: "" },
   ];
@@ -37,7 +34,7 @@ export const Navigation = () => {
               <span className="text-xl font-semibold text-foreground">Evoque</span>
             </Link>
 
-            {/* Navigation Links + sino + idioma (tablet e desktop). Um único sino = um único canal realtime. */}
+            {/* Navigation Links + idioma (tablet e desktop) */}
             <div className="hidden md:flex items-center space-x-1">
               {/* Desktop: ícone + texto */}
               <div className="hidden lg:flex items-center space-x-1">
@@ -74,9 +71,6 @@ export const Navigation = () => {
                   );
                 })}
               </div>
-
-              {/* Notification Bell */}
-              <NotificationBell />
 
               {/* Language Switcher */}
               <DropdownMenu>

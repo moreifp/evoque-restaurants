@@ -3,18 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2, Mail, ShieldBan, Sparkles, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { useAIConsent } from "@/hooks/useAIConsent";
-import { useBlockedUsers } from "@/hooks/useBlockedUsers";
+import { Camera, Lock, LogOut, Fingerprint, Bell, Smartphone, Globe, AlertTriangle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/imageVariants";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +17,6 @@ import { useI18n } from "@/i18n/i18n";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { useNativeNotifications } from "@/hooks/useNativeNotifications";
-import { PhotoTrashDialog } from "@/components/PhotoTrashDialog";
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,16 +27,11 @@ export default function Account() {
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, enableBiometric, disableBiometric, getBiometricLabel } = useBiometricAuth();
   const { isAvailable: notificationsAvailable, requestPermission, registerPushToken } = useNativeNotifications();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const { consentState, toggleGlobalConsent, withdrawAllConsent } = useAIConsent();
-  
-  // Blocked users
-  const { blockedUsers, unblockUser, loading: blockedLoading } = useBlockedUsers();
   
   // Delete account state
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [trashOpen, setTrashOpen] = useState(false);
   
   // Profile state
   const [email, setEmail] = useState("");
@@ -52,17 +41,9 @@ export default function Account() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [uploading, setUploading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [profileVisibility, setProfileVisibility] = useState("public");
-
-  // Social state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [following, setFollowing] = useState<any[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
-    fetchCurrentUser();
   }, []);
 
   const fetchProfile = async () => {
@@ -79,34 +60,7 @@ export default function Account() {
       if (profile) {
         setDisplayName(profile.display_name || "");
         setAvatarUrl(profile.avatar_url || "");
-        setProfileVisibility((profile as any).profile_visibility || "public");
       }
-    }
-  };
-
-  const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setCurrentUserId(user.id);
-      fetchFollowing(user.id);
-    }
-  };
-
-  const fetchFollowing = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_follows")
-      .select(`
-        following_id,
-        profiles!user_follows_following_id_fkey (
-          id,
-          display_name,
-          avatar_url
-        )
-      `)
-      .eq("follower_id", userId);
-
-    if (data) {
-      setFollowing(data.map(f => f.profiles).filter(Boolean));
     }
   };
 
@@ -198,99 +152,6 @@ export default function Account() {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, display_name, avatar_url")
-      .or(`display_name.ilike.%${searchQuery}%`)
-      .neq("id", currentUserId)
-      .limit(10);
-
-    setSearchResults(data || []);
-  };
-
-  const handleFollow = async (userId: string) => {
-    try {
-      const { error } = await supabase
-        .from("user_follows")
-        .insert({
-          follower_id: currentUserId,
-          following_id: userId,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: t("account.follow"),
-        description: t("account.following"),
-      });
-
-      if (currentUserId) fetchFollowing(currentUserId);
-      handleSearch();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleUnfollow = async (userId: string) => {
-    try {
-      const { error } = await supabase
-        .from("user_follows")
-        .delete()
-        .eq("follower_id", currentUserId)
-        .eq("following_id", userId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Unfollowed",
-        description: "You have unfollowed this user",
-      });
-
-      if (currentUserId) fetchFollowing(currentUserId);
-      handleSearch();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const isFollowing = (userId: string) => {
-    return following.some(f => f.id === userId);
-  };
-
-  const handleVisibilityChange = async (value: string) => {
-    setProfileVisibility(value);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { error } = await supabase
-        .from("profiles")
-        .update({ profile_visibility: value } as any)
-        .eq("id", user.id);
-      if (error) throw error;
-      toast({
-        title: t("privacy.updated"),
-        description: t("privacy.updatedDesc"),
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -346,7 +207,7 @@ export default function Account() {
       <Navigation />
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
-        <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
+        <h1 className="text-3xl font-bold mb-8">{t("navigation.account")}</h1>
 
         <div className="max-w-3xl space-y-6">
           {/* Profile Section */}
@@ -442,160 +303,6 @@ export default function Account() {
             </CardContent>
           </Card>
 
-          {/* Social Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                {t("account.social")}
-              </CardTitle>
-              <CardDescription>Search and connect with other users</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder={t("account.searchPlaceholder")}
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
-                <Button onClick={handleSearch}>Search</Button>
-              </div>
-
-              {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Search Results</h4>
-                  <div className="space-y-2">
-                    {searchResults.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={user.avatar_url} />
-                            <AvatarFallback>
-                              {user.display_name?.charAt(0)?.toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{user.display_name || "Anonymous"}</p>
-                          </div>
-                        </div>
-                        {isFollowing(user.id) ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUnfollow(user.id)}
-                          >
-                            <UserMinus className="h-4 w-4 mr-2" />
-                            Unfollow
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => handleFollow(user.id)}
-                          >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Follow
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <Separator />
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">{t("account.following")} ({following.length})</h4>
-                {following.length > 0 ? (
-                  <div className="space-y-2">
-                    {following.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                        onClick={() => navigate(`/user/${user.id}/albums`)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={user.avatar_url} />
-                            <AvatarFallback>
-                              {user.display_name?.charAt(0)?.toUpperCase() || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <p className="font-medium">{user.display_name || "Anonymous"}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUnfollow(user.id);
-                          }}
-                        >
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    {t("account.noFollowing")}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Profile Privacy Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                {t("privacy.title")}
-              </CardTitle>
-              <CardDescription>{t("privacy.description")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup value={profileVisibility} onValueChange={handleVisibilityChange} className="space-y-3">
-                <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="public" id="visibility-public" className="mt-1" />
-                  <div className="flex-1">
-                    <Label htmlFor="visibility-public" className="flex items-center gap-2 cursor-pointer font-medium">
-                      <Eye className="h-4 w-4" />
-                      {t("privacy.public")}
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-1">{t("privacy.publicDesc")}</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="approval_required" id="visibility-approval" className="mt-1" />
-                  <div className="flex-1">
-                    <Label htmlFor="visibility-approval" className="flex items-center gap-2 cursor-pointer font-medium">
-                      <ShieldCheck className="h-4 w-4" />
-                      {t("privacy.approvalRequired")}
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-1">{t("privacy.approvalRequiredDesc")}</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="private" id="visibility-private" className="mt-1" />
-                  <div className="flex-1">
-                    <Label htmlFor="visibility-private" className="flex items-center gap-2 cursor-pointer font-medium">
-                      <EyeOff className="h-4 w-4" />
-                      {t("privacy.private")}
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-1">{t("privacy.privateDesc")}</p>
-                  </div>
-                </div>
-              </RadioGroup>
-            </CardContent>
-          </Card>
-
           {/* Native Features Section - Only visible on iOS native app */}
           {isNative && (
             <Card>
@@ -678,141 +385,6 @@ export default function Account() {
           </Card>
           )}
 
-          {/* Support Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                {t("support.title")}
-              </CardTitle>
-              <CardDescription>{t("support.description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <a
-                href={`mailto:${t("support.contactEmail")}`}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-              >
-                <div>
-                  <span className="font-medium">{t("support.email")}</span>
-                  <p className="text-sm text-muted-foreground">{t("support.contactEmail")}</p>
-                </div>
-                <ExternalLink className="h-4 w-4" />
-              </a>
-              <a
-                href="https://evoque.guru/support"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-              >
-                <span>{t("support.visitSupport")}</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </CardContent>
-          </Card>
-
-          {/* Blocked Users Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldBan className="h-5 w-5" />
-                {t("block.blockedUsers")}
-              </CardTitle>
-              <CardDescription>Manage users you've blocked</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {blockedLoading ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  {t("common.loading")}
-                </p>
-              ) : blockedUsers.length > 0 ? (
-                <div className="space-y-2">
-                  {blockedUsers.map((block) => (
-                    <div
-                      key={block.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={block.profile?.avatar_url || ""} />
-                          <AvatarFallback>
-                            {block.profile?.display_name?.charAt(0)?.toUpperCase() || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <p className="font-medium">
-                          {block.profile?.display_name || "Unknown User"}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => unblockUser(block.blocked_id)}
-                      >
-                        {t("block.unblockUser")}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  {t("block.noBlockedUsers")}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* AI Features Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                {t("aiConsent.settingsTitle")}
-              </CardTitle>
-              <CardDescription>{t("aiConsent.settingsDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{t("aiConsent.globalToggle")}</p>
-                </div>
-                <Switch
-                  checked={consentState.aiConsent}
-                  onCheckedChange={async (checked) => {
-                    await toggleGlobalConsent(checked);
-                    toast({
-                      title: checked ? t("aiConsent.consentEnabled") : t("aiConsent.consentWithdrawn"),
-                    });
-                  }}
-                />
-              </div>
-
-              {consentState.aiConsentScopes.length > 0 && (
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">{t("aiConsent.grantedScopes")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {consentState.aiConsentScopes.map((scope) => (
-                      <Badge key={scope} variant="secondary">
-                        {t(`aiConsent.scopeLabels.${scope}`)}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {consentState.aiConsent && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={async () => {
-                    await withdrawAllConsent();
-                    toast({ title: t("aiConsent.consentWithdrawn") });
-                  }}
-                >
-                  {t("aiConsent.withdrawAll")}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Preferences Section - Language */}
           <Card>
             <CardHeader>
@@ -847,51 +419,6 @@ export default function Account() {
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Legal Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Legal</CardTitle>
-              <CardDescription>Terms and policies</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <a
-                href="https://evoque.guru/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-              >
-                <span>Terms of Use</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
-              <a
-                href="https://evoque.guru/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
-              >
-                <span>Privacy Policy</span>
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </CardContent>
-          </Card>
-
-          {/* Photo Backup / Trash */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trash2 className="h-5 w-5" />
-                {t("photoTrash.settingsTitle")}
-              </CardTitle>
-              <CardDescription>{t("photoTrash.settingsDescription")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onClick={() => setTrashOpen(true)}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t("photoTrash.open")}
-              </Button>
             </CardContent>
           </Card>
 
@@ -968,7 +495,6 @@ export default function Account() {
           </Button>
         </div>
       </main>
-      <PhotoTrashDialog open={trashOpen} onOpenChange={setTrashOpen} />
     </div>
   );
 }

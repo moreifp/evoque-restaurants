@@ -14,7 +14,6 @@ import { useStandaloneMode } from "@/hooks/useStandaloneMode";
 import { DespiaProvider } from "@/contexts/DespiaContext";
 import { BlockedUsersProvider } from "@/contexts/BlockedUsersContext";
 import { AIConsentProvider } from "@/contexts/AIConsentContext";
-import { AIConsentModal } from "@/components/AIConsentModal";
 import { Auth } from "./components/Auth";
 import { TermsAcceptanceGate } from "./components/TermsAcceptanceGate";
 
@@ -29,15 +28,10 @@ const AddRestaurant = lazy(() => import("./pages/AddRestaurant"));
 const AlbumsMap = lazy(() => import("./pages/AlbumsMap"));
 const CreateAlbum = lazy(() => import("./pages/CreateAlbum"));
 const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
-const UserPublicAlbums = lazy(() => import("./pages/UserPublicAlbums"));
 const WineCellar = lazy(() => import("./pages/WineCellar"));
 const Account = lazy(() => import("./pages/Account"));
-const Agenda = lazy(() => import("./pages/Agenda"));
-const PlanDetail = lazy(() => import("./pages/PlanDetail"));
-const Following = lazy(() => import("./pages/Following"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
-const Notifications = lazy(() => import("./pages/Notifications"));
 const Embed = lazy(() => import("./pages/Embed"));
 
 const isEmbedded = typeof window !== "undefined" && window.self !== window.top;
@@ -95,7 +89,6 @@ function AppRoutes() {
   return (
     <AIConsentProvider userId={session?.user?.id ?? null}>
       {session && <TermsAcceptanceGate userId={session.user.id} />}
-      <AIConsentModal />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           {/* Public routes - specific routes FIRST */}
@@ -126,18 +119,13 @@ function AppRoutes() {
             <Route path="/albums/map" element={<AlbumsMap />} />
             <Route path="/albums/create" element={<CreateAlbum />} />
             <Route path="/albums/:id" element={<AlbumDetail />} />
-            <Route path="/user/:userId/albums" element={<UserPublicAlbums />} />
             <Route path="/wine-cellar" element={<WineCellar />} />
             <Route path="/account" element={<Account />} />
-            <Route
-              path="/planner"
-              element={<Navigate to="/agenda?tab=aiPlan" replace />}
-            />
-            <Route path="/agenda" element={<Agenda />} />
-            <Route path="/plans/:id" element={<PlanDetail />} />
-            <Route path="/social" element={<Following />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path="/notifications" element={<Notifications />} />
+            {/* Seções removidas (Agenda e Social): links antigos vão para o início */}
+            {["/agenda", "/planner", "/plans/:id", "/social", "/notifications", "/user/:userId/albums"].map((p) => (
+              <Route key={p} path={p} element={<Navigate to="/" replace />} />
+            ))}
             <Route path="*" element={<NotFound />} />
           </>
         )}

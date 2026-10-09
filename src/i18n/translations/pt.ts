@@ -779,6 +779,9 @@ export const pt = {
     uploadingWait: "Aguarde o envio terminar",
   },
   quickAdd: {
+    typeName: "Escreva o nome do restaurante",
+    typedOnly: "Não achei no Google — o nome escrito será usado",
+    restaurant: "Restaurante",
     title: "Novo restaurante",
     nearTitle: "Perto de você",
     locating: "Procurando restaurantes perto…",

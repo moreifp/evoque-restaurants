@@ -1031,7 +1031,7 @@ export default function AddRestaurant() {
             <>
               <section className="space-y-2">
                 <p className="flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  <MapPin className="h-4 w-4" /> {t("quickAdd.nearTitle")}
+                  <MapPin className="h-4 w-4" /> {t("quickAdd.restaurant")}
                 </p>
                 <div className="rounded-3xl bg-background/70 p-2 shadow-sm">
                   <RestaurantPicker

@@ -6,6 +6,7 @@ import { ArrowLeft, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
+import { loadGoogleMaps } from "@/lib/googleMapsLoader";
 
 declare global {
   interface Window {
@@ -33,8 +34,14 @@ export default function AlbumsMap() {
   const [loading, setLoading] = useState(true);
   const markersRef = useRef<any[]>([]);
 
+  // O mapa carregava só se outra tela (o antigo LocationPicker) tivesse carregado o Google Maps antes.
+  const [mapsReady, setMapsReady] = useState(() => !!window.google?.maps?.Map);
+
   useEffect(() => {
     fetchRestaurants();
+    loadGoogleMaps()
+      .then(() => setMapsReady(true))
+      .catch((e) => console.warn("[AlbumsMap] Google Maps failed to load", e));
   }, []);
 
   const fetchRestaurants = async () => {
@@ -100,7 +107,7 @@ export default function AlbumsMap() {
   };
 
   useEffect(() => {
-    if (!mapRef.current || restaurants.length === 0 || !window.google) return;
+    if (!mapsReady || !mapRef.current || restaurants.length === 0 || !window.google?.maps?.Map) return;
 
     // Initialize Google Maps
     const googleMap = new window.google.maps.Map(mapRef.current, {
@@ -206,7 +213,7 @@ export default function AlbumsMap() {
     return () => {
       markersRef.current.forEach(marker => marker.setMap(null));
     };
-  }, [restaurants]);
+  }, [restaurants, mapsReady]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle">

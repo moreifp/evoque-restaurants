@@ -779,6 +779,9 @@ export const en = {
     uploadingWait: "Wait for the upload to finish",
   },
   quickAdd: {
+    typeName: "Type the restaurant name",
+    typedOnly: "Not found on Google — the typed name will be used",
+    restaurant: "Restaurant",
     title: "New restaurant",
     nearTitle: "Near you",
     locating: "Looking for restaurants nearby…",

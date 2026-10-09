@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ReceiptItemsList } from "@/components/ReceiptItemsList";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
-import { LocationPicker } from "@/components/LocationPicker";
+import { RestaurantPicker } from "@/components/add/RestaurantPicker";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { PhotoThumb } from "@/components/photos/PhotoThumb";
 import { SaveToPhotosButton } from "@/components/photos/SaveToPhotosButton";
@@ -1682,35 +1682,38 @@ export default function RestaurantDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Location Picker */}
-                  <LocationPicker
-                    initialValue={entry.location_address || entry.restaurant_name}
-                    initialLatLng={entry.location_lat && entry.location_lng ? { lat: entry.location_lat, lng: entry.location_lng } : undefined}
-                    initialPlaceId={entry.google_place_id || undefined}
-                    onLocationSelect={(location) => {
-                      setFormData({
-                        ...formData,
-                        restaurant_name: location.name,
-                        location_address: location.address,
-                        location_lat: location.lat,
-                        location_lng: location.lng,
-                        google_place_id: location.placeId || null,
-                      });
-                    }}
-                  />
-
-                  {/* Restaurant Name */}
+                  {/* Restaurante: escrever o nome ou buscar (Places API New no servidor) */}
                   <div className="space-y-2">
-                    <Label htmlFor="restaurant_name" className="text-lg">{t("restaurantDetail.restaurantName")} *</Label>
-                    <Input
-                      id="restaurant_name"
-                      type="text"
-                      value={formData.restaurant_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, restaurant_name: e.target.value })
+                    <Label className="text-lg">{t("restaurantDetail.restaurantName")} *</Label>
+                    <RestaurantPicker
+                      showNearby={false}
+                      autoSelectNearest={false}
+                      selected={
+                        formData.restaurant_name
+                          ? {
+                              name: formData.restaurant_name,
+                              address: formData.location_address || "",
+                              lat: formData.location_lat ?? null,
+                              lng: formData.location_lng ?? null,
+                              placeId: formData.google_place_id ?? null,
+                            }
+                          : null
                       }
-                      className="text-lg h-12"
-                      required
+                      onSelect={(r) =>
+                        setFormData((prev) =>
+                          r.placeId
+                            ? {
+                                ...prev,
+                                restaurant_name: r.name,
+                                location_address: r.address,
+                                location_lat: r.lat,
+                                location_lng: r.lng,
+                                google_place_id: r.placeId,
+                              }
+                            : // Nome escrito à mão: corrige só o nome, mantém o lugar
+                              { ...prev, restaurant_name: r.name }
+                        )
+                      }
                     />
                   </div>
 
