@@ -220,6 +220,20 @@ Deno.serve(async (req) => {
         const avatarPaths = avatarFiles.map((f) => `avatars/${f.name}`);
         await supabaseAdmin.storage.from("restaurant-photos").remove(avatarPaths);
       }
+      // Fotos novas (pastas ${userId}/<entrada>/...) e originais que ainda não foram ao Drive
+      for (const bucket of ["restaurant-photos", "originals-inbox"]) {
+        const paths: string[] = [];
+        const { data: top } = await supabaseAdmin.storage.from(bucket).list(userId, { limit: 1000 });
+        for (const item of top ?? []) {
+          if (item.id) { paths.push(`${userId}/${item.name}`); continue; }
+          // sem id = pasta (uma por restaurante)
+          const { data: inner } = await supabaseAdmin.storage.from(bucket).list(`${userId}/${item.name}`, { limit: 1000 });
+          for (const f of inner ?? []) if (f.id) paths.push(`${userId}/${item.name}/${f.name}`);
+        }
+        for (let i = 0; i < paths.length; i += 500) {
+          await supabaseAdmin.storage.from(bucket).remove(paths.slice(i, i + 500));
+        }
+      }
     } catch (storageError) {
       console.error("Error cleaning up storage:", storageError);
     }

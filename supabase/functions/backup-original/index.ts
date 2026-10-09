@@ -202,6 +202,18 @@ const MIME_BY_EXT: Record<string, string> = {
   gif: "image/gif",
 };
 
+const TIPO_PT: Record<string, string> = {
+  restaurant_photo: "restaurante", place: "restaurante", food: "comida", wine: "vinho",
+  menu: "cardapio", friends: "amigos",
+};
+
+/** Nome do arquivo no Drive: "<Restaurante> 2026-10-08 comida 1a2b3c4d.jpg". */
+export function driveFileName(restaurante: string, date: string, type: string | null, id: string, ext: string): string {
+  const nome = restaurante.replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Sem nome";
+  const tipo = TIPO_PT[type ?? ""] ?? "foto";
+  return `${nome} ${date} ${tipo} ${id.slice(0, 8)}.${ext}`;
+}
+
 function folderNameFor(entry: EntryRow): string | null {
   const raw = (entry.restaurant_name ?? "").trim();
   const isPlaceholder = !raw || raw === "__draft__";
@@ -254,8 +266,7 @@ async function backupPhoto(
     const ext = (photo.original_path.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
     const mime = blob.type && blob.type !== "application/octet-stream" ? blob.type : (MIME_BY_EXT[ext] ?? "application/octet-stream");
     const date = (entry.visit_date ?? photo.created_at ?? new Date().toISOString()).slice(0, 10);
-    const type = (photo.type ?? "foto").replace(/[^\w-]/g, "_");
-    const fileName = `${date}_${type}_${photo.id.slice(0, 8)}.${ext}`;
+    const fileName = driveFileName(folderName, date, photo.type, photo.id, ext);
     const description = ["Evoque Restaurants", folderName, entry.location_address?.trim()]
       .filter(Boolean)
       .join(" · ");
@@ -328,6 +339,58 @@ async function runMany(
   return counts;
 }
 
+
+// ---------------------------------------------------------------------------
+// Lixeira: depois de 30 dias apaga de vez (linha + arquivos), para todos os usuários.
+
+const PHOTO_BUCKET = "restaurant-photos";
+const TRASH_DAYS = 30;
+const PURGE_LIMIT = 100;
+
+function pathFromPublicUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+    const i = u.pathname.indexOf(marker);
+    return i === -1 ? null : decodeURIComponent(u.pathname.slice(i + marker.length)) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function purgeTrash(admin: SupabaseClient, deadline: number) {
+  const cutoff = new Date(Date.now() - TRASH_DAYS * 24 * 60 * 60_000).toISOString();
+  const { data, error } = await admin
+    .from("photo_backups")
+    .select("id, photo_url, thumb_url")
+    .eq("restored", false)
+    .lt("deleted_at", cutoff)
+    .order("deleted_at", { ascending: true })
+    .limit(PURGE_LIMIT);
+  if (error) throw new Error(`trash query failed: ${error.message}`);
+  let purged = 0, keptFiles = 0;
+  for (const b of (data ?? []) as Array<{ id: string; photo_url: string; thumb_url: string | null }>) {
+    if (Date.now() > deadline) break;
+    // Só apaga o arquivo se nenhuma foto ativa (ex.: restaurada) ou outra lixeira recente usa a mesma URL.
+    const urls = [b.photo_url, b.thumb_url].filter((u): u is string => !!u);
+    const [{ count: ativas }, { count: outras }] = await Promise.all([
+      admin.from("restaurant_photos").select("id", { count: "exact", head: true }).in("photo_url", urls),
+      admin.from("photo_backups").select("id", { count: "exact", head: true }).in("photo_url", urls).neq("id", b.id).gte("deleted_at", cutoff),
+    ]);
+    if (!ativas && !outras) {
+      const paths = urls.map(pathFromPublicUrl).filter((x): x is string => !!x);
+      if (paths.length) {
+        const { error: rmErr } = await admin.storage.from(PHOTO_BUCKET).remove(paths);
+        if (rmErr) { console.error("backup-original: purge remove failed", b.id, rmErr.message); continue; }
+      }
+    } else keptFiles++;
+    const { error: delErr } = await admin.from("photo_backups").delete().eq("id", b.id);
+    if (delErr) console.error("backup-original: purge row failed", b.id, delErr.message);
+    else purged++;
+  }
+  return { purged, kept_files: keptFiles };
+}
 // ---------------------------------------------------------------------------
 
 Deno.serve(async (req) => {
@@ -355,8 +418,6 @@ Deno.serve(async (req) => {
       if (!CRON_SECRET || !safeEqual(req.headers.get("x-cron-secret") ?? "", CRON_SECRET)) {
         return json({ error: "Unauthorized" }, 401);
       }
-      if (!driveConfigured()) return json({ ok: false, error: "Drive not configured" }, 200);
-
       // Ignora as de menos de 2 min (o app ainda está cuidando delas).
       const rows = await pendingIds(admin, { limit: SWEEP_LIMIT, olderThanMs: 2 * 60_000 });
       // Só linhas do dono (confere o e-mail de cada user_id).
@@ -371,8 +432,14 @@ Deno.serve(async (req) => {
         if (ownerByUser.get(r.user_id)) items.push({ id: r.id, ownerId: r.user_id });
         else notOwner++;
       }
-      const counts = await runMany(admin, items, deadline);
-      return json({ ok: true, found: rows.length, not_owner: notOwner, ...counts, ms: Date.now() - started });
+      const counts = driveConfigured() ? await runMany(admin, items, deadline) : { drive: "not configured" };
+      let trash: unknown = null;
+      try {
+        trash = await purgeTrash(admin, deadline);
+      } catch (e) {
+        console.error("backup-original: purge failed", errMsg(e));
+      }
+      return json({ ok: true, found: rows.length, not_owner: notOwner, ...counts, trash, ms: Date.now() - started });
     }
 
     // ---- ações com JWT do usuário ----------------------------------------
