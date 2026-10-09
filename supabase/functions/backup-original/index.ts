@@ -8,7 +8,7 @@
 // Fluxo: o app envia o original para o bucket privado `originals-inbox`
 // (`${userId}/${photoId}.${ext}`) e grava restaurant_photos.original_path.
 // Aqui baixamos com a service role, subimos para
-// "My Drive/Evoque Restaurants/<restaurante>/" (upload resumable) e, com
+// "Restaurants/<restaurante>/" ou "<viagem>/Restaurants/<restaurante>/" (upload resumable) e, com
 // sucesso, gravamos drive_file_id + original_saved_at, limpamos original_path
 // e apagamos o objeto do inbox.
 //
@@ -16,6 +16,7 @@
 // a autenticação é feita aqui dentro.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { comMetadados } from "../_shared/fotoMeta.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,11 @@ const corsHeaders = {
 };
 
 const INBOX_BUCKET = "originals-inbox";
-const ROOT_FOLDER_NAME = "Evoque Restaurants";
+const ROOT_FOLDER_NAME = "Restaurants";
+/** Subpasta dentro da pasta da viagem (mesma pasta que o Evoque Viagens usa para as fotos da viagem). */
+const TRIP_SUBFOLDER = "Restaurants";
+const VIAGENS_URL = (Deno.env.get("EVOQUE_VIAGENS_URL") ?? "https://app.evoque.global").replace(/\/+$/, "");
+const VIAGENS_SECRET = Deno.env.get("EVOQUE_VIAGENS_EMBED_SECRET") ?? "";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const TIME_BUDGET_MS = 100_000;
 const SWEEP_LIMIT = 20;
@@ -182,6 +187,8 @@ interface EntryRow {
   location_address: string | null;
   is_draft: boolean | null;
   created_at: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
 }
 interface PhotoRow {
   id: string;
@@ -189,6 +196,7 @@ interface PhotoRow {
   created_at: string | null;
   original_path: string | null;
   drive_file_id: string | null;
+  upload_origin: string | null;
   restaurant_entries: EntryRow | null;
 }
 
@@ -229,6 +237,38 @@ function folderNameFor(entry: EntryRow): string | null {
   return isPlaceholder ? "Sem nome" : limparNome(raw);
 }
 
+/**
+ * Pasta do original no Drive, conforme por onde a foto foi enviada:
+ *  - "viagens" (Restaurants aberto dentro do Evoque Viagens) e a data cai numa viagem que o dono organiza
+ *      → "<pasta da viagem>/Restaurants/<restaurante>/"
+ *  - senão → "Restaurants/<restaurante>/"
+ */
+async function pastaDestino(token: string, origem: string | null, restaurante: string, data: string): Promise<string> {
+  if (origem === "viagens" && VIAGENS_SECRET) {
+    try {
+      const r = await fetch(`${VIAGENS_URL}/api/public/hooks/viagem-da-foto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-evoque-secret": VIAGENS_SECRET },
+        body: JSON.stringify({ email: DRIVE_OWNER_EMAIL, data }),
+      });
+      const j = r.ok ? await r.json() : null;
+      const pasta = typeof j?.pasta === "string" && j.pasta.trim() ? j.pasta.trim() : null;
+      if (pasta) {
+        // Mesma busca do Viagens (pasta com o nome da viagem; cria na raiz se não existir).
+        const viagemId = (await driveFindOne(token, `name='${driveQ(pasta)}' and mimeType='${FOLDER_MIME}' and trashed=false`)) ??
+          (await findOrCreateFolder(token, pasta, "root"));
+        const sub = await findOrCreateFolder(token, TRIP_SUBFOLDER, viagemId);
+        return await findOrCreateFolder(token, restaurante, sub);
+      }
+      if (!r.ok) console.warn("backup-original: viagem-da-foto", r.status);
+    } catch (e) {
+      console.warn("backup-original: viagem-da-foto falhou, usando Restaurants/", errMsg(e));
+    }
+  }
+  const rootId = await findOrCreateFolder(token, ROOT_FOLDER_NAME, "root");
+  return await findOrCreateFolder(token, restaurante, rootId);
+}
+
 async function backupPhoto(
   admin: SupabaseClient,
   photoId: string,
@@ -237,7 +277,7 @@ async function backupPhoto(
   const { data, error } = await admin
     .from("restaurant_photos")
     .select(
-      "id, type, created_at, original_path, drive_file_id, restaurant_entries!inner(user_id, restaurant_name, visit_date, location_address, is_draft, created_at)",
+      "id, type, created_at, original_path, drive_file_id, upload_origin, restaurant_entries!inner(user_id, restaurant_name, visit_date, location_address, is_draft, created_at, location_lat, location_lng)",
     )
     .eq("id", photoId)
     .maybeSingle();
@@ -272,13 +312,21 @@ async function backupPhoto(
     const mime = blob.type && blob.type !== "application/octet-stream" ? blob.type : (MIME_BY_EXT[ext] ?? "application/octet-stream");
     const date = (entry.visit_date ?? photo.created_at ?? new Date().toISOString()).slice(0, 10);
     const fileName = driveFileName(folderName, date, photo.type, photo.id, ext);
-    const description = ["Evoque Restaurants", folderName, entry.location_address?.trim()]
+    const description = [folderName, entry.location_address?.trim(), date]
       .filter(Boolean)
       .join(" · ");
 
     const token = await getAccessToken();
-    const rootId = await findOrCreateFolder(token, ROOT_FOLDER_NAME, "root");
-    const folderId = await findOrCreateFolder(token, folderName, rootId);
+    const folderId = await pastaDestino(token, photo.upload_origin, folderName, date);
+
+    // Título, legenda e localização dentro do arquivo (Apple Fotos mostra o nome do restaurante).
+    const bytes = comMetadados(new Uint8Array(await blob.arrayBuffer()), {
+      titulo: folderName,
+      descricao: description,
+      lat: entry.location_lat,
+      lng: entry.location_lng,
+    });
+    const arquivo = new Blob([bytes as unknown as BlobPart], { type: mime });
 
     // Se uma tentativa anterior subiu o arquivo mas não gravou no banco, reaproveita.
     const existing = await driveFindOne(
@@ -286,7 +334,7 @@ async function backupPhoto(
       `name='${driveQ(fileName)}' and '${driveQ(folderId)}' in parents and trashed=false`,
     );
     const driveFileId = existing ??
-      (await resumableUpload(token, { name: fileName, parents: [folderId], description }, blob, mime));
+      (await resumableUpload(token, { name: fileName, parents: [folderId], description }, arquivo, mime));
 
     const { error: upErr } = await admin
       .from("restaurant_photos")

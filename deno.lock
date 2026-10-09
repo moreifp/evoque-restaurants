@@ -1,10 +1,12 @@
 {
   "version": "5",
   "redirects": {
-    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.117.3"
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.117.3",
+    "https://esm.sh/@types/piexifjs@~1.0.0/index.d.ts": "https://esm.sh/@types/piexifjs@1.0.0/index.d.ts"
   },
   "remote": {
-    "https://esm.sh/@supabase/supabase-js@2.117.3": "614f9e550b12b4be7054f947cc4949ebcc0eceeb8e83f7e226cc875356e9b126"
+    "https://esm.sh/@supabase/supabase-js@2.117.3": "614f9e550b12b4be7054f947cc4949ebcc0eceeb8e83f7e226cc875356e9b126",
+    "https://esm.sh/piexifjs@1.0.6": "df2ce6e1a77acb7575331d81f4544b5f16335737da60692ac4e6ca5677ad1fa8"
   },
   "workspace": {
     "packageJson": {

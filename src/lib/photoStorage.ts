@@ -44,6 +44,17 @@ function uniqueStamp(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** "viagens" quando o app está aberto dentro do Evoque Viagens (login pelo Viagens); senão "direto". */
+export function uploadOrigin(): "viagens" | "direto" {
+  try {
+    if (typeof window !== "undefined" && window.self !== window.top) return "viagens";
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("evoque_embedded") === "1") return "viagens";
+  } catch {
+    return "viagens"; // acesso ao topo bloqueado = estamos num iframe
+  }
+  return "direto";
+}
+
 // ---------------------------------------------------------------------------
 // Miniaturas conhecidas nesta sessão (display URL -> thumb URL). Usado quando a
 // linha é gravada depois (fluxo sem rascunho do AddRestaurant).
@@ -161,7 +172,7 @@ export async function stashOriginalForDrive(params: {
     if (upErr) throw upErr;
     const { error: rowErr } = await supabase
       .from("restaurant_photos")
-      .update({ original_path: path })
+      .update({ original_path: path, upload_origin: uploadOrigin() })
       .eq("id", photoId);
     if (rowErr) throw rowErr;
   } catch (e) {
