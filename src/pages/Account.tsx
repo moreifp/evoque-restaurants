@@ -16,6 +16,7 @@ import { Camera, Lock, LogOut, ExternalLink, UserPlus, UserMinus, Search, Users,
 import { useAIConsent } from "@/hooks/useAIConsent";
 import { useBlockedUsers } from "@/hooks/useBlockedUsers";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/imageVariants";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/i18n/i18n";
 import { useDespia } from "@/contexts/DespiaContext";
@@ -118,12 +119,16 @@ export default function Account() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const fileExt = file.name.split(".").pop();
-      const filePath = `avatars/${user.id}/${Date.now()}.${fileExt}`;
+      // Avatar: JPEG 512 px (cai para o original se não decodificar)
+      const avatar = await compressImage(file, 512, 0.85);
+      const filePath = `avatars/${user.id}/${Date.now()}.${avatar.ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from("restaurant-photos")
-        .upload(filePath, file);
+        .upload(filePath, avatar.file, {
+          cacheControl: "31536000",
+          contentType: avatar.file.type || undefined,
+        });
 
       if (uploadError) throw uploadError;
 

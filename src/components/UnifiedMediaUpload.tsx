@@ -32,6 +32,15 @@ import { useDespia } from "@/contexts/DespiaContext";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
 import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { useAIConsent } from "@/hooks/useAIConsent";
+import { compressImage } from "@/lib/imageVariants";
+import {
+  getDriveStatus,
+  removeInboxObjects,
+  removePhotoObjects,
+  queueOriginalForDrive,
+  uploadPhotoVariants,
+} from "@/lib/photoStorage";
+import { SaveOriginalsBar } from "@/components/photos/SaveOriginalsBar";
 
 interface UploadedFile {
   file: File;
@@ -43,6 +52,9 @@ interface UploadedFile {
   rating?: number;
   receiptData?: any;
   menuTranslation?: string;
+  /** id da linha em restaurant_photos, quando já gravada */
+  photoId?: string;
+  thumbUrl?: string | null;
 }
 
 interface UnifiedMediaUploadProps {
@@ -155,6 +167,8 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
   // Source selection dialog for native iOS (to bypass "Scan Document" option)
   const [showSourceDialog, setShowSourceDialog] = useState(false);
   const [sourceCategory, setSourceCategory] = useState<keyof typeof categoryConfig | null>(null);
+  // Originais (só em memória) para o usuário guardar no app Fotos; some ao fechar.
+  const [pendingOriginals, setPendingOriginals] = useState<File[]>([]);
   const { toast } = useToast();
   const { t } = useI18n();
   
@@ -462,7 +476,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
     if (category === 'receipt' && newFiles.length > 0) {
       processReceipt(newFiles[0]);
     } else {
-      autoUploadFiles(newFiles);
+      autoUploadFiles(newFiles, useCamera);
     }
   };
 
@@ -495,10 +509,16 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
 
       const user = session.user;
 
-      const fileName = `receipts/${user.id}/${Date.now()}_${fileData.file.name}`;
+      // Recibo: JPEG 1600 px q0.85 (sem miniatura, sem Drive)
+      const compressed = await compressImage(fileData.file, 1600, 0.85);
+      const baseName = fileData.file.name.replace(/\.[^.]+$/, "").replace(/[^\w-]/g, "_") || "recibo";
+      const fileName = `receipts/${user.id}/${Date.now()}_${baseName}.${compressed.ext}`;
       const { error: uploadError } = await supabase.storage
         .from("restaurant-photos")
-        .upload(fileName, fileData.file);
+        .upload(fileName, compressed.file, {
+          cacheControl: "31536000",
+          contentType: compressed.file.type || undefined,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -615,6 +635,18 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
     }
   };
 
+  /** id da foto pela URL (fotos restauradas do banco não trazem o id). */
+  const findPhotoId = async (eid: string, url: string): Promise<string | undefined> => {
+    const { data } = await supabase
+      .from("restaurant_photos")
+      .select("id")
+      .eq("entry_id", eid)
+      .eq("photo_url", url)
+      .limit(1)
+      .maybeSingle();
+    return data?.id;
+  };
+
   const analyzeWineLabel = async (fileData: UploadedFile) => {
     const allowed = await ensureAIConsent("wine_recognition");
     if (!allowed) return;
@@ -623,18 +655,9 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) throw new Error("Not authenticated");
 
-      const user = session.user;
-
-      const fileName = `wines/${user.id}/${Date.now()}_${fileData.file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("restaurant-photos")
-        .upload(fileName, fileData.file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("restaurant-photos")
-        .getPublicUrl(fileName);
+      // A foto do vinho já foi enviada uma vez (autoUploadFiles): reaproveita a URL.
+      const publicUrl = fileData.url ?? files.find(f => f.preview === fileData.preview)?.url;
+      if (!publicUrl) throw new Error(t("savePhotos.uploadingWait"));
 
       const { data: resp, error: functionError } = await supabase.functions.invoke(
         "analyze-wine-label",
@@ -664,17 +687,24 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
       // Resolve effective entryId (creates draft if needed for new-restaurant flow)
       const effectiveEntryId = await resolveEntryId();
 
-      // If we have an entryId, save wine photo immediately to DB
+      // Atualiza a linha já criada no upload (não cria outra).
       if (effectiveEntryId) {
-        const { error: dbError } = await supabase
-          .from("restaurant_photos")
-          .insert({
-            entry_id: effectiveEntryId,
-            photo_url: publicUrl,
-            type: 'wine',
-            caption: wineCaption,
-            rating: null,
-          });
+        const existingId = fileData.photoId ?? await findPhotoId(effectiveEntryId, publicUrl);
+        const { error: dbError } = existingId
+          ? await supabase
+              .from("restaurant_photos")
+              .update({ caption: wineCaption })
+              .eq("id", existingId)
+          : await supabase
+              .from("restaurant_photos")
+              .insert({
+                entry_id: effectiveEntryId,
+                photo_url: publicUrl,
+                thumb_url: fileData.thumbUrl ?? null,
+                type: 'wine',
+                caption: wineCaption,
+                rating: null,
+              });
 
         if (dbError) {
           console.error('Error saving wine photo to database:', dbError);
@@ -724,53 +754,78 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
 
   const removeFile = async (preview: string) => {
     const fileToRemove = files.find(f => f.preview === preview);
-    
-    // If editing existing entry and file has a URL, delete from database
-    if (entryId && fileToRemove?.url) {
+
+    if (fileToRemove?.url) {
       try {
         if (fileToRemove.category === 'receipt') {
-          // Delete receipt and its items from database
-          const { error } = await supabase
-            .from("receipts")
-            .delete()
-            .eq("entry_id", entryId)
-            .eq("photo_url", fileToRemove.url);
-          
-          if (error) {
-            console.error('Error deleting receipt:', error);
-            toast({
-              title: t("common.error"),
-              description: "Failed to delete receipt",
-              variant: "destructive",
-            });
-            return;
+          if (entryId) {
+            // Delete receipt and its items from database
+            const { error } = await supabase
+              .from("receipts")
+              .delete()
+              .eq("entry_id", entryId)
+              .eq("photo_url", fileToRemove.url);
+
+            if (error) {
+              console.error('Error deleting receipt:', error);
+              toast({
+                title: t("common.error"),
+                description: "Failed to delete receipt",
+                variant: "destructive",
+              });
+              return;
+            }
+            // Recibo não tem lixeira: apaga o arquivo também.
+            await removePhotoObjects([fileToRemove.url]);
           }
         } else {
-          // Delete photo from restaurant_photos table
-          const { error } = await supabase
-            .from("restaurant_photos")
-            .delete()
-            .eq("entry_id", entryId)
-            .eq("photo_url", fileToRemove.url);
-          
-          if (error) {
-            console.error('Error deleting photo:', error);
-            toast({
-              title: t("common.error"),
-              description: "Failed to delete photo",
-              variant: "destructive",
-            });
-            return;
+          // Linha da foto: pelo id, ou pela URL (fotos vindas do banco)
+          let row: { id: string; thumb_url: string | null; original_path: string | null } | null = null;
+          if (fileToRemove.photoId || entryId) {
+            let q = supabase
+              .from("restaurant_photos")
+              .select("id, thumb_url, original_path");
+            q = fileToRemove.photoId
+              ? q.eq("id", fileToRemove.photoId)
+              : q.eq("entry_id", entryId!).eq("photo_url", fileToRemove.url);
+            const { data } = await q.limit(1).maybeSingle();
+            row = data ?? null;
+          }
+
+          if (row) {
+            const { error } = await supabase
+              .from("restaurant_photos")
+              .delete()
+              .eq("id", row.id);
+
+            if (error) {
+              console.error('Error deleting photo:', error);
+              toast({
+                title: t("common.error"),
+                description: "Failed to delete photo",
+                variant: "destructive",
+              });
+              return;
+            }
+            // Original que ainda não foi ao Drive: some junto (a cópia do Drive fica).
+            // Display e miniatura ficam no bucket enquanto a foto estiver na
+            // lixeira (restaurar em 1 toque); saem ao "Apagar definitivamente".
+            await removeInboxObjects([row.original_path]);
+          } else if (!entryId && !fileToRemove.photoId) {
+            // Nunca foi gravada em restaurant_photos: nada referencia os arquivos.
+            await removePhotoObjects([fileToRemove.url, fileToRemove.thumbUrl]);
           }
         }
-        
-        toast({
-          title: "✅ " + t("common.deleted"),
-          description: t("unifiedMediaUpload.toasts.photoDeleted") || "Photo removed successfully",
-        });
-        
-        // Notify parent to refresh
-        onPhotoSaved?.({ url: fileToRemove.url, type: 'deleted' });
+
+        if (entryId || fileToRemove.photoId) {
+          toast({
+            title: "✅ " + t("common.deleted"),
+            description: t("unifiedMediaUpload.toasts.photoDeleted") || "Photo removed successfully",
+          });
+
+          // Notify parent to refresh
+          onPhotoSaved?.({ url: fileToRemove.url, type: 'deleted' });
+        }
       } catch (error: any) {
         console.error('Error deleting file:', error);
         toast({
@@ -781,7 +836,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
         return;
       }
     }
-    
+
     setFiles(prev => prev.filter(f => f.preview !== preview));
     URL.revokeObjectURL(preview);
     setTimeout(updateParent, 0);
@@ -832,6 +887,8 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
           body: { 
             imageUrl: file.url, 
             targetLanguage,
+            // Com o id a tradução fica salva na foto (antes se perdia)
+            photoId: file.photoId ?? (entryId ? await findPhotoId(entryId, file.url) : undefined),
           },
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -879,20 +936,26 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
     }
   };
 
-  const autoUploadFiles = async (newFiles: UploadedFile[]) => {
+  const autoUploadFiles = async (newFiles: UploadedFile[], fromCamera = false) => {
     setUploading(true);
+    // Originais desta leva para o botão "Salvar originais no Fotos"
+    const originalsForPhotos: File[] = [];
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Uma consulta por sessão (cacheada): o usuário tem Google Drive?
+      const drivePromise = getDriveStatus(user.id);
 
       let successCount = 0;
       let failCount = 0;
 
       for (const fileData of newFiles) {
         let fileToUpload = fileData.file;
+        const isVideo = fileData.file.type.startsWith('video/');
         
         // Compress video files before upload
-        if (fileData.file.type.startsWith('video/')) {
+        if (isVideo) {
           setCompressingVideo(fileData.preview);
           setCompressionProgress({ stage: 'loading', progress: 0 });
           
@@ -918,72 +981,101 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
             setCompressionProgress(null);
           }
         }
-        
-        const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileToUpload.name}`;
-        
-        // Use upload with retry for more reliable uploads
-        const uploadResult = await uploadWithRetry({
-          bucket: "restaurant-photos",
-          filePath: fileName,
-          file: fileToUpload,
-          category: fileData.category,
-          maxRetries: 3,
-        });
 
-        if (!uploadResult.success) {
-          console.error('[UnifiedMediaUpload] Upload failed after retries:', uploadResult.error);
-          failCount++;
-          
-          // Show error toast for this specific file
-          toast({
-            title: t("unifiedMediaUpload.toasts.uploadFailed"),
-            description: uploadResult.attempts > 1 
-              ? `${fileToUpload.name} - Falhou após ${uploadResult.attempts} tentativas. ${uploadResult.error}`
-              : uploadResult.error,
-            variant: "destructive",
+        const photoType = isVideo ? 'video' :
+                         fileData.category === 'menu' ? 'menu' :
+                         fileData.category === 'food' ? 'food' :
+                         fileData.category === 'wine' ? 'wine' :
+                         fileData.category === 'friends' ? 'friends' :
+                         'restaurant_photo';
+
+        // Resolve o entryId antes do upload (vai no caminho do arquivo).
+        // Cria o rascunho no fluxo de novo restaurante, para as fotos não se
+        // perderem se a WebView recarregar antes de Salvar.
+        const effectiveEntryId = await resolveEntryId();
+
+        let publicUrl: string;
+        let thumbUrl: string | null = null;
+        let attempts = 1;
+
+        if (isVideo) {
+          // Vídeo: fluxo antigo, sem alterações
+          const fileName = `${fileData.category}/${user.id}/${Date.now()}_${fileToUpload.name}`;
+          const uploadResult = await uploadWithRetry({
+            bucket: "restaurant-photos",
+            filePath: fileName,
+            file: fileToUpload,
+            category: fileData.category,
+            maxRetries: 3,
           });
-          
-          // Remove the failed file from the list
-          setFiles(prev => prev.filter(f => f.preview !== fileData.preview));
-          URL.revokeObjectURL(fileData.preview);
-          continue;
+          if (!uploadResult.success) {
+            console.error('[UnifiedMediaUpload] Upload failed after retries:', uploadResult.error);
+            failCount++;
+            toast({
+              title: t("unifiedMediaUpload.toasts.uploadFailed"),
+              description: uploadResult.attempts > 1 
+                ? `${fileToUpload.name} - Falhou após ${uploadResult.attempts} tentativas. ${uploadResult.error}`
+                : uploadResult.error,
+              variant: "destructive",
+            });
+            setFiles(prev => prev.filter(f => f.preview !== fileData.preview));
+            URL.revokeObjectURL(fileData.preview);
+            continue;
+          }
+          publicUrl = uploadResult.publicUrl!;
+          attempts = uploadResult.attempts;
+        } else {
+          // Foto: versão leve (display) + miniatura; o original não vai ao bucket público
+          const res = await uploadPhotoVariants({
+            userId: user.id,
+            entryId: effectiveEntryId,
+            file: fileData.file,
+            kind: photoType,
+            uploader: uploadWithRetry,
+          });
+          if (!res.value) {
+            console.error('[UnifiedMediaUpload] Upload failed after retries:', res.error);
+            failCount++;
+            toast({
+              title: t("unifiedMediaUpload.toasts.uploadFailed"),
+              description: res.attempts > 1
+                ? `${fileToUpload.name} - Falhou após ${res.attempts} tentativas. ${res.error}`
+                : res.error,
+              variant: "destructive",
+            });
+            setFiles(prev => prev.filter(f => f.preview !== fileData.preview));
+            URL.revokeObjectURL(fileData.preview);
+            continue;
+          }
+          publicUrl = res.value.photoUrl;
+          thumbUrl = res.value.thumbUrl;
+          attempts = res.value.attempts;
         }
 
-        const publicUrl = uploadResult.publicUrl!;
         successCount++;
         
         // Show retry success if it took multiple attempts
-        if (uploadResult.attempts > 1) {
+        if (attempts > 1) {
           toast({
             title: "🔄 Upload recuperado",
-            description: `${fileToUpload.name} enviado com sucesso após ${uploadResult.attempts} tentativas`,
+            description: `${fileToUpload.name} enviado com sucesso após ${attempts} tentativas`,
           });
         }
 
-        // Resolve effective entryId lazily after first successful upload
-        // (creates a draft entry for the new-restaurant flow so photos persist
-        // even if the WebView refreshes before the user taps Save).
-        const effectiveEntryId = await resolveEntryId();
+        let photoId: string | undefined;
 
         // If we have an entryId, save photo immediately to DB
         if (effectiveEntryId) {
-          // Detect if file is a video
-          const isVideo = fileData.file.type.startsWith('video/');
-          
-          const photoType = isVideo ? 'video' :
-                           fileData.category === 'menu' ? 'menu' :
-                           fileData.category === 'food' ? 'food' :
-                           fileData.category === 'wine' ? 'wine' :
-                           fileData.category === 'friends' ? 'friends' :
-                           'restaurant_photo';
-
-          const { error: dbError } = await supabase
+          const { data: inserted, error: dbError } = await supabase
             .from("restaurant_photos")
             .insert({
               entry_id: effectiveEntryId,
               photo_url: publicUrl,
+              thumb_url: thumbUrl,
               type: photoType,
-            });
+            })
+            .select("id")
+            .single();
 
           if (dbError) {
             console.error('Error saving photo to database:', dbError);
@@ -1011,6 +1103,8 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
             continue;
           }
 
+          photoId = inserted?.id;
+
           // Notify parent that photo was saved
           onPhotoSaved?.({ url: publicUrl, type: photoType });
 
@@ -1021,10 +1115,23 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
           });
         }
 
+        // Original: Drive do dono (em segundo plano) ou botão "Salvar no Fotos"
+        if (!isVideo) {
+          const original = fileData.file;
+          const hasDrive = photoId ? await drivePromise : false;
+          if (hasDrive && photoId) {
+            queueOriginalForDrive({ userId: user.id, photoId, file: original });
+          } else if (fromCamera) {
+            // Foto tirada pela câmera do app não existe no rolo do iPhone:
+            // oferecemos guardar o original. (Da galeria ela já está no Fotos.)
+            originalsForPhotos.push(original);
+          }
+        }
+
         // Update file with URL in local state and notify parent immediately
         setFiles(prev => {
           const updated = prev.map(f => 
-            f.preview === fileData.preview ? { ...f, url: publicUrl } : f
+            f.preview === fileData.preview ? { ...f, url: publicUrl, thumbUrl, photoId } : f
           );
           // Call updateParent in next tick with updated state
           setTimeout(() => {
@@ -1072,6 +1179,9 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
         variant: "destructive",
       });
     } finally {
+      if (originalsForPhotos.length > 0) {
+        setPendingOriginals(prev => [...prev, ...originalsForPhotos]);
+      }
       setUploading(false);
     }
   };
@@ -1105,6 +1215,14 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
           );
         })}
       </div>
+
+      {/* Guardar originais no app Fotos (o app mantém só a versão leve) */}
+      {pendingOriginals.length > 0 && (
+        <SaveOriginalsBar
+          files={pendingOriginals}
+          onDismiss={() => setPendingOriginals([])}
+        />
+      )}
 
       {/* Add More Photos Dialog */}
       <AlertDialog open={showAddMoreDialog} onOpenChange={setShowAddMoreDialog}>
@@ -1296,7 +1414,7 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
                           size="sm"
                           variant="secondary"
                           onClick={() => analyzeWineLabel(file)}
-                          disabled={processingWine === file.preview}
+                          disabled={processingWine === file.preview || !file.url}
                           className="w-full"
                         >
                           <Sparkles className="h-4 w-4 mr-2" />

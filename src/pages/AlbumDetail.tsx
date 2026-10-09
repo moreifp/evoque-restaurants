@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
+import { PhotoThumb } from "@/components/photos/PhotoThumb";
 import { ReportDialog } from "@/components/ReportDialog";
 import {
   AlertDialog,
@@ -89,6 +90,7 @@ export default function AlbumDetail() {
             notes,
             restaurant_photos (
               photo_url,
+              thumb_url,
               type
             )
           )
@@ -410,9 +412,10 @@ export default function AlbumDetail() {
         {entries.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {entries.map((entry) => {
-              const coverPhoto = entry.restaurant_photos?.find(
+              const coverRow = entry.restaurant_photos?.find(
                 (p: any) => p.type === "restaurant_photo"
-              )?.photo_url;
+              );
+
 
               return (
                 <Card
@@ -423,10 +426,11 @@ export default function AlbumDetail() {
                     className="cursor-pointer"
                     onClick={() => navigate(`/dining/${entry.id}`)}
                   >
-                    {coverPhoto ? (
+                    {coverRow ? (
                       <div className="aspect-video bg-muted">
-                        <img
-                          src={coverPhoto}
+                        <PhotoThumb
+                          photo={coverRow}
+                          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                           alt={entry.restaurant_name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />

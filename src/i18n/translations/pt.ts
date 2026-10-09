@@ -766,4 +766,16 @@ export const pt = {
     missingDesc: "{n} foto(s) pertencem a um restaurante que foi apagado definitivamente.",
     purged: "Removidas da lixeira",
   },
+  savePhotos: {
+    saveOne: "Salvar no Fotos",
+    saveOriginals: "Salvar originais no Fotos",
+    count: "{n} foto(s)",
+    downloadOne: "Baixar {n}",
+    dismiss: "Fechar",
+    preparing: "Preparando...",
+    saved: "Pronto",
+    error: "Não foi possível salvar a foto",
+    driveSaving: "Originais indo para o seu Google Drive",
+    uploadingWait: "Aguarde o envio terminar",
+  },
 };

@@ -9,6 +9,9 @@ interface UploadOptions {
   category: string;
   maxRetries?: number;
   onProgress?: (progress: number) => void;
+  /** Cache-Control do objeto. Padrão '3600'; fotos com nome único usam '31536000'. */
+  cacheControl?: string;
+  contentType?: string;
 }
 
 interface UploadResult {
@@ -134,6 +137,8 @@ export function useUploadWithRetry() {
     category,
     maxRetries = 3,
     onProgress,
+    cacheControl = '3600',
+    contentType,
   }: UploadOptions): Promise<UploadResult> => {
     setIsUploading(true);
     
@@ -169,8 +174,9 @@ export function useUploadWithRetry() {
         const { data, error: uploadError } = await supabase.storage
           .from(bucket)
           .upload(filePath, file, {
-            cacheControl: '3600',
+            cacheControl,
             upsert: false,
+            ...(contentType ? { contentType } : {}),
           });
         
         onProgress?.(80);

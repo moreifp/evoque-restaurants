@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { cleanupInboxForEntry } from "@/lib/photoStorage";
 import type { RestaurantEntry } from "@/types";
 
 const QUERY_KEY = ["restaurant-entries"];
@@ -33,6 +34,7 @@ async function fetchEntryById(id: string): Promise<RestaurantEntry | null> {
 }
 
 async function deleteEntry(id: string): Promise<void> {
+  await cleanupInboxForEntry(id);
   const { error } = await supabase
     .from("restaurant_entries")
     .delete()

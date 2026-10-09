@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, X, Video, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadPhotoVariants } from "@/lib/photoStorage";
 import { extractGPSFromImage, reverseGeocode } from "@/utils/exifExtractor";
 import { useI18n } from "@/i18n/i18n";
 
@@ -105,19 +106,21 @@ export const MediaUpload = ({ onMediaUpload, onLocationExtracted, extractLocatio
       if (!user) throw new Error("User not authenticated");
 
       for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('restaurant-photos')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('restaurant-photos')
-          .getPublicUrl(filePath);
+        let publicUrl: string;
+        if (file.type.startsWith('image/')) {
+          // Foto: versão leve + miniatura (o original não vai ao bucket público)
+          const res = await uploadPhotoVariants({ userId: user.id, entryId: null, file, kind: 'restaurant_photo' });
+          if (!res.value) throw new Error(res.error || 'Upload failed');
+          publicUrl = res.value.photoUrl;
+        } else {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from('restaurant-photos')
+            .upload(filePath, file);
+          if (uploadError) throw uploadError;
+          publicUrl = supabase.storage.from('restaurant-photos').getPublicUrl(filePath).data.publicUrl;
+        }
 
         uploadedUrls.push(publicUrl);
       }

@@ -238,6 +238,7 @@ export type Database = {
           restaurant_name: string | null
           restored: boolean
           restored_at: string | null
+          thumb_url: string | null
           type: string | null
           user_id: string
         }
@@ -254,6 +255,7 @@ export type Database = {
           restaurant_name?: string | null
           restored?: boolean
           restored_at?: string | null
+          thumb_url?: string | null
           type?: string | null
           user_id: string
         }
@@ -270,6 +272,7 @@ export type Database = {
           restaurant_name?: string | null
           restored?: boolean
           restored_at?: string | null
+          thumb_url?: string | null
           type?: string | null
           user_id?: string
         }
@@ -645,31 +648,43 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string | null
+          drive_file_id: string | null
           entry_id: string
           id: string
           menu_translation: string | null
+          original_path: string | null
+          original_saved_at: string | null
           photo_url: string
           rating: number | null
+          thumb_url: string | null
           type: string | null
         }
         Insert: {
           caption?: string | null
           created_at?: string | null
+          drive_file_id?: string | null
           entry_id: string
           id?: string
           menu_translation?: string | null
+          original_path?: string | null
+          original_saved_at?: string | null
           photo_url: string
           rating?: number | null
+          thumb_url?: string | null
           type?: string | null
         }
         Update: {
           caption?: string | null
           created_at?: string | null
+          drive_file_id?: string | null
           entry_id?: string
           id?: string
           menu_translation?: string | null
+          original_path?: string | null
+          original_saved_at?: string | null
           photo_url?: string
           rating?: number | null
+          thumb_url?: string | null
           type?: string | null
         }
         Relationships: [
