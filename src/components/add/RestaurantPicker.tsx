@@ -57,7 +57,9 @@ export function RestaurantPicker({
   // editing = a pessoa está escrevendo; fora disso o campo mostra o restaurante escolhido.
   const [editing, setEditing] = useState(false);
   // Lista aberta? Com restaurante escolhido ela fecha e fica só o escolhido + "Trocar".
-  const [listOpen, setListOpen] = useState(() => !selected?.name);
+  // Na tela de adicionar a lista começa aberta (o mais perto só fica destacado);
+  // fecha quando a pessoa toca numa linha ou termina de escrever. Na edição começa fechada.
+  const [listOpen, setListOpen] = useState(() => (collapsible ? !selected?.name : true));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NearbyPlace[]>([]);
   const [searching, setSearching] = useState(false);
@@ -91,8 +93,7 @@ export function RestaurantPicker({
         setPhase("list");
         // Não troca o que a pessoa já começou a escrever
         if (list.length && autoRef.current && !typingRef.current) {
-          onSelectRef.current(toPicked(list[0]));
-          setListOpen(false);
+          onSelectRef.current(toPicked(list[0])); // escolha automática não fecha a lista
         }
       } catch (e) {
         console.warn("[RestaurantPicker] nearby failed", e);
@@ -293,7 +294,7 @@ export function RestaurantPicker({
         ) : null}
       </div>
 
-      {collapsible && hasSelection && !editing && !listOpen ? (
+      {hasSelection && !editing && !listOpen ? (
         <div className="flex items-center gap-2 px-2">
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {[
