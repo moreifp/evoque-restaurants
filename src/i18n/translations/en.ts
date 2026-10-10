@@ -266,6 +266,8 @@ export const en = {
     copy: "Copy",
   },
   dining: {
+    city: "City",
+    allCities: "All cities",
     searchRestaurantOrCity: "Search restaurant or city",
     map: "Map",
     noMatches: "No restaurants found.",
@@ -786,6 +788,8 @@ export const en = {
     uploadingWait: "Wait for the upload to finish",
   },
   quickAdd: {
+    galleryPick: "Choose from gallery",
+    galleryWhich: "{n} gallery photo(s): which kind?",
     hereRadius: "You are here · 400 m radius",
     saveLater: "Save later on Wi-Fi",
     queuedOffline: "No internet: kept on this phone. Send it when you're on Wi-Fi.",

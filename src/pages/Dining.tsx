@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Map as MapIcon, Search, X } from "lucide-react";
+import { Building2, Check, Map as MapIcon, Search, X } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
 import { useTripChips } from "@/hooks/useTripChips";
-import { RestaurantGrid, sortEntries } from "@/components/RestaurantGrid";
+import { RestaurantGrid, cityFromAddress, sortEntries } from "@/components/RestaurantGrid";
+import { BottomSheet } from "@/components/BottomSheet";
 import { GridSkeleton } from "@/components/ui/skeletons";
 
 const MAP_MAX_IDS = 200;
@@ -27,12 +28,41 @@ export default function Dining() {
   const chips = useTripChips(entries);
   const [query, setQuery] = useState("");
   const [trip, setTrip] = useState<string | null>(null);
+  const [city, setCity] = useState<string | null>(null);
+  const [citySheet, setCitySheet] = useState(false);
 
   const activeChip = chips.find((c) => c.key === trip) ?? null;
+
+  // Cidades (sem acento/maiúscula), mais restaurantes primeiro
+  const cityKeyOf = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of entries) {
+      const c = cityFromAddress(e.location_address);
+      if (c) m.set(e.id, norm(c).trim());
+    }
+    return m;
+  }, [entries]);
+  const cities = useMemo(() => {
+    const by = new Map<string, { key: string; labels: Map<string, number>; count: number }>();
+    for (const e of entries) {
+      const label = cityFromAddress(e.location_address);
+      const key = cityKeyOf.get(e.id);
+      if (!label || !key) continue;
+      const g = by.get(key) ?? { key, labels: new Map<string, number>(), count: 0 };
+      g.count++;
+      g.labels.set(label, (g.labels.get(label) ?? 0) + 1);
+      by.set(key, g);
+    }
+    return [...by.values()]
+      .map((g) => ({ key: g.key, count: g.count, label: [...g.labels.entries()].sort((a, b) => b[1] - a[1])[0][0] }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [entries, cityKeyOf]);
+  const activeCity = cities.find((c) => c.key === city) ?? null;
 
   const filtered = useMemo(() => {
     let list = entries;
     if (activeChip) list = list.filter((e) => activeChip.entryIds.has(e.id));
+    if (activeCity) list = list.filter((e) => cityKeyOf.get(e.id) === activeCity.key);
     const q = norm(query.trim());
     if (q) {
       list = list.filter(
@@ -40,10 +70,10 @@ export default function Dining() {
       );
     }
     return list;
-  }, [entries, activeChip, query]);
+  }, [entries, activeChip, activeCity, cityKeyOf, query]);
 
   const openMap = () => {
-    const isAll = !activeChip && !query.trim();
+    const isAll = !activeChip && !activeCity && !query.trim();
     if (isAll || filtered.length > MAP_MAX_IDS) {
       navigate("/albums/map?all=1");
       return;
@@ -101,6 +131,20 @@ export default function Dining() {
           </div>
           <button
             type="button"
+            onClick={() => setCitySheet(true)}
+            aria-label={t("dining.city")}
+            className={cn(
+              "flex h-14 min-w-14 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 px-3 md:px-5",
+              activeCity ? "border-navy bg-navy text-white" : "border-[#0d1a2d]/15 bg-background text-[#0d1a2d]",
+            )}
+          >
+            <Building2 className="h-6 w-6 shrink-0" />
+            <span className={cn("max-w-[7rem] truncate text-base font-semibold", !activeCity && "hidden md:inline")}>
+              {activeCity ? activeCity.label : t("dining.city")}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={openMap}
             aria-label={t("dining.map")}
             className="flex h-14 w-14 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/15 bg-background text-[#0d1a2d] md:w-auto md:px-5"
@@ -109,6 +153,19 @@ export default function Dining() {
             <span className="hidden text-base font-semibold md:inline">{t("dining.map")}</span>
           </button>
         </div>
+
+        {/* Cidade escolhida (toque no X para tirar) */}
+        {activeCity && (
+          <button
+            type="button"
+            onClick={() => setCity(null)}
+            className="flex h-10 items-center gap-2 rounded-full bg-navy/10 px-4 text-base font-semibold text-[#0d1a2d]"
+          >
+            <Building2 className="h-5 w-5" />
+            {activeCity.label}
+            <X className="h-5 w-5" />
+          </button>
+        )}
 
         {/* Viagens */}
         {chips.length > 0 && (
@@ -129,6 +186,32 @@ export default function Dining() {
           <RestaurantGrid entries={filtered} />
         )}
       </main>
+
+      <BottomSheet open={citySheet} title={t("dining.city")} onClose={() => setCitySheet(false)}>
+        <div className="space-y-1">
+          {[{ key: null as string | null, label: t("dining.allCities"), count: entries.length }, ...cities].map((c) => {
+            const sel = (city ?? null) === c.key;
+            return (
+              <button
+                key={c.key ?? "__all__"}
+                type="button"
+                onClick={() => {
+                  setCity(c.key);
+                  setCitySheet(false);
+                }}
+                className={cn(
+                  "flex min-h-14 w-full items-center gap-3 rounded-2xl px-4 text-left text-lg",
+                  sel ? "bg-navy/10 font-bold text-[#0d1a2d]" : "font-semibold text-[#0d1a2d]",
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">{c.label}</span>
+                <span className="text-base text-muted-foreground">{c.count}</span>
+                {sel && <Check className="h-6 w-6 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </BottomSheet>
     </div>
   );
 }

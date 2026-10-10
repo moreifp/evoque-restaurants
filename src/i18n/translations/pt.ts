@@ -266,6 +266,8 @@ export const pt = {
     copy: "Copiar",
   },
   dining: {
+    city: "Cidade",
+    allCities: "Todas as cidades",
     searchRestaurantOrCity: "Buscar restaurante ou cidade",
     map: "Mapa",
     noMatches: "Nenhum restaurante encontrado.",
@@ -786,6 +788,8 @@ export const pt = {
     uploadingWait: "Aguarde o envio terminar",
   },
   quickAdd: {
+    galleryPick: "Escolher da galeria",
+    galleryWhich: "{n} foto(s) da galeria: qual é?",
     hereRadius: "Você está aqui · raio de 400 m",
     saveLater: "Salvar depois no Wi-Fi",
     queuedOffline: "Sem internet: guardado no celular. Envie quando estiver no Wi-Fi.",

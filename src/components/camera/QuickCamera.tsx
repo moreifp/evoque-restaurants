@@ -267,6 +267,14 @@ export function QuickCamera({ open, category, onCategoryChange, shots, onCapture
               <Camera className="h-12 w-12" />
             </button>
             <span className="text-base font-semibold">{t("quickAdd.takePhoto")}</span>
+            <button
+              type="button"
+              onClick={() => galleryRef.current?.click()}
+              className="flex h-14 items-center gap-3 rounded-2xl border-2 border-white/70 bg-white/20 px-6 text-lg font-bold"
+            >
+              <Images className="h-7 w-7" />
+              {t("quickAdd.gallery")}
+            </button>
           </div>
         )}
         {flash && <div className="pointer-events-none absolute inset-0 bg-white/80" />}
@@ -301,13 +309,13 @@ export function QuickCamera({ open, category, onCategoryChange, shots, onCapture
       </div>
 
       {/* Controles */}
-      <div className="flex items-center justify-between px-6 pb-4 pt-1">
+      <div className="flex items-center justify-between px-4 pb-4 pt-1">
         <button
           type="button"
           onClick={() => galleryRef.current?.click()}
-          className="flex h-14 w-20 flex-col items-center justify-center gap-0.5 rounded-2xl bg-white/15 text-xs font-semibold"
+          className="flex h-16 w-24 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-white/70 bg-white/20 text-sm font-bold"
         >
-          <Images className="h-6 w-6" />
+          <Images className="h-7 w-7" />
           {t("quickAdd.gallery")}
         </button>
 
@@ -324,9 +332,9 @@ export function QuickCamera({ open, category, onCategoryChange, shots, onCapture
         <button
           type="button"
           onClick={close}
-          className="flex h-14 w-20 flex-col items-center justify-center gap-0.5 rounded-2xl bg-white text-xs font-bold text-[#0d1a2d]"
+          className="flex h-16 w-24 flex-col items-center justify-center gap-1 rounded-2xl bg-white text-sm font-bold text-[#0d1a2d]"
         >
-          <Check className="h-6 w-6" />
+          <Check className="h-7 w-7" />
           {t("quickAdd.cameraDone")}
         </button>
       </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshRestaurantLists } from "@/lib/entryCache";
-import { ArrowLeft, Check, ChevronRight, Loader2, Save, Star, Trash2, UtensilsCrossed, Wifi, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Images, Loader2, Save, Star, Trash2, UtensilsCrossed, Wifi, X } from "lucide-react";
 import { z } from "zod";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ import {
 import { placeDetails } from "@/lib/nearby";
 import { PendingDraftsCard } from "@/components/add/PendingDraftsCard";
 import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
+import { BottomSheet } from "@/components/BottomSheet";
 
 /** Rascunho antigo (só texto) do formulário anterior. */
 const LEGACY_AUTOSAVE_KEY = "restaurant-draft-autosave";
@@ -578,6 +579,27 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
 
   const openCamera = (category: PhotoCategory) => setCamera({ open: true, category });
 
+  // "Escolher da galeria" na tela: abre as fotos do iPhone e depois pergunta a categoria.
+  // Mesmo caminho das fotos da câmera (handleCapture): original no IndexedDB,
+  // display + miniatura ao salvar, original ao Drive do dono com nome e metadados.
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[] | null>(null);
+  const [importing, setImporting] = useState(0);
+  const addGalleryFiles = async (category: PhotoCategory) => {
+    const files = galleryFiles ?? [];
+    setGalleryFiles(null);
+    setImporting(files.length);
+    try {
+      for (const f of files) {
+        await handleCapture({ blob: f, thumb: null, category, source: "gallery", name: f.name });
+        setImporting((n) => Math.max(0, n - 1));
+      }
+    } finally {
+      setImporting(0);
+      setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    }
+  };
+
   // ---------------------------------------------------------------- salvar
   const cleanupAndFinish = async () => {
     const d = draftRef.current;
@@ -835,6 +857,29 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
               {t("quickAdd.photos")}
             </p>
             {tiles}
+            <button
+              type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={importing > 0}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-semibold text-[#0d1a2d]/80 underline-offset-4 hover:underline"
+            >
+              {importing > 0 ? <Loader2 className="h-5 w-5 animate-spin" /> : <Images className="h-5 w-5" />}
+              {t("quickAdd.galleryPick")}
+            </button>
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const list = Array.from(e.target.files ?? []).filter(
+                  (f) => f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name),
+                );
+                e.target.value = "";
+                if (list.length) setGalleryFiles(list);
+              }}
+            />
             {CATEGORIES.map((c) => {
               const list = photos.filter((p) => p.category === c.key);
               if (!list.length) return null;
@@ -1063,6 +1108,29 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
           )}
         </div>
       )}
+
+      <BottomSheet
+        open={!!galleryFiles}
+        title={t("quickAdd.galleryWhich").replace("{n}", String(galleryFiles?.length ?? 0))}
+        onClose={() => setGalleryFiles(null)}
+      >
+        <div className="grid grid-cols-3 gap-3">
+          {CATEGORIES.map((c) => {
+            const Icon = c.icon;
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => void addGalleryFiles(c.key)}
+                className="flex h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background active:scale-95"
+              >
+                <Icon className="h-9 w-9 text-[#0d1a2d]" strokeWidth={1.8} />
+                <span className="text-base font-semibold text-[#0d1a2d]">{t(c.labelKey)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </BottomSheet>
 
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent className="max-w-sm">
