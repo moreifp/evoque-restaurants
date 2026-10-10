@@ -48,6 +48,8 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
   const [expanded, setExpanded] = useState(false);
   // editing = a pessoa está escrevendo; fora disso o campo mostra o restaurante escolhido.
   const [editing, setEditing] = useState(false);
+  // Lista aberta? Com restaurante escolhido ela fecha e fica só o escolhido + "Trocar".
+  const [listOpen, setListOpen] = useState(() => !selected?.name);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NearbyPlace[]>([]);
   const [searching, setSearching] = useState(false);
@@ -80,7 +82,10 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
         setPlaces(list);
         setPhase("list");
         // Não troca o que a pessoa já começou a escrever
-        if (list.length && autoRef.current && !typingRef.current) onSelectRef.current(toPicked(list[0]));
+        if (list.length && autoRef.current && !typingRef.current) {
+          onSelectRef.current(toPicked(list[0]));
+          setListOpen(false);
+        }
       } catch (e) {
         console.warn("[RestaurantPicker] nearby failed", e);
         if (!cancelled) setPhase("error");
@@ -130,6 +135,7 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
   const pick = (p: NearbyPlace) => {
     typingRef.current = false;
     setEditing(false);
+    setListOpen(false);
     setQuery(p.name);
     setResults([]);
     inputRef.current?.blur();
@@ -207,6 +213,7 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
           onChange={(e) => typeName(e.target.value)}
           onFocus={(e) => {
             // Sem estar escrevendo: seleciona tudo, para a digitação substituir o nome
+            setListOpen(true);
             if (!editing) {
               const el = e.currentTarget;
               setTimeout(() => el.select(), 0);
@@ -215,7 +222,13 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
           onBlur={() => {
             // Terminou de escrever: o campo volta a mostrar o escolhido. Com atraso,
             // para o toque numa linha da lista chegar antes da lista mudar.
-            if (editing) setTimeout(() => setEditing(false), 250);
+            if (editing) {
+              const name = query.trim();
+              setTimeout(() => {
+                setEditing(false);
+                if (name) setListOpen(false); // nome escrito aceito: fecha a lista
+              }, 250);
+            }
           }}
           placeholder={t("quickAdd.typeName")}
           aria-label={t("quickAdd.typeName")}
@@ -250,7 +263,25 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
         ) : null}
       </div>
 
-      {typed ? (
+      {hasSelection && !editing && !listOpen ? (
+        <div className="flex items-center gap-2 px-2">
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {[
+              selected?.address,
+              formatDistance(places.find((p) => p.id === selected?.placeId)?.distance_m ?? null),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setListOpen(true)}
+            className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-base font-semibold text-[#0d1a2d]"
+          >
+            <Pencil className="h-4 w-4" /> {t("quickAdd.change")}
+          </button>
+        </div>
+      ) : typed ? (
         <div className="space-y-1">
           {nearMatches.map((p) => renderRow(p))}
           {remote.map((p) => renderRow(p))}

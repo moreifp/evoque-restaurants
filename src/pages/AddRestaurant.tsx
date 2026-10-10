@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Loader2, MapPin, Pencil, Save, Star, Trash2, Wifi, X } from "lucide-react";
+import { ArrowLeft, Check, Loader2, MapPin, Save, Star, Trash2, Wifi, X } from "lucide-react";
 import { z } from "zod";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -110,7 +110,7 @@ function isMeaningful(d: AddDraft): boolean {
     !!d.saved ||
     !!d.queued ||
     !!d.originScheduledVisitId ||
-    (!!d.form.restaurant_name.trim() && (!d.form.google_place_id || d.stage === "form"))
+    (!!d.form.restaurant_name.trim() && !d.form.google_place_id)
   );
 }
 
@@ -235,6 +235,7 @@ export default function AddRestaurant() {
   /** Originais em memória quando o IndexedDB falha (modo privado etc.). */
   const memBlobs = useRef(new Map<string, Blob>());
   const savingRef = useRef(false);
+  const photosRef = useRef<HTMLElement>(null);
 
   // ---------------------------------------------------------------- estado
   /** Grava o rascunho no aparelho (cada mudança; fotos já foram gravadas no clique). */
@@ -616,7 +617,7 @@ export default function AddRestaurant() {
   /** Fila "para enviar": guarda no aparelho e envia depois (Wi-Fi). */
   const moveToQueue = async (reason: "later" | "offline") => {
     if (!draftRef.current) return;
-    update((x) => ({ ...x, queued: true, stage: "form" }));
+    update((x) => ({ ...x, queued: true }));
     await persistNow();
     notifyQueueChanged();
     toast({ title: reason === "offline" ? t("quickAdd.queuedOffline") : t("quickAdd.queuedLater") });
@@ -642,7 +643,7 @@ export default function AddRestaurant() {
     }
     if (!d.form.restaurant_name.trim()) {
       toast({ title: t("quickAdd.chooseRestaurant") });
-      update((x) => ({ ...x, stage: "pick" }));
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     const check = entrySchema.safeParse(d.form);
@@ -719,7 +720,6 @@ export default function AddRestaurant() {
 
   const form = draft.form;
   const photos = draft.photos;
-  const stage = draft.stage === "originals" ? "form" : draft.stage;
   const picked: PickedRestaurant | null = form.restaurant_name
     ? {
         name: form.restaurant_name,
@@ -732,8 +732,8 @@ export default function AddRestaurant() {
   const countBy = (c: PhotoCategory) => photos.filter((p) => p.category === c).length;
   const thumbSrc = (p: DraftPhoto) => thumbs[p.id] ?? p.thumbUrl ?? p.photoUrl ?? null;
 
-  const tiles = (big: boolean) => (
-    <div className={cn("grid gap-3", big ? "grid-cols-3" : "grid-cols-6 gap-2")}>
+  const tiles = (
+    <div className="grid grid-cols-3 gap-3">
       {CATEGORIES.map((c) => {
         const Icon = c.icon;
         const n = countBy(c.key);
@@ -742,16 +742,11 @@ export default function AddRestaurant() {
             key={c.key}
             type="button"
             onClick={() => openCamera(c.key)}
-            className={cn(
-              "relative flex flex-col items-center justify-center rounded-2xl border-2 border-[#0d1a2d]/10 bg-background shadow-sm transition-transform active:scale-95",
-              big ? "h-28 gap-2" : "h-16 gap-0.5",
-            )}
+            className="relative flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background shadow-sm transition-transform active:scale-95"
             aria-label={t(c.labelKey)}
           >
-            <Icon className={cn("text-[#0d1a2d]", big ? "h-10 w-10" : "h-6 w-6")} strokeWidth={1.8} />
-            <span className={cn("font-semibold text-[#0d1a2d]", big ? "text-base" : "text-[10px] leading-none")}>
-              {t(c.labelKey)}
-            </span>
+            <Icon className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
+            <span className="text-base font-semibold text-[#0d1a2d]">{t(c.labelKey)}</span>
             {n > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-navy px-1.5 text-xs font-bold text-white">
                 {n}
@@ -776,12 +771,12 @@ export default function AddRestaurant() {
               size="icon"
               className="h-12 w-12"
               aria-label={t("common.back")}
-              onClick={() => (stage === "form" ? update((x) => ({ ...x, stage: "pick" })) : navigate(-1))}
+              onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-7 w-7" />
             </Button>
             <h1 className="flex-1 text-2xl font-bold text-[#0d1a2d]">
-              {stage === "form" ? t("quickAdd.form") : t("quickAdd.title")}
+              {t("quickAdd.title")}
             </h1>
             {isMeaningful(draft) && !draft.saved && (
               <Button
@@ -796,215 +791,175 @@ export default function AddRestaurant() {
             )}
           </div>
 
-          {stage === "pick" ? (
-            <>
-              <section className="space-y-2">
-                <p className="flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  <MapPin className="h-4 w-4" /> {t("quickAdd.restaurant")}
-                </p>
-                <div className="rounded-3xl bg-background/70 p-2 shadow-sm">
-                  <RestaurantPicker
-                    key={draft.id}
-                    selected={picked}
-                    autoSelectNearest={!form.restaurant_name}
-                    onSelect={(r) =>
-                      setForm({
-                        restaurant_name: r.name,
-                        location_address: r.address,
-                        location_lat: r.lat,
-                        location_lng: r.lng,
-                        google_place_id: r.placeId,
-                      })
-                    }
-                  />
-                </div>
-              </section>
+          {/* 1. Restaurante */}
+          <section className="space-y-2">
+            <p className="flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <MapPin className="h-4 w-4" /> {t("quickAdd.restaurant")}
+            </p>
+            <div className="rounded-3xl bg-background/70 p-2 shadow-sm">
+              <RestaurantPicker
+                key={draft.id}
+                selected={picked}
+                autoSelectNearest={!form.restaurant_name}
+                onSelect={(r) =>
+                  setForm({
+                    restaurant_name: r.name,
+                    location_address: r.address,
+                    location_lat: r.lat,
+                    location_lng: r.lng,
+                    google_place_id: r.placeId,
+                  })
+                }
+              />
+            </div>
+          </section>
 
-              <section className="space-y-2">
-                <p className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("quickAdd.photos")}
-                </p>
-                {tiles(true)}
-              </section>
-
-              <Button
-                type="button"
-                className="h-16 w-full gap-3 rounded-2xl bg-navy text-xl font-semibold text-white hover:bg-navy/90"
-                onClick={() => update((x) => ({ ...x, stage: "form" }))}
-              >
-                {t("quickAdd.continue")}
-                <ArrowRight className="h-6 w-6" />
-              </Button>
-            </>
-          ) : (
-            <>
-              {/* Restaurante */}
-              <button
-                type="button"
-                onClick={() => update((x) => ({ ...x, stage: "pick" }))}
-                className="flex w-full items-center gap-3 rounded-3xl border-2 border-[#0d1a2d]/10 bg-background p-4 text-left shadow-sm"
-              >
-                <MapPin className="h-8 w-8 shrink-0 text-[#0d1a2d]" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xl font-bold text-[#0d1a2d]">
-                    {form.restaurant_name || t("quickAdd.chooseRestaurant")}
-                  </span>
-                  {form.location_address && (
-                    <span className="block truncate text-sm text-muted-foreground">{form.location_address}</span>
-                  )}
-                </span>
-                <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground">
-                  <Pencil className="h-4 w-4" /> {t("quickAdd.change")}
-                </span>
-              </button>
-
-              {/* Data */}
-              <div className="space-y-2">
-                <Label htmlFor="visit_date" className="text-base">
-                  {t("addRestaurant.visitDate")}
-                </Label>
-                <Input
-                  id="visit_date"
-                  type="date"
-                  value={form.visit_date}
-                  onChange={(e) => setForm({ visit_date: e.target.value })}
-                  className="h-14 rounded-2xl text-lg"
-                />
-              </div>
-
-              {/* Estrelas */}
-              <div className="space-y-2">
-                <Label className="text-base">{t("addRestaurant.rating")}</Label>
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setForm({ rating: form.rating === star ? 0 : star })}
-                      className="p-1 transition-transform active:scale-90"
-                      aria-label={`${star}`}
-                    >
-                      <Star
-                        className={cn(
-                          "h-11 w-11 transition-colors",
-                          star <= form.rating ? "fill-accent text-accent" : "text-muted-foreground/50",
-                        )}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Fotos */}
-              <section className="space-y-4">
-                <Label className="text-base">{t("quickAdd.addPhotos")}</Label>
-                {tiles(false)}
-                {CATEGORIES.map((c) => {
-                  const list = photos.filter((p) => p.category === c.key);
-                  if (!list.length) return null;
-                  const Icon = c.icon;
-                  return (
-                    <div key={c.key} className="space-y-2">
-                      <p className="flex items-center gap-2 text-base font-semibold text-[#0d1a2d]">
-                        <Icon className="h-5 w-5" /> {t(c.labelKey)}
-                        <span className="text-muted-foreground">{list.length}</span>
-                      </p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {list.map((p) => {
-                          const src = thumbSrc(p);
-                          return (
-                            <div key={p.id} className="relative aspect-square">
-                              {src ? (
-                                <img src={src} alt="" className="h-full w-full rounded-xl object-cover" loading="lazy" />
-                              ) : (
-                                <div className="h-full w-full rounded-xl bg-muted" />
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => void discardPhoto(p.id)}
-                                aria-label={t("quickAdd.remove")}
-                                className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow"
-                              >
-                                <X className="h-5 w-5" />
-                              </button>
-                            </div>
-                          );
-                        })}
+          {/* 2. Fotos: ícones grandes, miniaturas e leituras da IA */}
+          <section ref={photosRef} className="scroll-mt-20 space-y-4">
+            <p className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("quickAdd.photos")}
+            </p>
+            {tiles}
+            {CATEGORIES.map((c) => {
+              const list = photos.filter((p) => p.category === c.key);
+              if (!list.length) return null;
+              const Icon = c.icon;
+              return (
+                <div key={c.key} className="space-y-2">
+                  <p className="flex items-center gap-2 text-base font-semibold text-[#0d1a2d]">
+                    <Icon className="h-5 w-5" /> {t(c.labelKey)}
+                    <span className="text-muted-foreground">{list.length}</span>
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {list.map((p) => {
+                      const src = thumbSrc(p);
+                      return (
+                        <div key={p.id} className="relative aspect-square">
+                          {src ? (
+                            <img src={src} alt="" className="h-full w-full rounded-xl object-cover" loading="lazy" />
+                          ) : (
+                            <div className="h-full w-full rounded-xl bg-muted" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void discardPhoto(p.id)}
+                            aria-label={t("quickAdd.remove")}
+                            className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {AI_CATEGORIES.includes(c.key) &&
+                    list.map((p) => (
+                      <div key={`ai-${p.id}`} className="space-y-2">
+                        <AiStatusLine
+                          photo={p}
+                          readingKey={
+                            c.key === "receipt"
+                              ? "quickAdd.receiptReading"
+                              : c.key === "menu"
+                                ? "quickAdd.menuReading"
+                                : "quickAdd.wineReading"
+                          }
+                          onRetry={() => {
+                            updatePhoto(p.id, { ai: { status: "queued" } });
+                            void runAi(p.id);
+                          }}
+                        />
+                        {c.key === "receipt" && p.receipt && <ReceiptCard data={p.receipt} />}
+                        {c.key === "menu" && p.menuTranslation && <MenuCard translation={p.menuTranslation} />}
+                        {c.key === "wine" && p.wineInfo && <WineCard info={p.wineInfo} />}
                       </div>
-                      {AI_CATEGORIES.includes(c.key) &&
-                        list.map((p) => (
-                          <div key={`ai-${p.id}`} className="space-y-2">
-                            <AiStatusLine
-                              photo={p}
-                              readingKey={
-                                c.key === "receipt"
-                                  ? "quickAdd.receiptReading"
-                                  : c.key === "menu"
-                                    ? "quickAdd.menuReading"
-                                    : "quickAdd.wineReading"
-                              }
-                              onRetry={() => {
-                                updatePhoto(p.id, { ai: { status: "queued" } });
-                                void runAi(p.id);
-                              }}
-                            />
-                            {c.key === "receipt" && p.receipt && <ReceiptCard data={p.receipt} />}
-                            {c.key === "menu" && p.menuTranslation && <MenuCard translation={p.menuTranslation} />}
-                            {c.key === "wine" && p.wineInfo && <WineCard info={p.wineInfo} />}
-                          </div>
-                        ))}
-                    </div>
-                  );
-                })}
-              </section>
-
-              {/* Notas */}
-              <div className="space-y-2">
-                <Label htmlFor="notes" className="text-base">
-                  {t("addRestaurant.notes")}
-                </Label>
-                <div className="relative">
-                  <Textarea
-                    id="notes"
-                    placeholder={t("addRestaurant.notesPlaceholder")}
-                    rows={4}
-                    value={form.notes}
-                    onChange={(e) => setForm({ notes: e.target.value })}
-                    className="min-h-[120px] rounded-2xl pr-12 text-lg"
-                  />
-                  <VoiceNoteButton
-                    onTranscribed={(text) => {
-                      const cur = draftRef.current?.form.notes ?? "";
-                      setForm({ notes: cur ? `${cur}\n\n${text}` : text });
-                    }}
-                  />
+                    ))}
                 </div>
-              </div>
+              );
+            })}
+          </section>
 
-              {/* Salvar */}
+          {/* 3. Avaliação e data */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setForm({ rating: form.rating === star ? 0 : star })}
+                  className="p-1 transition-transform active:scale-90"
+                  aria-label={`${t("addRestaurant.rating")} ${star}`}
+                >
+                  <Star
+                    className={cn(
+                      "h-11 w-11 transition-colors",
+                      star <= form.rating ? "fill-accent text-accent" : "text-muted-foreground/50",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 px-1">
+              <Label htmlFor="visit_date" className="text-sm text-muted-foreground">
+                {t("addRestaurant.visitDate")}
+              </Label>
+              <Input
+                id="visit_date"
+                type="date"
+                value={form.visit_date}
+                onChange={(e) => setForm({ visit_date: e.target.value })}
+                className="h-11 w-44 rounded-xl text-base"
+              />
+            </div>
+          </section>
+
+          {/* 4. Notas */}
+          <section className="space-y-2">
+            <Label htmlFor="notes" className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("addRestaurant.notes")}
+            </Label>
+            <div className="relative">
+              <Textarea
+                id="notes"
+                placeholder={t("addRestaurant.notesPlaceholder")}
+                rows={4}
+                value={form.notes}
+                onChange={(e) => setForm({ notes: e.target.value })}
+                className="min-h-[120px] rounded-2xl pr-12 text-lg"
+              />
+              <VoiceNoteButton
+                onTranscribed={(text) => {
+                  const cur = draftRef.current?.form.notes ?? "";
+                  setForm({ notes: cur ? `${cur}\n\n${text}` : text });
+                }}
+              />
+            </div>
+          </section>
+
+          {/* 5. Salvar */}
+          <section className="space-y-3">
+            <Button
+              type="button"
+              disabled={!!saving}
+              onClick={() => void handleSave()}
+              className="h-16 w-full gap-3 rounded-2xl bg-navy text-xl font-semibold text-white hover:bg-navy/90"
+            >
+              {saving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
+              {t("quickAdd.save")}
+            </Button>
+            {!draft.saved && (
               <Button
                 type="button"
+                variant="outline"
                 disabled={!!saving}
-                onClick={() => void handleSave()}
-                className="h-16 w-full gap-3 rounded-2xl bg-navy text-xl font-semibold text-white hover:bg-navy/90"
+                onClick={() => void moveToQueue("later")}
+                className="h-14 w-full gap-3 rounded-2xl border-2 text-lg font-semibold text-[#0d1a2d]"
               >
-                {saving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
-                {t("quickAdd.save")}
+                <Wifi className="h-6 w-6" />
+                {t("quickAdd.saveLater")}
               </Button>
-              {!draft.saved && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!!saving}
-                  onClick={() => void moveToQueue("later")}
-                  className="h-14 w-full gap-3 rounded-2xl border-2 text-lg font-semibold text-[#0d1a2d]"
-                >
-                  <Wifi className="h-6 w-6" />
-                  {t("quickAdd.saveLater")}
-                </Button>
-              )}
-            </>
-          )}
+            )}
+          </section>
         </div>
       </main>
 
@@ -1017,7 +972,7 @@ export default function AddRestaurant() {
         onDiscard={(id) => void discardPhoto(id)}
         onClose={() => {
           setCamera((s) => ({ ...s, open: false }));
-          update((x) => ({ ...x, stage: "form" }));
+          setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
         }}
       />
 
