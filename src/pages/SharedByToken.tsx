@@ -13,6 +13,12 @@ const SharedByToken = () => {
         navigate("/token");
         return;
       }
+      // Só códigos de 10 letras/números são links de compartilhamento. Qualquer outro caminho
+      // (ex.: /dining, /add depois de limpar o Safari) é o app pedindo login → vai para a tela de entrar.
+      if (!/^[A-Za-z0-9]{10}$/.test(token.trim())) {
+        navigate("/", { replace: true });
+        return;
+      }
 
       try {
         console.log('Validating token:', token);
