@@ -1,45 +1,57 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
+/**
+ * Atualização do app: o service worker novo entra sozinho (skipWaiting + clientsClaim).
+ * Aqui só (1) procuramos versão nova sempre que o app volta para a tela e a cada 30 min, e
+ * (2) quando a versão nova assume, mostramos o aviso "Nova versão disponível" com o botão Atualizar
+ *     (fica na tela até tocar); depois de recarregar, aparece "App atualizado".
+ */
+const FLAG = "evoque_atualizou";
+
 export function PWAUpdatePrompt() {
-  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
-
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener("statechange", () => {
-              if (
-                newWorker.state === "installed" &&
-                navigator.serviceWorker.controller
-              ) {
-                setWaitingWorker(newWorker);
-                toast("Update available", {
-                  description: "A new version of Evoque is ready",
-                  action: {
-                    label: "Update",
-                    onClick: handleUpdate,
-                  },
-                  duration: Infinity,
-                });
-              }
-            });
-          }
-        });
-      });
+    try {
+      if (sessionStorage.getItem(FLAG) === "1") {
+        sessionStorage.removeItem(FLAG);
+        toast("App atualizado", { description: "Você está na versão mais nova." });
+      }
+    } catch {
+      /* sem sessionStorage */
     }
-  }, []);
-
-  const handleUpdate = () => {
-    if (waitingWorker) {
-      waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    if (!("serviceWorker" in navigator)) return;
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    const atualizar = () => {
+      if (reloading) return;
+      reloading = true;
+      try {
+        sessionStorage.setItem(FLAG, "1");
+      } catch {
+        /* ignora */
+      }
       window.location.reload();
-    }
-  };
-
-  return null; // Toast handles the UI
+    };
+    const onController = () => {
+      if (!hadController) return; // primeira instalação: nada a avisar
+      toast("Nova versão disponível", {
+        id: "evoque-update",
+        description: "Toque em Atualizar para usar a versão mais nova.",
+        action: { label: "Atualizar", onClick: atualizar },
+        duration: Infinity,
+      });
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onController);
+    const check = () => navigator.serviceWorker.getRegistration().then((r) => r?.update()).catch(() => {});
+    const onVisible = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = window.setInterval(check, 30 * 60 * 1000);
+    check();
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onController);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(timer);
+    };
+  }, []);
+  return null;
 }

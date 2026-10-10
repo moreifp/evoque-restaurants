@@ -75,9 +75,24 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // A página (index.html) NÃO fica no precache: abrir o app ou dar Cmd+R busca sempre a versão
+        // publicada (rede primeiro). Sem internet, usa a última página guardada (offline continua).
+        navigateFallback: null,
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/~oauth"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "paginas",
+              networkTimeoutSeconds: 4,
+              cacheableResponse: { statuses: [200] },
+              expiration: { maxEntries: 5 },
+            },
+          },
           // Fotos do Storage (públicas): cache primeiro, para abrir offline.
           // Vem antes de qualquer regra do Supabase. Auth e Functions nunca entram no cache.
           {
