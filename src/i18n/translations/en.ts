@@ -265,6 +265,9 @@ export const en = {
     copy: "Copy",
   },
   dining: {
+    searchRestaurantOrCity: "Search restaurant or city",
+    map: "Map",
+    noMatches: "No restaurants found.",
     title: "My Dining Experiences",
     draft: "Draft",
     untitledDraft: "Untitled draft",

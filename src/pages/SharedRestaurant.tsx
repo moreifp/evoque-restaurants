@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MapPin, Star, Calendar, Users, FileText, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, X, Instagram, Video, Youtube, Twitter, Facebook, Sparkles, Languages, MoreVertical, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client"; // v2 - menu translation support
 import evoqueIcon from "@/assets/evoque-icon.png";
+import evoqueMark from "@/assets/evoque-logo.png";
 import evoqueLogo from "@/assets/evoque-logo-full.png";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReportDialog } from "@/components/ReportDialog";
@@ -147,11 +148,8 @@ export default function SharedRestaurant() {
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b pt-safe pl-safe pr-safe">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-gradient-olive-teal" />
-            <span className="font-semibold text-lg">Evoque</span>
-          </div>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-center">
+          <img src={evoqueMark} alt="Evoque" className="h-14 w-14 object-contain" />
         </div>
       </header>
 

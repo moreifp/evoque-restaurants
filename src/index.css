@@ -160,7 +160,13 @@ body.despia-native {
 
 /* Main content padding that accounts for fixed nav + safe area */
 .main-content-padding {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem + var(--safe-top-extra));
+  /* cabeçalho com o logo: 4.5rem no celular, 5rem a partir de 768px */
+  padding-top: calc(env(safe-area-inset-top, 0px) + 4.75rem + var(--safe-top-extra));
+}
+@media (min-width: 768px) {
+  .main-content-padding {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 5.5rem + var(--safe-top-extra));
+  }
 }
 
 /* Bottom padding for mobile that accounts for bottom nav + safe area */

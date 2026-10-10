@@ -24,6 +24,9 @@ verify_jwt = true
 [functions.nearby-restaurants]
 verify_jwt = true
 
+[functions.my-trips]
+verify_jwt = true
+
 [functions.submit-content-report]
 verify_jwt = false
 

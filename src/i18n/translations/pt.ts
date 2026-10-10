@@ -265,6 +265,9 @@ export const pt = {
     copy: "Copiar",
   },
   dining: {
+    searchRestaurantOrCity: "Buscar restaurante ou cidade",
+    map: "Mapa",
+    noMatches: "Nenhum restaurante encontrado.",
     title: "Minhas Experiências Gastronômicas",
     draft: "Rascunho",
     untitledDraft: "Rascunho sem nome",

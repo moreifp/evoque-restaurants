@@ -1,278 +1,134 @@
-import { useState, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Map as MapIcon, Search, X } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, MapPin, Star, X, Map, BookImage } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
-import { AlbumCoverCollage } from "@/components/AlbumCoverCollage";
 import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
-import { useAlbums } from "@/hooks/useAlbums";
-import { useTags } from "@/hooks/useTags";
+import { useTripChips } from "@/hooks/useTripChips";
+import { RestaurantGrid, sortEntries } from "@/components/RestaurantGrid";
 import { GridSkeleton } from "@/components/ui/skeletons";
-import type { RestaurantEntry } from "@/types";
 
+const MAP_MAX_IDS = 200;
+
+const norm = (s: string | null | undefined) =>
+  (s ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+
+/** Aba Restaurantes: busca + mapa, chips de viagem e a lista de todos. */
 export default function Dining() {
   const navigate = useNavigate();
-  const { t, language } = useI18n();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "restaurants";
-  const tagFilter = searchParams.get("tag");
+  const { t } = useI18n();
+  const { data: rawEntries = [], isLoading } = useRestaurantEntries();
+  const entries = useMemo(() => sortEntries(rawEntries), [rawEntries]);
+  const chips = useTripChips(entries);
+  const [query, setQuery] = useState("");
+  const [trip, setTrip] = useState<string | null>(null);
 
-  // Use TanStack Query hooks
-  const { data: entries = [], isLoading: entriesLoading } = useRestaurantEntries();
-  const { data: albums = [], isLoading: albumsLoading } = useAlbums();
-  const { data: tags = [] } = useTags();
+  const activeChip = chips.find((c) => c.key === trip) ?? null;
 
-  // Local filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRating, setSelectedRating] = useState<string>("all");
-  const [selectedTags, setSelectedTags] = useState<string[]>(tagFilter ? [tagFilter] : []);
-
-  // Memoized filtered entries
-  const filteredEntries = useMemo(() => {
-    let filtered = [...entries];
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (entry) =>
-          entry.restaurant_name.toLowerCase().includes(query) ||
-          entry.location_address?.toLowerCase().includes(query) ||
-          entry.notes?.toLowerCase().includes(query)
+  const filtered = useMemo(() => {
+    let list = entries;
+    if (activeChip) list = list.filter((e) => activeChip.entryIds.has(e.id));
+    const q = norm(query.trim());
+    if (q) {
+      list = list.filter(
+        (e) => norm(e.restaurant_name).includes(q) || norm(e.location_address).includes(q) || norm(e.notes).includes(q),
       );
     }
+    return list;
+  }, [entries, activeChip, query]);
 
-    if (selectedRating !== "all") {
-      const targetRating = parseInt(selectedRating);
-      filtered = filtered.filter((entry) => entry.rating === targetRating);
+  const openMap = () => {
+    const isAll = !activeChip && !query.trim();
+    if (isAll || filtered.length > MAP_MAX_IDS) {
+      navigate("/albums/map?all=1");
+      return;
     }
+    navigate(`/albums/map?ids=${filtered.map((e) => e.id).join(",")}`);
+  };
 
-    return filtered;
-  }, [entries, searchQuery, selectedRating]);
-
-  const toggleTag = (tagId: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+  const chip = (key: string | null, label: string, n: number) => {
+    const active = trip === key;
+    return (
+      <button
+        key={key ?? "__all__"}
+        type="button"
+        onClick={() => setTrip(key)}
+        aria-pressed={active}
+        className={cn(
+          "flex h-11 shrink-0 items-center gap-2 rounded-full border-2 px-4 text-base font-semibold transition-colors",
+          active ? "border-navy bg-navy text-white" : "border-[#0d1a2d]/15 bg-background text-[#0d1a2d]",
+        )}
+      >
+        <span className="max-w-[12rem] truncate">{label}</span>
+        <span className={cn("text-sm", active ? "text-white/80" : "text-muted-foreground")}>{n}</span>
+      </button>
     );
   };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <Navigation />
-      
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 main-content-padding pb-24 md:pb-8">
-        <Tabs value={activeTab} onValueChange={(value) => setSearchParams({ tab: value })}>
-          {/* Header - stacks on mobile, row on desktop */}
-          <div className="flex flex-col gap-4 mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h1 className="text-3xl font-bold">{t("dining.title")}</h1>
-              <TabsList className="w-fit">
-                <TabsTrigger value="restaurants">{t("dining.restaurants")}</TabsTrigger>
-                <TabsTrigger value="albums">{t("dining.albums")}</TabsTrigger>
-              </TabsList>
-            </div>
-            
-            {/* Action buttons - always full width on mobile */}
-            {activeTab === "restaurants" && (
-              <Button onClick={() => navigate("/dining/add")} className="w-full sm:w-auto sm:self-end">
-                <Plus className="h-4 w-4 mr-2" />
-                {t("dining.addRestaurant")}
-              </Button>
-            )}
-            {activeTab === "albums" && (
-              <div className="flex flex-col sm:flex-row gap-2 sm:self-end">
-                <Button variant="outline" onClick={() => navigate("/albums/map")} className="w-full sm:w-auto">
-                  <Map className="h-4 w-4 mr-2" />
-                  {t("albums.map")}
-                </Button>
-                <Button onClick={() => navigate("/albums/create")} className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("albums.createAlbum")}
-                </Button>
-              </div>
+
+      <main className="container mx-auto max-w-5xl space-y-4 px-4 main-content-padding pb-24 md:pb-8">
+        {/* Busca + mapa */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("dining.searchRestaurantOrCity")}
+              aria-label={t("dining.searchRestaurantOrCity")}
+              className="h-14 rounded-2xl border-2 pl-12 pr-11 text-lg"
+              enterKeyHint="search"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label={t("common.close")}
+                className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center"
+              >
+                <X className="h-5 w-5" />
+              </button>
             )}
           </div>
-
-          <TabsContent value="restaurants" className="mt-0">
-            {/* Search & Filters */}
-            <div className="mb-8 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder={t("dining.searchPlaceholder")}
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-4">
-                <Select value={selectedRating} onValueChange={setSelectedRating}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder={t("dining.filterByRating")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("common.all")}</SelectItem>
-                    <SelectItem value="5">5 {t("dining.stars")}</SelectItem>
-                    <SelectItem value="4">4 {t("dining.stars")}</SelectItem>
-                    <SelectItem value="3">3 {t("dining.stars")}</SelectItem>
-                    <SelectItem value="2">2 {t("dining.stars")}</SelectItem>
-                    <SelectItem value="1">1 {t("dining.stars")}</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <Badge
-                      key={tag.id}
-                      variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => toggleTag(tag.id)}
-                    >
-                      {tag.label}
-                      {selectedTags.includes(tag.id) && (
-                        <X className="ml-1 h-3 w-3" />
-                      )}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Restaurant Entries Grid */}
-            {entriesLoading ? (
-              <GridSkeleton count={6} type="restaurant" />
-            ) : filteredEntries.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEntries.map((entry) => (
-                  <RestaurantCard
-                    key={entry.id}
-                    entry={entry}
-                    onClick={() => navigate(entry.is_draft ? "/dining/add" : `/dining/${entry.id}`)}
-                  />
-                ))}
-
-              </div>
-            ) : (
-              <Card className="p-12 text-center">
-                <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{t("dining.noResults")}</h3>
-                <p className="text-muted-foreground mb-6">
-                  {t("dining.noResultsDesc")}
-                </p>
-                <Button onClick={() => navigate("/dining/add")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("dining.addRestaurant")}
-                </Button>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="albums" className="mt-0">
-            {albumsLoading ? (
-              <GridSkeleton count={6} type="album" />
-            ) : albums.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {albums.map((album) => (
-                  <Card
-                    key={album.id}
-                    className="group hover:shadow-large transition-all cursor-pointer overflow-hidden"
-                    onClick={() => navigate(`/albums/${album.id}`)}
-                  >
-                    <div className="group-hover:scale-105 transition-transform">
-                      <AlbumCoverCollage albumId={album.id} />
-                    </div>
-                    <CardContent className="p-6">
-                      <h3 className="font-semibold text-lg group-hover:text-accent transition-colors mb-2">
-                        {album.title}
-                      </h3>
-                      {album.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {album.description}
-                        </p>
-                      )}
-                    <p className="text-xs text-muted-foreground mt-3">
-                      {new Date(album.created_at).toLocaleDateString(language === "pt" ? "pt-BR" : "en-US")}
-                    </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-12 text-center">
-                <BookImage className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{t("albums.noAlbums")}</h3>
-                <p className="text-muted-foreground mb-6">
-                  {t("albums.noAlbumsDesc")}
-                </p>
-                <Button onClick={() => navigate("/albums/create")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("albums.createAlbum")}
-                </Button>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
-  );
-}
-
-// Extracted card component for better performance
-function RestaurantCard({ entry, onClick }: { entry: RestaurantEntry; onClick: () => void }) {
-  const { t } = useI18n();
-  return (
-    <Card
-      className="hover:shadow-large transition-all cursor-pointer"
-      onClick={onClick}
-    >
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div className="min-w-0">
-            <h3 className="font-semibold text-lg truncate">
-              {!entry.restaurant_name || entry.restaurant_name === "__draft__"
-                ? t("dining.untitledDraft")
-                : entry.restaurant_name}
-            </h3>
-            {entry.is_draft && (
-              <Badge variant="secondary" className="mt-1">
-                {t("dining.draft")}
-              </Badge>
-            )}
-          </div>
-          {entry.rating && (
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-accent text-accent" />
-              <span className="text-sm font-medium">{entry.rating}</span>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={openMap}
+            aria-label={t("dining.map")}
+            className="flex h-14 w-14 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/15 bg-background text-[#0d1a2d] md:w-auto md:px-5"
+          >
+            <MapIcon className="h-6 w-6" />
+            <span className="hidden text-base font-semibold md:inline">{t("dining.map")}</span>
+          </button>
         </div>
 
-        
-        {entry.location_address && (
-          <div className="flex items-start gap-2 text-sm text-muted-foreground mb-3">
-            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span className="line-clamp-2">{entry.location_address}</span>
+        {/* Viagens */}
+        {chips.length > 0 && (
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
+            {chip(null, t("common.all"), entries.length)}
+            {chips.map((c) => chip(c.key, c.label, c.entryIds.size))}
           </div>
         )}
-        
-        {entry.notes && (
-          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-            {entry.notes}
+
+        {/* Lista */}
+        {isLoading ? (
+          <GridSkeleton count={6} />
+        ) : filtered.length === 0 ? (
+          <p className="rounded-3xl border border-[#0d1a2d]/10 bg-background/70 p-8 text-center text-base text-muted-foreground">
+            {entries.length === 0 ? t("home.emptyList") : t("dining.noMatches")}
           </p>
+        ) : (
+          <RestaurantGrid entries={filtered} />
         )}
-        
-        <p className="text-xs text-muted-foreground">
-          {t("home.visitedOn")}: {new Date(entry.visit_date).toLocaleDateString()}
-        </p>
-      </CardContent>
-    </Card>
+      </main>
+    </div>
   );
 }

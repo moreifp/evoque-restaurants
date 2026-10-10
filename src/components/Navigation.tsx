@@ -27,10 +27,14 @@ export const Navigation = () => {
       {/* Top Navigation Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border pt-safe pl-safe pr-safe">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            {/* Logo */}
-            <Link to="/" className="flex items-center" aria-label="Evoque">
-              <img src={evoqueLogo} alt="Evoque" className="w-9 h-9" />
+          <div className="relative flex items-center justify-end h-[4.5rem] md:h-20">
+            {/* Logo: símbolo grande, centralizado (único elemento no celular) */}
+            <Link
+              to="/"
+              className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
+              aria-label="Evoque"
+            >
+              <img src={evoqueLogo} alt="Evoque" className="h-14 w-14 object-contain md:h-16 md:w-16" />
             </Link>
 
             {/* Navigation Links + idioma (tablet e desktop) */}

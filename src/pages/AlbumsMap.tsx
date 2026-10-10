@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin } from "lucide-react";
@@ -26,6 +26,7 @@ interface RestaurantLocation {
 
 export default function AlbumsMap() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { t } = useI18n();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,36 @@ export default function AlbumsMap() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Vindo da aba Restaurantes: ?ids=... (lista filtrada) ou ?all=1 (todos)
+      const idsParam = searchParams.get("ids");
+      if (idsParam || searchParams.get("all") === "1") {
+        let q = supabase
+          .from("restaurant_entries")
+          .select("id, restaurant_name, location_address, location_lat, location_lng, visit_date, rating")
+          .eq("user_id", user.id)
+          .eq("is_draft", false)
+          .not("location_lat", "is", null)
+          .not("location_lng", "is", null);
+        if (idsParam) {
+          const ids = idsParam.split(",").filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 200);
+          q = q.in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+        }
+        const { data } = await q;
+        setRestaurants(
+          (data ?? []).map((r) => ({
+            id: r.id,
+            restaurant_name: r.restaurant_name,
+            location_address: r.location_address ?? "",
+            location_lat: r.location_lat as number,
+            location_lng: r.location_lng as number,
+            visit_date: r.visit_date,
+            rating: r.rating ?? undefined,
+          })),
+        );
         setLoading(false);
         return;
       }
