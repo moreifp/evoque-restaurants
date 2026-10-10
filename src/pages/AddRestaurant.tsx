@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshRestaurantLists } from "@/lib/entryCache";
-import { ArrowLeft, Check, Loader2, MapPin, Save, Star, Trash2, Wifi, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Loader2, Save, Star, Trash2, UtensilsCrossed, Wifi, X } from "lucide-react";
 import { z } from "zod";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ import {
 } from "@/lib/draftEngine";
 import { placeDetails } from "@/lib/nearby";
 import { PendingDraftsCard } from "@/components/add/PendingDraftsCard";
-import { CulinaryExperience } from "@/components/CulinaryExperience";
+import { useRestaurantEntries } from "@/hooks/useRestaurantEntries";
 
 /** Rascunho antigo (só texto) do formulário anterior. */
 const LEGACY_AUTOSAVE_KEY = "restaurant-draft-autosave";
@@ -221,6 +221,8 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
   const { toast } = useToast();
   const { t, language } = useI18n();
   const { uploadWithRetry } = useUploadWithRetry();
+  const { data: allEntries = [] } = useRestaurantEntries();
+  const entryCount = allEntries.filter((e) => !e.is_draft).length;
 
   const [draft, setDraft] = useState<AddDraft | null>(null);
   const [noUser, setNoUser] = useState(false);
@@ -791,7 +793,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
                 <ArrowLeft className="h-7 w-7" />
               </Button>
             )}
-            <h1 className="flex-1 text-2xl font-bold text-[#0d1a2d]">
+            <h1 className="flex-1 text-3xl font-bold text-[#0d1a2d]">
               {t("quickAdd.title")}
             </h1>
             {isMeaningful(draft) && !draft.saved && (
@@ -808,10 +810,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
           </div>
 
           {/* 1. Restaurante */}
-          <section className="space-y-2">
-            <p className="flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <MapPin className="h-4 w-4" /> {t("quickAdd.restaurant")}
-            </p>
+          <section className="-mt-3 space-y-2">
             <div className="rounded-3xl bg-background/70 p-2 shadow-sm">
               <RestaurantPicker
                 key={draft.id}
@@ -978,10 +977,25 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
           </section>
         </div>
 
-        {/* Início: todos os restaurantes, embaixo da tela de adicionar */}
+        {/* Início: as experiências passadas ficam por último, num botão para a aba Restaurantes */}
         {home && (
-          <div className="mx-auto mt-12 max-w-5xl border-t-2 border-[#0d1a2d]/10 pt-8">
-            <CulinaryExperience />
+          <div className="mx-auto mt-10 max-w-xl border-t-2 border-[#0d1a2d]/10 pt-6">
+            <button
+              type="button"
+              onClick={() => navigate("/dining")}
+              className="flex h-20 w-full items-center gap-4 rounded-3xl border-2 border-[#0d1a2d]/15 bg-background px-5 text-left shadow-sm transition-transform active:scale-[0.98]"
+            >
+              <UtensilsCrossed className="h-9 w-9 shrink-0 text-[#0d1a2d]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xl font-bold text-[#0d1a2d]">{t("home.culinaryExperience")}</span>
+                {entryCount > 0 && (
+                  <span className="block text-sm text-muted-foreground">
+                    {t("home.restaurantCount").replace("{n}", String(entryCount))}
+                  </span>
+                )}
+              </span>
+              <ChevronRight className="h-7 w-7 shrink-0 text-muted-foreground" />
+            </button>
           </div>
         )}
       </main>

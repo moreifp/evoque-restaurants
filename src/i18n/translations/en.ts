@@ -121,6 +121,7 @@ export const en = {
     mustAgreeToTerms: "You must agree to the terms to create an account",
   },
   home: {
+    restaurantCount: "{n} restaurants",
     tagline: "Remember and discover your culinary journey.",
     culinaryExperience: "Culinary Experience",
     emptyList: "Your restaurants show up here.",
@@ -785,6 +786,7 @@ export const en = {
     uploadingWait: "Wait for the upload to finish",
   },
   quickAdd: {
+    hereRadius: "You are here · 400 m radius",
     saveLater: "Save later on Wi-Fi",
     queuedOffline: "No internet: kept on this phone. Send it when you're on Wi-Fi.",
     queuedLater: "Kept on this phone. Send it when you're on Wi-Fi.",

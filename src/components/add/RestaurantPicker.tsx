@@ -20,6 +20,8 @@ interface RestaurantPickerProps {
   autoSelectNearest: boolean;
   /** Lista "perto de você" pelo GPS (desligada na edição). */
   showNearby?: boolean;
+  /** Fecha a lista depois de escolher (só "Trocar" reabre). Usado na edição. */
+  collapsible?: boolean;
 }
 
 const VISIBLE = 5;
@@ -39,7 +41,13 @@ const norm = (s: string) =>
  * Campo grande para ESCREVER o nome (vale como está, mesmo offline) +
  * restaurantes a até 400 m (mais perto primeiro) + resultados da busca pelo nome.
  */
-export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNearby = true }: RestaurantPickerProps) {
+export function RestaurantPicker({
+  selected,
+  onSelect,
+  autoSelectNearest,
+  showNearby = true,
+  collapsible = false,
+}: RestaurantPickerProps) {
   const { t } = useI18n();
   const [phase, setPhase] = useState<"locating" | "list" | "nolocation" | "error" | "off">(
     showNearby ? "locating" : "off",
@@ -204,6 +212,28 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
 
   return (
     <div className="space-y-2">
+      {/* Onde estou */}
+      {showNearby && (
+        <div className="flex min-h-7 items-center gap-2 px-1 text-base text-muted-foreground">
+          {phase === "locating" ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("quickAdd.locating")}
+            </>
+          ) : phase === "list" ? (
+            <>
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
+              {t("quickAdd.hereRadius")}
+            </>
+          ) : phase === "nolocation" ? (
+            <>
+              <MapPinOff className="h-4 w-4 shrink-0" /> {t("quickAdd.noLocation")}
+            </>
+          ) : phase === "error" ? (
+            <>{t("quickAdd.nearbyError")}</>
+          ) : null}
+        </div>
+      )}
+
       {/* Campo do nome: sempre visível, 1 toque para escrever */}
       <div className="relative">
         <Pencil className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -263,7 +293,7 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
         ) : null}
       </div>
 
-      {hasSelection && !editing && !listOpen ? (
+      {collapsible && hasSelection && !editing && !listOpen ? (
         <div className="flex items-center gap-2 px-2">
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {[
@@ -291,19 +321,6 @@ export function RestaurantPicker({ selected, onSelect, autoSelectNearest, showNe
         </div>
       ) : (
         <div className="space-y-1">
-          {phase === "locating" && (
-            <div className="flex min-h-14 items-center gap-3 px-4 text-base text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin" />
-              {t("quickAdd.locating")}
-            </div>
-          )}
-          {phase === "nolocation" && (
-            <p className="flex items-center gap-2 px-2 text-base text-muted-foreground">
-              <MapPinOff className="h-5 w-5 shrink-0" />
-              {t("quickAdd.noLocation")}
-            </p>
-          )}
-          {phase === "error" && <p className="px-2 text-base text-muted-foreground">{t("quickAdd.nearbyError")}</p>}
           {phase === "list" && places.length === 0 && (
             <p className="px-2 text-base text-muted-foreground">{t("quickAdd.noneNearby")}</p>
           )}

@@ -1691,6 +1691,7 @@ export default function RestaurantDetail() {
                     <Label className="text-lg">{t("restaurantDetail.restaurantName")} *</Label>
                     <RestaurantPicker
                       showNearby={false}
+                      collapsible
                       autoSelectNearest={false}
                       selected={
                         formData.restaurant_name
