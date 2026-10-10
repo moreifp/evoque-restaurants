@@ -17,6 +17,7 @@ import { ReceiptItemsList } from "@/components/ReceiptItemsList";
 import { AlbumSelector } from "@/components/AlbumSelector";
 import { TagInput } from "@/components/TagInput";
 import { RestaurantPicker } from "@/components/add/RestaurantPicker";
+import { refreshRestaurantLists, removeEntryFromCache } from "@/lib/entryCache";
 import { UnifiedMediaUpload } from "@/components/UnifiedMediaUpload";
 import { PhotoThumb } from "@/components/photos/PhotoThumb";
 import { SaveToPhotosButton } from "@/components/photos/SaveToPhotosButton";
@@ -292,8 +293,8 @@ export default function RestaurantDetail() {
         if (linksError) throw linksError;
       }
 
-      // Invalidate cache so Dining page shows updated data
-      queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
+      // Listas (início, Restaurantes, chips) com os dados novos
+      refreshRestaurantLists(queryClient);
       
       toast({
         title: t("restaurantDetail.success"),
@@ -394,12 +395,15 @@ export default function RestaurantDetail() {
       return;
     }
 
+    // Some da lista na hora (o cache durava 5 min e mostrava o restaurante apagado)
+    if (id) removeEntryFromCache(queryClient, id);
+
     toast({
       title: t("restaurantDetail.success"),
       description: t("restaurantDetail.deleteSuccess"),
     });
-    
-    navigate("/dining");
+
+    navigate("/", { replace: true });
   };
 
   const copyToClipboard = async (text: string): Promise<boolean> => {

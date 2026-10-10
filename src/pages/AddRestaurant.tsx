@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { refreshRestaurantLists } from "@/lib/entryCache";
 import { ArrowLeft, Check, Loader2, MapPin, Save, Star, Trash2, Wifi, X } from "lucide-react";
 import { z } from "zod";
 import { Navigation } from "@/components/Navigation";
@@ -61,6 +62,8 @@ import {
   type DraftCtx,
 } from "@/lib/draftEngine";
 import { placeDetails } from "@/lib/nearby";
+import { PendingDraftsCard } from "@/components/add/PendingDraftsCard";
+import { CulinaryExperience } from "@/components/CulinaryExperience";
 
 /** Rascunho antigo (só texto) do formulário anterior. */
 const LEGACY_AUTOSAVE_KEY = "restaurant-draft-autosave";
@@ -211,7 +214,7 @@ async function loadLegacyDbDraft(userId: string, exclude: string[]): Promise<Add
   };
 }
 
-export default function AddRestaurant() {
+export default function AddRestaurant({ home = false }: { home?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -584,6 +587,13 @@ export default function AddRestaurant() {
   };
 
   const goToEntry = (entryId: string) => navigate(`/dining/${entryId}`, { replace: true });
+  /** Salvo: no início volta a uma tela vazia (o novo aparece na lista); em /dining/add abre a ficha. */
+  const afterSaved = (entryId: string) => {
+    if (home) {
+      setDone(null);
+      resetToFresh();
+    } else goToEntry(entryId);
+  };
 
   /** Depois de salvo: originais ao Drive (dono) ou "Salvar no Fotos"; só então apaga do aparelho. */
   const finishOriginalsStep = async () => {
@@ -595,7 +605,7 @@ export default function AddRestaurant() {
       await cleanupAndFinish();
       setSaving(null);
       setDone({ entryId, originals: [] });
-      setTimeout(() => goToEntry(entryId), 1400);
+      setTimeout(() => afterSaved(entryId), 1400);
       return;
     }
     update((x) => ({ ...x, stage: "originals" }));
@@ -610,7 +620,7 @@ export default function AddRestaurant() {
     if (!uid) return;
     setCamera((c) => ({ ...c, open: false }));
     void showDraft(newDraft(uid));
-    if (searchParams.get("draft")) navigate("/dining/add", { replace: true });
+    if (searchParams.get("draft")) navigate(home ? "/" : "/dining/add", { replace: true });
     window.scrollTo({ top: 0 });
   };
 
@@ -663,7 +673,7 @@ export default function AddRestaurant() {
     savingRef.current = true;
     try {
       await saveEntry(ctx());
-      queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
+      refreshRestaurantLists(queryClient);
       setSaving({ label: t("quickAdd.savingEntry"), pct: 80 });
       await finishOriginalsStep();
     } catch (e) {
@@ -694,12 +704,13 @@ export default function AddRestaurant() {
       try {
         await cleanupInboxForEntry(d.entryId);
         await supabase.from("restaurant_entries").delete().eq("id", d.entryId).eq("is_draft", true);
-        queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
+        refreshRestaurantLists(queryClient);
       } catch (e) {
         console.warn("[AddRestaurant] could not delete db draft", e);
       }
     }
-    navigate("/dining", { replace: true });
+    if (home) resetToFresh();
+    else navigate("/dining", { replace: true });
   };
 
   useEffect(() => {
@@ -765,16 +776,21 @@ export default function AddRestaurant() {
       <main className="container mx-auto px-4 main-content-padding pb-28 md:pb-10">
         <div className="mx-auto max-w-xl space-y-6">
           {/* Cabeçalho */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12"
-              aria-label={t("common.back")}
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft className="h-7 w-7" />
-            </Button>
+          {/* Guardados no celular, esperando o Wi-Fi */}
+          {home && <PendingDraftsCard />}
+
+          <div className="flex min-h-12 items-center gap-2">
+            {!home && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12"
+                aria-label={t("common.back")}
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft className="h-7 w-7" />
+              </Button>
+            )}
             <h1 className="flex-1 text-2xl font-bold text-[#0d1a2d]">
               {t("quickAdd.title")}
             </h1>
@@ -961,6 +977,13 @@ export default function AddRestaurant() {
             )}
           </section>
         </div>
+
+        {/* Início: todos os restaurantes, embaixo da tela de adicionar */}
+        {home && (
+          <div className="mx-auto mt-12 max-w-5xl border-t-2 border-[#0d1a2d]/10 pt-8">
+            <CulinaryExperience />
+          </div>
+        )}
       </main>
 
       <QuickCamera
@@ -999,7 +1022,7 @@ export default function AddRestaurant() {
                 files={done.originals}
                 onDismiss={async () => {
                   await cleanupAndFinish();
-                  goToEntry(done.entryId);
+                  afterSaved(done.entryId);
                 }}
               />
               <Button
@@ -1008,7 +1031,7 @@ export default function AddRestaurant() {
                 className="h-14 w-full rounded-2xl text-lg font-semibold"
                 onClick={async () => {
                   await cleanupAndFinish();
-                  goToEntry(done.entryId);
+                  afterSaved(done.entryId);
                 }}
               >
                 {t("quickAdd.done")}

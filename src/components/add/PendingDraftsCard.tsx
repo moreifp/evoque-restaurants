@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { refreshRestaurantLists } from "@/lib/entryCache";
 import { AlertCircle, Camera, ChevronRight, CloudUpload, Loader2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -121,7 +122,7 @@ export function PendingDraftsCard() {
     }
     setSending(null);
     setErrors(errs);
-    if (sent) queryClient.invalidateQueries({ queryKey: ["restaurant-entries"] });
+    if (sent) refreshRestaurantLists(queryClient);
     if (files.length) setOriginals({ drafts: keepForPhotos, files });
     else if (sent && !Object.keys(errs).length) toast({ title: t("quickAdd.sentAll") });
     await refresh(userId);
@@ -141,7 +142,7 @@ export function PendingDraftsCard() {
     drafts.length === 1 ? t("quickAdd.pendingOne") : t("quickAdd.pendingMany").replace("{n}", String(drafts.length));
 
   return (
-    <div className="mx-auto mb-8 max-w-xl space-y-3 rounded-3xl border-2 border-[#0d1a2d]/15 bg-background p-4 shadow-md">
+    <div className="mx-auto max-w-xl space-y-3 rounded-3xl border-2 border-[#0d1a2d]/15 bg-background p-4 shadow-md">
       {drafts.length > 0 && (
         <>
           <p className="flex items-center gap-3 text-xl font-bold text-[#0d1a2d]">

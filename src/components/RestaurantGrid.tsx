@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Star, UtensilsCrossed } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,46 +29,36 @@ export function cityFromAddress(address: string | null | undefined): string {
   return parts[parts.length - 1] ?? "";
 }
 
-/** Miniatura de capa de cada restaurante (só os que estão na tela). */
+/** Miniatura de capa de cada restaurante (só os que estão na tela). Recarrega ao voltar à tela. */
 function useCovers(ids: string[]) {
-  const [covers, setCovers] = useState<Record<string, string>>({});
-  const asked = useRef(new Set<string>());
   const key = ids.join(",");
-  useEffect(() => {
-    const askedSet = asked.current;
-    const todo = ids.filter((id) => !askedSet.has(id));
-    if (!todo.length) return;
-    todo.forEach((id) => askedSet.add(id));
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
+  const { data } = useQuery({
+    queryKey: ["entry-covers", key],
+    enabled: ids.length > 0,
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from("restaurant_photos")
         .select("entry_id, photo_url, thumb_url, type, created_at")
-        .in("entry_id", todo)
+        .in("entry_id", ids)
         .neq("type", "video")
         .order("created_at", { ascending: true });
-      if (cancelled || !data) return;
+      if (error) throw error;
       const best: Record<string, { rank: number; url: string }> = {};
-      for (const p of data) {
+      for (const p of data ?? []) {
         const url = p.thumb_url || p.photo_url;
         if (!url) continue;
         const r = COVER_ORDER.indexOf(p.type ?? "");
         const rank = r === -1 ? 99 : r;
         if (!best[p.entry_id] || rank < best[p.entry_id].rank) best[p.entry_id] = { rank, url };
       }
-      setCovers((prev) => {
-        const next = { ...prev };
-        for (const [id, v] of Object.entries(best)) next[id] = v.url;
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-      todo.forEach((id) => askedSet.delete(id));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return covers;
+      const out: Record<string, string> = {};
+      for (const [id, v] of Object.entries(best)) out[id] = v.url;
+      return out;
+    },
+  });
+  return data ?? {};
 }
 
 function Stars({ value }: { value: number | null }) {

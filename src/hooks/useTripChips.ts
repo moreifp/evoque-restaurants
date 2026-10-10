@@ -72,7 +72,7 @@ async function fetchTrips(): Promise<Viagem[]> {
  * um chip só. Sem viagens (erro/offline): só os álbuns.
  */
 export function useTripChips(entries: RestaurantEntry[]) {
-  const albums = useQuery({ queryKey: ["album-groups"], queryFn: fetchAlbumGroups, staleTime: 5 * 60 * 1000 });
+  const albums = useQuery({ queryKey: ["album-groups"], queryFn: fetchAlbumGroups, staleTime: 0 });
   const trips = useQuery({
     queryKey: ["my-trips"],
     queryFn: fetchTrips,

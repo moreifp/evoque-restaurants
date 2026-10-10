@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cleanupInboxForEntry } from "@/lib/photoStorage";
 import type { RestaurantEntry } from "@/types";
+import { removeEntryFromCache } from "@/lib/entryCache";
 
 const QUERY_KEY = ["restaurant-entries"];
 
@@ -64,8 +65,6 @@ export function useDeleteRestaurantEntry() {
 
   return useMutation({
     mutationFn: deleteEntry,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-    },
+    onSuccess: (_data, id) => removeEntryFromCache(queryClient, id),
   });
 }
