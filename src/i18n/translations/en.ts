@@ -121,6 +121,9 @@ export const en = {
     mustAgreeToTerms: "You must agree to the terms to create an account",
   },
   home: {
+    tagline: "Remember and discover your culinary journey.",
+    culinaryExperience: "Culinary Experience",
+    emptyList: "Your restaurants show up here.",
     title: "Keep the taste alive",
     subtitle: "Remember. Share. Discover your culinary journey.",
     addRestaurant: "Add Restaurant",

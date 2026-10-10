@@ -121,6 +121,9 @@ export const pt = {
     mustAgreeToTerms: "Você deve concordar com os termos para criar uma conta",
   },
   home: {
+    tagline: "Lembre e descubra sua jornada culinária.",
+    culinaryExperience: "Culinary Experience",
+    emptyList: "Seus restaurantes aparecem aqui.",
     title: "Mantenha o sabor vivo",
     subtitle: "Lembre. Compartilhe. Descubra sua jornada culinária.",
     addRestaurant: "Adicionar Restaurante",

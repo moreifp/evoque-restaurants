@@ -29,9 +29,8 @@ export const Navigation = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <img src={evoqueLogo} alt="Evoque" className="w-8 h-8" />
-              <span className="text-xl font-semibold text-foreground">Evoque</span>
+            <Link to="/" className="flex items-center" aria-label="Evoque">
+              <img src={evoqueLogo} alt="Evoque" className="w-9 h-9" />
             </Link>
 
             {/* Navigation Links + idioma (tablet e desktop) */}
