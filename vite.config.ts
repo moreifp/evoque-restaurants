@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["app-icon.png", "favicon.ico"],
       manifest: {
         name: "Evoque",
-        short_name: "Evoque",
+        short_name: "Restaurantes",
         description: "A sophisticated dining diary for travelers and food lovers",
         theme_color: "#1a1a1a",
         background_color: "#ffffff",
