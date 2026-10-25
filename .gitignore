@@ -25,3 +25,8 @@ dist-ssr
 .env.local
 .dev.vars
 .wrangler
+
+# variáveis de ambiente — nunca no git (copie .env.example para .env)
+.env
+.env.*
+!.env.example
