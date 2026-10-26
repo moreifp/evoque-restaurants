@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Camera, UtensilsCrossed, FileText, Wine, Users, Receipt, MapPin, Check, Loader2 } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/ui/button";
@@ -50,17 +50,10 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
   const [selected, setSelected] = useState<ShareCategory[]>([]);
   const [busy, setBusy] = useState<"pdf" | "whatsapp" | null>(null);
 
-  // Chave estável: o objeto `photos` muda a cada render do pai.
-  const availableKey = SHARE_CATEGORIES.filter((c) => photos[c].length > 0).join(",");
-  const available = useMemo(
-    () => (availableKey ? (availableKey.split(",") as ShareCategory[]) : []),
-    [availableKey],
-  );
-
-  // Ao abrir, começa com tudo que existe marcado (menos clique).
+  // Ao abrir, nada marcado: o usuário toca nas bolinhas do que quer mandar.
   useEffect(() => {
-    if (open) setSelected(available);
-  }, [open, available]);
+    if (open) setSelected([]);
+  }, [open]);
 
   // Baixa as fotos escolhidas enquanto o usuário decide, para o toque ser imediato no iPhone.
   const selectedKey = selected.join(",");
@@ -141,7 +134,9 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
                 <span
                   className={cn(
                     "relative flex h-20 w-20 items-center justify-center rounded-full border-2 transition-colors",
-                    on ? "border-primary bg-primary text-primary-foreground" : "border-muted bg-muted text-foreground",
+                    on
+                      ? "border-primary bg-primary text-primary-foreground shadow-md"
+                      : "border-border bg-background text-muted-foreground",
                   )}
                 >
                   <Icon className="h-9 w-9" />
@@ -151,7 +146,7 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
                     </span>
                   )}
                 </span>
-                <span className="text-sm font-semibold">
+                <span className={cn("text-sm font-semibold", !on && "text-muted-foreground")}>
                   {t(`share.${c}`)}
                   {!empty && <span className="text-muted-foreground"> · {count}</span>}
                 </span>
