@@ -450,6 +450,8 @@ export const en = {
     visit: "Visit",
     rating: "Rating",
     error: "Could not share. Please try again.",
+    menuTranslation: "Menu translation",
+    seeTranslation: "See menu translation »",
     someFailed: "{n} photo(s) could not load and were left out.",
   },
   receiptSection: {

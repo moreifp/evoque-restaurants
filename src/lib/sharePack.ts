@@ -5,6 +5,7 @@
  */
 import { jsPDF } from "jspdf";
 import { canShareFiles, fetchAsFile } from "@/lib/saveToPhotos";
+import { pdfSafe, writeMarkdown } from "@/lib/pdfText";
 
 export type ShareCategory = "place" | "menu" | "food" | "wine" | "friends" | "receipt";
 
@@ -137,9 +138,15 @@ function loadImage(file: File): Promise<{ dataUrl: string; w: number; h: number;
 export interface PdfSection {
   label: string;
   files: File[];
+  /** Traduções do cardápio: vão num anexo no fim, com link a partir desta seção. */
+  appendix?: { title: string; linkLabel: string; texts: string[] };
 }
 
-/** Monta um PDF A4 com cabeçalho do restaurante e as fotos por seção, duas por linha. */
+/**
+ * Monta um PDF A4: cabeçalho do restaurante, fotos por seção (duas por linha)
+ * e, se houver, o anexo com a tradução do cardápio — que só abre quem tocar no
+ * link "Ver tradução" ou no índice lateral do PDF.
+ */
 export async function buildPdf(info: ShareInfo, sections: PdfSection[], labels: { visit: string; rating: string }): Promise<File> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -148,40 +155,60 @@ export async function buildPdf(info: ShareInfo, sections: PdfSection[], labels: 
   const gap = 6;
   const colW = (pageW - margin * 2 - gap) / 2;
   const maxH = 90;
+  const box = { margin, pageW, pageH };
   let y = margin;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text(info.name, margin, y + 7);
+  doc.text(pdfSafe(info.name), margin, y + 7);
   y += 12;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(90);
   if (info.address) {
-    const lines = doc.splitTextToSize(info.address, pageW - margin * 2) as string[];
+    const lines = doc.splitTextToSize(pdfSafe(info.address), pageW - margin * 2) as string[];
     doc.text(lines, margin, y + 4);
     y += 5 * lines.length + 1;
   }
   const meta: string[] = [];
   if (info.visitDate) meta.push(`${labels.visit}: ${info.visitDate}`);
-  if (info.rating) meta.push(`${labels.rating}: ${"★".repeat(info.rating)}`);
+  if (info.rating) meta.push(`${labels.rating}: ${info.rating}/5`);
   if (meta.length) {
-    doc.text(meta.join("   ·   "), margin, y + 4);
+    doc.text(pdfSafe(meta.join("   ·   ")), margin, y + 4);
     y += 7;
   }
   doc.setTextColor(0);
   y += 4;
 
+  // links para o anexo, preenchidos depois que as páginas do anexo existirem
+  const pendingLinks: { page: number; x: number; y: number; w: number; h: number; appendix: NonNullable<PdfSection["appendix"]> }[] = [];
+
   for (const section of sections) {
-    if (section.files.length === 0) continue;
+    const hasAppendix = !!section.appendix && section.appendix.texts.length > 0;
+    if (section.files.length === 0 && !hasAppendix) continue;
     if (y + 14 > pageH - margin) {
       doc.addPage();
       y = margin;
     }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text(section.label, margin, y + 5);
+    doc.text(pdfSafe(section.label), margin, y + 5);
+    doc.outline.add(null, pdfSafe(section.label), { pageNumber: doc.getNumberOfPages() });
     y += 9;
+
+    if (hasAppendix) {
+      const label = pdfSafe(section.appendix!.linkLabel);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(26, 115, 232);
+      const w = doc.getTextWidth(label);
+      doc.text(label, margin, y + 4);
+      doc.setDrawColor(26, 115, 232);
+      doc.line(margin, y + 5, margin + w, y + 5);
+      doc.setTextColor(0);
+      pendingLinks.push({ page: doc.getNumberOfPages(), x: margin, y: y - 1, w, h: 7, appendix: section.appendix! });
+      y += 10;
+    }
 
     let col = 0;
     let rowH = 0;
@@ -211,6 +238,28 @@ export async function buildPdf(info: ShareInfo, sections: PdfSection[], labels: 
     }
     if (col !== 0) y += rowH + gap;
     y += 4;
+  }
+
+  // Anexo: cada tradução numa página nova, no fim do PDF
+  for (const link of pendingLinks) {
+    doc.addPage();
+    const startPage = doc.getNumberOfPages();
+    doc.outline.add(null, pdfSafe(link.appendix.title), { pageNumber: startPage });
+    let ay = margin;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(pdfSafe(link.appendix.title), margin, ay + 7);
+    ay += 14;
+    link.appendix.texts.forEach((text, i) => {
+      if (i > 0) {
+        doc.addPage();
+        ay = margin;
+      }
+      ay = writeMarkdown(doc, text, ay, box);
+    });
+    doc.setPage(link.page);
+    doc.link(link.x, link.y, link.w, link.h, { pageNumber: startPage });
+    doc.setPage(doc.getNumberOfPages());
   }
 
   const safeName = info.name.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") || "restaurante";

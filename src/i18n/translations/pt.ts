@@ -450,6 +450,8 @@ export const pt = {
     visit: "Visita",
     rating: "Nota",
     error: "Não deu para compartilhar. Tente de novo.",
+    menuTranslation: "Tradução do cardápio",
+    seeTranslation: "Ver tradução do cardápio »",
     someFailed: "{n} foto(s) não carregaram e ficaram de fora.",
   },
   receiptSection: {
