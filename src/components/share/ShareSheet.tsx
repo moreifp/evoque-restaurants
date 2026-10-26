@@ -73,7 +73,8 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
   const onWhatsApp = async () => {
     setBusy("whatsapp");
     try {
-      const files = await collectFiles(photos, selected);
+      const { files, failed } = await collectFiles(photos, selected);
+      if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
       const r = await shareToWhatsApp(shareText(info, labels), files, selectedUrls);
       if (r === "shared") onClose();
     } catch (e) {
@@ -88,10 +89,14 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
     setBusy("pdf");
     try {
       const sections = [];
+      let failed = 0;
       for (const c of SHARE_CATEGORIES) {
         if (!selected.includes(c)) continue;
-        sections.push({ label: t(`share.${c}`), files: await collectFiles(photos, [c]) });
+        const got = await collectFiles(photos, [c]);
+        failed += got.failed;
+        sections.push({ label: t(`share.${c}`), files: got.files });
       }
+      if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
       const pdf = await buildPdf(info, sections, labels);
       const r = await sharePdf(pdf);
       if (r === "shared") onClose();

@@ -450,6 +450,7 @@ export const pt = {
     visit: "Visita",
     rating: "Nota",
     error: "Não deu para compartilhar. Tente de novo.",
+    someFailed: "{n} foto(s) não carregaram e ficaram de fora.",
   },
   receiptSection: {
     title: "Meu Recibo (Privado)",

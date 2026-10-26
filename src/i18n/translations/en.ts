@@ -450,6 +450,7 @@ export const en = {
     visit: "Visit",
     rating: "Rating",
     error: "Could not share. Please try again.",
+    someFailed: "{n} photo(s) could not load and were left out.",
   },
   receiptSection: {
     title: "My Receipt (Private)",

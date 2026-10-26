@@ -34,13 +34,28 @@ export function prefetchFile(url: string, fallbackName: string): Promise<File> {
   return p;
 }
 
-export async function collectFiles(photos: SharePhotos, selected: ShareCategory[]): Promise<File[]> {
+export interface Collected {
+  files: File[];
+  /** Quantas fotos não puderam ser baixadas. */
+  failed: number;
+}
+
+export async function collectFiles(photos: SharePhotos, selected: ShareCategory[]): Promise<Collected> {
   const jobs: Promise<File>[] = [];
   for (const cat of selected) {
     photos[cat].forEach((url, i) => jobs.push(prefetchFile(url, `${cat}-${i + 1}.jpg`)));
   }
   const results = await Promise.allSettled(jobs);
-  return results.filter((r): r is PromiseFulfilledResult<File> => r.status === "fulfilled").map((r) => r.value);
+  const files: File[] = [];
+  let failed = 0;
+  for (const r of results) {
+    if (r.status === "fulfilled") files.push(r.value);
+    else {
+      failed += 1;
+      console.error("[share] foto não baixou", r.reason);
+    }
+  }
+  return { files, failed };
 }
 
 export function shareText(info: ShareInfo, labels: { visit: string; rating: string }): string {

@@ -58,8 +58,23 @@ function nameFromUrl(url: string, fallback: string): string {
   }
 }
 
+/**
+ * O Safari reaproveita a foto que a tela já mostrou (carregada sem CORS) e
+ * recusa o fetch com CORS da mesma URL. Um parâmetro extra força um download
+ * novo — o Storage do Supabase ignora o parâmetro.
+ */
+function freshUrl(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}dl=${Date.now().toString(36)}`;
+}
+
 export async function fetchAsFile(url: string, fallbackName = "evoque.jpg"): Promise<File> {
-  const res = await fetch(url, { mode: "cors", credentials: "omit" });
+  let res: Response;
+  try {
+    res = await fetch(freshUrl(url), { mode: "cors", credentials: "omit", cache: "no-store" });
+  } catch {
+    // segunda tentativa (rede instável)
+    res = await fetch(freshUrl(url), { mode: "cors", credentials: "omit", cache: "no-store" });
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
   let name = nameFromUrl(url, fallbackName);
