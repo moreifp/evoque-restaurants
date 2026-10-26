@@ -24,6 +24,8 @@ interface ShareSheetProps {
   onClose: () => void;
   info: ShareInfo;
   photos: SharePhotos;
+  /** Traduções do cardápio (vão como anexo no PDF quando o Cardápio está marcado). */
+  menuTranslations?: string[];
 }
 
 const ICONS: Record<ShareCategory, typeof Camera> = {
@@ -45,7 +47,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
 }
 
 /** Folha "Compartilhar": nome e endereço, 6 bolinhas para escolher o que vai, e os botões PDF / WhatsApp. */
-export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
+export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] }: ShareSheetProps) {
   const { t } = useI18n();
   const { toast } = useToast();
   const [selected, setSelected] = useState<ShareCategory[]>([]);
@@ -96,7 +98,14 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
         if (!selected.includes(c)) continue;
         const got = await collectFiles(photos, [c]);
         failed += got.failed;
-        sections.push({ label: t(`share.${c}`), files: got.files });
+        sections.push({
+          label: t(`share.${c}`),
+          files: got.files,
+          appendix:
+            c === "menu" && menuTranslations.length > 0
+              ? { title: t("share.menuTranslation"), linkLabel: t("share.seeTranslation"), texts: menuTranslations }
+              : undefined,
+        });
       }
       if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
       const pdf = await buildPdf(info, sections, labels);

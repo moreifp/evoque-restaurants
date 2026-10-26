@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle, ExternalLink, Instagram, Video, Youtube, FileText, Twitter, Facebook } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Calendar, Users, Edit, Trash2, FolderPlus, Share2, Check, Save, Wine, UtensilsCrossed, Camera, UserCircle2, Receipt as ReceiptIcon, Globe, Lock, Link as LinkIcon, Sparkles, AlertCircle, ExternalLink, Instagram, Video, Youtube, FileText, Twitter, Facebook, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -62,6 +62,9 @@ export default function RestaurantDetail() {
   const [shareUrl, setShareUrl] = useState<string>("");
   const [shareUrlLoading, setShareUrlLoading] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  // Seções recolhíveis (fechadas ao abrir o restaurante) e traduções de cardápio abertas
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const languageOptions = [
     { code: "Portuguese", name: "Português", flag: "🇧🇷" },
@@ -1109,14 +1112,25 @@ export default function RestaurantDetail() {
                   <CardHeader>
                     <CardTitle>{t("restaurantDetail.photos")}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-8">
+                  <CardContent className="space-y-2 divide-y [&>*]:pt-2">
                     {/* Place Photos */}
                     {placePhotos.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <Camera className="h-5 w-5" />
-                          {t("restaurantDetail.place")}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection("place")}
+                          aria-expanded={!!openSections.place}
+                          className="w-full flex items-center justify-between gap-2 py-2 text-lg font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Camera className="h-6 w-6" />
+                            {t("restaurantDetail.place")}
+                            <span className="font-normal text-muted-foreground">· {placePhotos.length}</span>
+                          </span>
+                          <ChevronDown className={cn("h-7 w-7 text-muted-foreground transition-transform", openSections.place && "rotate-180")} />
+                        </button>
+                        {openSections.place && (
+                        <div className="mt-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {placePhotos.map((photo) => (
                             <Dialog key={photo.id}>
@@ -1145,16 +1159,29 @@ export default function RestaurantDetail() {
                             </Dialog>
                           ))}
                         </div>
+                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Food Photos */}
                     {foodPhotos.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <UtensilsCrossed className="h-5 w-5" />
-                          {t("restaurantDetail.food")}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection("food")}
+                          aria-expanded={!!openSections.food}
+                          className="w-full flex items-center justify-between gap-2 py-2 text-lg font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <UtensilsCrossed className="h-6 w-6" />
+                            {t("restaurantDetail.food")}
+                            <span className="font-normal text-muted-foreground">· {foodPhotos.length}</span>
+                          </span>
+                          <ChevronDown className={cn("h-7 w-7 text-muted-foreground transition-transform", openSections.food && "rotate-180")} />
+                        </button>
+                        {openSections.food && (
+                        <div className="mt-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {foodPhotos.map((photo) => (
                             <div key={photo.id} className="space-y-2">
@@ -1204,16 +1231,29 @@ export default function RestaurantDetail() {
                             </div>
                           ))}
                         </div>
+                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Menu Photos */}
                     {menuPhotos.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <UtensilsCrossed className="h-5 w-5" />
-                          {t("common.menu")}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection("menu")}
+                          aria-expanded={!!openSections.menu}
+                          className="w-full flex items-center justify-between gap-2 py-2 text-lg font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <UtensilsCrossed className="h-6 w-6" />
+                            {t("common.menu")}
+                            <span className="font-normal text-muted-foreground">· {menuPhotos.length}</span>
+                          </span>
+                          <ChevronDown className={cn("h-7 w-7 text-muted-foreground transition-transform", openSections.menu && "rotate-180")} />
+                        </button>
+                        {openSections.menu && (
+                        <div className="mt-4">
                         <div className="space-y-6">
                           {menuPhotos.map((photo) => (
                             <div key={photo.id} className="space-y-4">
@@ -1337,9 +1377,15 @@ export default function RestaurantDetail() {
                                 <Card className="border-primary/20 bg-primary/5">
                                   <CardHeader className="pb-2">
                                     <div className="flex items-center justify-between">
-                                      <CardTitle className="text-base flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSection(`tr-${photo.id}`)}
+                                        aria-expanded={!!openSections[`tr-${photo.id}`]}
+                                        className="flex flex-1 items-center gap-2 text-left text-base font-semibold"
+                                      >
                                         📋 {t("restaurantDetail.menuTranslation")}
-                                      </CardTitle>
+                                        <ChevronDown className={cn("h-6 w-6 text-muted-foreground transition-transform", openSections[`tr-${photo.id}`] && "rotate-180")} />
+                                      </button>
                                       {editingTranslationId !== photo.id && (
                                         <div className="flex items-center gap-1">
                                           <Button
@@ -1378,6 +1424,7 @@ export default function RestaurantDetail() {
                                       )}
                                     </div>
                                   </CardHeader>
+                                  {(openSections[`tr-${photo.id}`] || editingTranslationId === photo.id) && (
                                   <CardContent>
                                     {editingTranslationId === photo.id ? (
                                       <div className="space-y-3">
@@ -1410,21 +1457,35 @@ export default function RestaurantDetail() {
                                       </div>
                                     )}
                                   </CardContent>
+                                  )}
                                 </Card>
                               )}
                             </div>
                           ))}
                         </div>
+                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Wine Photos */}
                     {winePhotos.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <Wine className="h-5 w-5" />
-                          {t("common.wine")}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection("wine")}
+                          aria-expanded={!!openSections.wine}
+                          className="w-full flex items-center justify-between gap-2 py-2 text-lg font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Wine className="h-6 w-6" />
+                            {t("common.wine")}
+                            <span className="font-normal text-muted-foreground">· {winePhotos.length}</span>
+                          </span>
+                          <ChevronDown className={cn("h-7 w-7 text-muted-foreground transition-transform", openSections.wine && "rotate-180")} />
+                        </button>
+                        {openSections.wine && (
+                        <div className="mt-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {winePhotos.map((photo) => (
                             <div key={photo.id} className="space-y-3">
@@ -1482,16 +1543,29 @@ export default function RestaurantDetail() {
                             </div>
                           ))}
                         </div>
+                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Friends Photos */}
                     {friendsPhotos.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <UserCircle2 className="h-5 w-5" />
-                          {t("common.friends")}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection("friends")}
+                          aria-expanded={!!openSections.friends}
+                          className="w-full flex items-center justify-between gap-2 py-2 text-lg font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <UserCircle2 className="h-6 w-6" />
+                            {t("common.friends")}
+                            <span className="font-normal text-muted-foreground">· {friendsPhotos.length}</span>
+                          </span>
+                          <ChevronDown className={cn("h-7 w-7 text-muted-foreground transition-transform", openSections.friends && "rotate-180")} />
+                        </button>
+                        {openSections.friends && (
+                        <div className="mt-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {friendsPhotos.map((photo) => (
                             <Dialog key={photo.id}>
@@ -1520,16 +1594,29 @@ export default function RestaurantDetail() {
                             </Dialog>
                           ))}
                         </div>
+                        </div>
+                        )}
                       </div>
                     )}
 
                     {/* Video Section */}
                     {videoPhotos.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <Video className="h-5 w-5" />
-                          {t("common.video") || "Videos"}
-                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleSection("video")}
+                          aria-expanded={!!openSections.video}
+                          className="w-full flex items-center justify-between gap-2 py-2 text-lg font-semibold"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Video className="h-6 w-6" />
+                            {t("common.video") || "Videos"}
+                            <span className="font-normal text-muted-foreground">· {videoPhotos.length}</span>
+                          </span>
+                          <ChevronDown className={cn("h-7 w-7 text-muted-foreground transition-transform", openSections.video && "rotate-180")} />
+                        </button>
+                        {openSections.video && (
+                        <div className="mt-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {videoPhotos.map((photo) => (
                             <div key={photo.id} className="aspect-video rounded-lg overflow-hidden relative group">
@@ -1542,6 +1629,8 @@ export default function RestaurantDetail() {
                             </div>
                           ))}
                         </div>
+                        </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -1568,18 +1657,26 @@ export default function RestaurantDetail() {
               {/* Private Receipt Section - ALWAYS LAST */}
               {receipt ? (
                 <Card className="border-2 border-yellow-500/50 bg-yellow-50/5">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+                  <CardHeader
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={!!openSections.receipt}
+                    onClick={() => toggleSection("receipt")}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-2">
                       <CardTitle className="flex items-center gap-2">
-                        <ReceiptIcon className="h-5 w-5" />
+                        <ReceiptIcon className="h-6 w-6" />
                         {t("receiptSection.title")}
                       </CardTitle>
                       <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 gap-1">
                         <Lock className="h-3 w-3" />
                         {t("receiptSection.visibility")}
                       </Badge>
+                      <ChevronDown className={cn("h-7 w-7 shrink-0 text-muted-foreground transition-transform", openSections.receipt && "rotate-180")} />
                     </div>
                   </CardHeader>
+                  {openSections.receipt && (
                   <CardContent className="space-y-4">
                     <Alert className="border-yellow-200 bg-yellow-50/50">
                       <Lock className="h-4 w-4 text-yellow-700" />
@@ -1670,6 +1767,7 @@ export default function RestaurantDetail() {
                       </div>
                     </div>
                   </CardContent>
+                  )}
                 </Card>
               ) : editMode && (
                 <Card className="border-2 border-dashed border-muted">
@@ -1709,6 +1807,7 @@ export default function RestaurantDetail() {
                   friends: friendsPhotos.map((p) => p.photo_url),
                   receipt: receipt?.photo_url ? [receipt.photo_url] : [],
                 }}
+                menuTranslations={menuPhotos.map((p) => p.menu_translation).filter((x): x is string => !!x && !!x.trim())}
               />
             </>
           ) : (
