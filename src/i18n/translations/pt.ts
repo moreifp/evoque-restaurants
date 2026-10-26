@@ -438,6 +438,19 @@ export const pt = {
     noCredits: "Créditos de IA esgotados. Adicione créditos ao seu workspace.",
   },
   
+  share: {
+    button: "Compartilhar",
+    title: "Compartilhar",
+    place: "Lugar",
+    menu: "Cardápio",
+    food: "Comida",
+    wine: "Vinho",
+    friends: "Amigos",
+    receipt: "Recibo",
+    visit: "Visita",
+    rating: "Nota",
+    error: "Não deu para compartilhar. Tente de novo.",
+  },
   receiptSection: {
     title: "Meu Recibo (Privado)",
     privateNote: "🔒 Esta informação é privada e NÃO será compartilhada quando você compartilhar este restaurante com outras pessoas.",
