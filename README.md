@@ -2,7 +2,9 @@
 
 App pessoal de restaurantes, vinhos e viagens gastronômicas. PWA, mobile-first, em português.
 
-As regras e o mapa do projeto estão em [`CLAUDE.md`](CLAUDE.md).
+App: **https://restaurantes.evoque.global** — publica sozinho a cada merge na `main` (Cloudflare Workers Builds).
+
+As regras, o mapa do projeto e as lições aprendidas estão em [`CLAUDE.md`](CLAUDE.md).
 
 ```sh
 npm i
