@@ -16,6 +16,7 @@ import {
   shareToWhatsApp,
   buildPdf,
   sharePdf,
+  isMobileDevice,
 } from "@/lib/sharePack";
 
 interface ShareSheetProps {
@@ -73,7 +74,8 @@ export function ShareSheet({ open, onClose, info, photos }: ShareSheetProps) {
   const onWhatsApp = async () => {
     setBusy("whatsapp");
     try {
-      const { files, failed } = await collectFiles(photos, selected);
+      // No computador vão só os links; não precisa baixar as fotos.
+      const { files, failed } = isMobileDevice() ? await collectFiles(photos, selected) : { files: [], failed: 0 };
       if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
       const r = await shareToWhatsApp(shareText(info, labels), files, selectedUrls);
       if (r === "shared") onClose();
