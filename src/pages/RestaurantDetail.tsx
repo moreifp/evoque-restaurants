@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
 import { useAIConsent } from "@/hooks/useAIConsent";
 import { getShareUrl } from "@/lib/shareUrl";
+import { ShareSheet } from "@/components/share/ShareSheet";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -60,6 +61,7 @@ export default function RestaurantDetail() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>("");
   const [shareUrlLoading, setShareUrlLoading] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
 
   const languageOptions = [
     { code: "Portuguese", name: "Português", flag: "🇧🇷" },
@@ -1677,6 +1679,37 @@ export default function RestaurantDetail() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Compartilhar: fotos escolhidas por PDF ou WhatsApp */}
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => setShareSheetOpen(true)}
+                className="h-16 w-full gap-3 rounded-2xl text-lg font-semibold"
+              >
+                <Share2 className="h-7 w-7" />
+                {t("share.button")}
+              </Button>
+              <ShareSheet
+                open={shareSheetOpen}
+                onClose={() => setShareSheetOpen(false)}
+                info={{
+                  name: entry.restaurant_name,
+                  address: entry.location_address,
+                  visitDate: entry.visit_date
+                    ? format(new Date(entry.visit_date), "PPP", { locale: language === "pt" ? ptBR : enUS })
+                    : null,
+                  rating: entry.rating,
+                }}
+                photos={{
+                  place: placePhotos.map((p) => p.photo_url),
+                  menu: menuPhotos.map((p) => p.photo_url),
+                  food: foodPhotos.map((p) => p.photo_url),
+                  wine: winePhotos.map((p) => p.photo_url),
+                  friends: friendsPhotos.map((p) => p.photo_url),
+                  receipt: receipt?.photo_url ? [receipt.photo_url] : [],
+                }}
+              />
             </>
           ) : (
             // EDIT MODE

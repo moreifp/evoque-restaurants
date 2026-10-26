@@ -438,6 +438,19 @@ export const en = {
     noCredits: "AI credits exhausted. Add credits to your workspace.",
   },
   
+  share: {
+    button: "Share",
+    title: "Share",
+    place: "Place",
+    menu: "Menu",
+    food: "Food",
+    wine: "Wine",
+    friends: "Friends",
+    receipt: "Receipt",
+    visit: "Visit",
+    rating: "Rating",
+    error: "Could not share. Please try again.",
+  },
   receiptSection: {
     title: "My Receipt (Private)",
     privateNote: "🔒 This information is private and will NOT be shared when you share this restaurant with others.",
