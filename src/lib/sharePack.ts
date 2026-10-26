@@ -68,12 +68,44 @@ export function shareText(info: ShareInfo, labels: { visit: string; rating: stri
 
 export type ShareOutcome = "shared" | "fallback" | "cancelled";
 
+/** Celular/tablet (iPad se apresenta como Mac, mas tem toque). */
+export function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+}
+
 /**
- * WhatsApp: no iPhone/Android, navigator.share com arquivos abre a folha
- * nativa — o usuário escolhe o WhatsApp e um ou mais contatos. Sem suporte
- * a arquivos, abre o WhatsApp só com o texto e os links das fotos.
+ * Computador: abre o app do WhatsApp direto com o texto e os links das fotos
+ * (a folha de compartilhar do Mac não lista o WhatsApp). Se o app não abrir,
+ * cai no WhatsApp Web.
+ */
+function openWhatsAppDesktop(message: string) {
+  const text = encodeURIComponent(message);
+  let left = false;
+  const onBlur = () => {
+    left = true;
+  };
+  window.addEventListener("blur", onBlur, { once: true });
+  window.location.href = `whatsapp://send?text=${text}`;
+  setTimeout(() => {
+    window.removeEventListener("blur", onBlur);
+    if (!left && document.visibilityState === "visible") {
+      window.open(`https://web.whatsapp.com/send?text=${text}`, "_blank", "noopener");
+    }
+  }, 1500);
+}
+
+/**
+ * WhatsApp:
+ *  - iPhone/Android: folha nativa com as fotos; escolhe o WhatsApp e um ou mais contatos.
+ *  - Computador: abre o WhatsApp com o texto e os links das fotos.
  */
 export async function shareToWhatsApp(text: string, files: File[], photoUrls: string[]): Promise<ShareOutcome> {
+  const withLinks = text + (photoUrls.length ? "\n\n" + photoUrls.join("\n") : "");
+  if (!isMobileDevice()) {
+    openWhatsAppDesktop(withLinks);
+    return "fallback";
+  }
   if (files.length > 0 && canShareFiles(files)) {
     try {
       await navigator.share({ files, text });
@@ -83,9 +115,7 @@ export async function shareToWhatsApp(text: string, files: File[], photoUrls: st
       console.warn("[share] navigator.share falhou, usando wa.me", e);
     }
   }
-  const links = photoUrls.length ? "\n\n" + photoUrls.join("\n") : "";
-  const url = `https://wa.me/?text=${encodeURIComponent(text + links)}`;
-  window.open(url, "_blank", "noopener");
+  window.open(`https://wa.me/?text=${encodeURIComponent(withLinks)}`, "_blank", "noopener");
   return "fallback";
 }
 
