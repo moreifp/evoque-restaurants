@@ -452,6 +452,7 @@ export const pt = {
     error: "Não deu para compartilhar. Tente de novo.",
     menuTranslation: "Tradução do cardápio",
     seeTranslation: "Ver tradução do cardápio »",
+    photosLink: "Fotos e cardápio (PDF)",
     someFailed: "{n} foto(s) não carregaram e ficaram de fora.",
   },
   receiptSection: {

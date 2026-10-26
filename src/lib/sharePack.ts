@@ -6,6 +6,7 @@
 import { jsPDF } from "jspdf";
 import { canShareFiles, fetchAsFile } from "@/lib/saveToPhotos";
 import { pdfSafe, writeMarkdown } from "@/lib/pdfText";
+import { supabase } from "@/integrations/supabase/client";
 
 export type ShareCategory = "place" | "menu" | "food" | "wine" | "friends" | "receipt";
 
@@ -80,7 +81,7 @@ export function isMobileDevice(): boolean {
  * (a folha de compartilhar do Mac não lista o WhatsApp). Se o app não abrir,
  * cai no WhatsApp Web.
  */
-function openWhatsAppDesktop(message: string) {
+export function openWhatsAppDesktop(message: string) {
   const text = encodeURIComponent(message);
   let left = false;
   const onBlur = () => {
@@ -97,16 +98,10 @@ function openWhatsAppDesktop(message: string) {
 }
 
 /**
- * WhatsApp:
- *  - iPhone/Android: folha nativa com as fotos; escolhe o WhatsApp e um ou mais contatos.
- *  - Computador: abre o WhatsApp com o texto e os links das fotos.
+ * WhatsApp no celular: folha nativa com as fotos; escolhe o WhatsApp e um ou
+ * mais contatos. Sem suporte a arquivos, abre o WhatsApp só com o texto.
  */
-export async function shareToWhatsApp(text: string, files: File[], photoUrls: string[]): Promise<ShareOutcome> {
-  const withLinks = text + (photoUrls.length ? "\n\n" + photoUrls.join("\n") : "");
-  if (!isMobileDevice()) {
-    openWhatsAppDesktop(withLinks);
-    return "fallback";
-  }
+export async function shareToWhatsApp(text: string, files: File[]): Promise<ShareOutcome> {
   if (files.length > 0 && canShareFiles(files)) {
     try {
       await navigator.share({ files, text });
@@ -116,8 +111,27 @@ export async function shareToWhatsApp(text: string, files: File[], photoUrls: st
       console.warn("[share] navigator.share falhou, usando wa.me", e);
     }
   }
-  window.open(`https://wa.me/?text=${encodeURIComponent(withLinks)}`, "_blank", "noopener");
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
   return "fallback";
+}
+
+/**
+ * Guarda o PDF na pasta do usuário no Storage (bucket público, caminho
+ * impossível de adivinhar) e devolve o link — usado no WhatsApp do computador,
+ * que não recebe arquivos de um site.
+ */
+export async function uploadSharePdf(file: File): Promise<string> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) throw new Error("sem usuário");
+  const rand = Math.random().toString(36).slice(2, 10);
+  const path = `${uid}/compartilhados/${Date.now().toString(36)}-${rand}/${file.name}`;
+  const { error } = await supabase.storage.from("restaurant-photos").upload(path, file, {
+    contentType: "application/pdf",
+    upsert: false,
+  });
+  if (error) throw error;
+  return supabase.storage.from("restaurant-photos").getPublicUrl(path).data.publicUrl;
 }
 
 function loadImage(file: File): Promise<{ dataUrl: string; w: number; h: number; fmt: "JPEG" | "PNG" }> {
