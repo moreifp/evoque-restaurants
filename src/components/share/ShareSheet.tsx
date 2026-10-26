@@ -17,6 +17,8 @@ import {
   buildPdf,
   sharePdf,
   isMobileDevice,
+  openWhatsAppDesktop,
+  uploadSharePdf,
 } from "@/lib/sharePack";
 
 interface ShareSheetProps {
@@ -70,17 +72,44 @@ export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] 
     setSelected((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
 
   const labels = { visit: t("share.visit"), rating: t("share.rating") };
-  const selectedUrls = selected.flatMap((c) => photos[c]);
   const nothing = selected.length === 0;
+
+  /** Monta o PDF com as fotos escolhidas (e a tradução do cardápio, se houver). */
+  const makePdf = async (): Promise<File> => {
+    const sections = [];
+    let failed = 0;
+    for (const c of SHARE_CATEGORIES) {
+      if (!selected.includes(c)) continue;
+      const got = await collectFiles(photos, [c]);
+      failed += got.failed;
+      sections.push({
+        label: t(`share.${c}`),
+        files: got.files,
+        appendix:
+          c === "menu" && menuTranslations.length > 0
+            ? { title: t("share.menuTranslation"), linkLabel: t("share.seeTranslation"), texts: menuTranslations }
+            : undefined,
+      });
+    }
+    if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
+    return buildPdf(info, sections, labels);
+  };
 
   const onWhatsApp = async () => {
     setBusy("whatsapp");
     try {
-      // No computador vão só os links; não precisa baixar as fotos.
-      const { files, failed } = isMobileDevice() ? await collectFiles(photos, selected) : { files: [], failed: 0 };
-      if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
-      const r = await shareToWhatsApp(shareText(info, labels), files, selectedUrls);
-      if (r === "shared") onClose();
+      if (isMobileDevice()) {
+        // Celular: folha nativa com as fotos
+        const { files, failed } = await collectFiles(photos, selected);
+        if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
+        const r = await shareToWhatsApp(shareText(info, labels), files);
+        if (r === "shared") onClose();
+      } else {
+        // Computador: um link só, para o PDF com tudo que foi escolhido
+        const pdf = await makePdf();
+        const url = await uploadSharePdf(pdf);
+        openWhatsAppDesktop(`${shareText(info, labels)}\n\n${t("share.photosLink")}: ${url}`);
+      }
     } catch (e) {
       console.error("[ShareSheet] whatsapp", e);
       toast({ title: t("share.error"), variant: "destructive" });
@@ -92,24 +121,7 @@ export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] 
   const onPdf = async () => {
     setBusy("pdf");
     try {
-      const sections = [];
-      let failed = 0;
-      for (const c of SHARE_CATEGORIES) {
-        if (!selected.includes(c)) continue;
-        const got = await collectFiles(photos, [c]);
-        failed += got.failed;
-        sections.push({
-          label: t(`share.${c}`),
-          files: got.files,
-          appendix:
-            c === "menu" && menuTranslations.length > 0
-              ? { title: t("share.menuTranslation"), linkLabel: t("share.seeTranslation"), texts: menuTranslations }
-              : undefined,
-        });
-      }
-      if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
-      const pdf = await buildPdf(info, sections, labels);
-      const r = await sharePdf(pdf);
+      const r = await sharePdf(await makePdf());
       if (r === "shared") onClose();
     } catch (e) {
       console.error("[ShareSheet] pdf", e);

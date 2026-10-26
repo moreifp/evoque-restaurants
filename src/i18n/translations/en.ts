@@ -452,6 +452,7 @@ export const en = {
     error: "Could not share. Please try again.",
     menuTranslation: "Menu translation",
     seeTranslation: "See menu translation »",
+    photosLink: "Photos and menu (PDF)",
     someFailed: "{n} photo(s) could not load and were left out.",
   },
   receiptSection: {
