@@ -3,6 +3,9 @@ import { ChevronDown, Loader2, RotateCw, WifiOff, Wine, Receipt, BookOpen, QrCod
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import type { DraftPhoto, ReceiptData } from "@/lib/draftStore";
+import { MenuExplainToggle } from "@/components/MenuExplainToggle";
+import { useMenuExplain } from "@/hooks/useMenuExplain";
+import { withoutExplanations } from "@/lib/menuText";
 
 function money(v: number | null | undefined, currency?: string | null): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "";
@@ -29,6 +32,26 @@ export function QrBadge({ url }: { url?: string | null }) {
         </a>
       ) : null}
     </p>
+  );
+}
+
+/** Recibo com QR de NFC-e que o app não conseguiu ler: abrir a nota e usar o favorito. */
+export function NfceHint({ url }: { url: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-3 rounded-2xl border-2 border-primary/30 bg-primary/5 p-4">
+      <p className="flex items-center gap-2 text-base font-semibold text-[#0d1a2d]">
+        <QrCode className="h-6 w-6 shrink-0" /> {t("nota.nfceHint")}
+      </p>
+      <a
+        href={url.replace(/\|/g, "%7C")}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-lg font-semibold text-primary-foreground"
+      >
+        <Receipt className="h-6 w-6" /> {t("nota.openNota")}
+      </a>
+    </div>
   );
 }
 
@@ -141,6 +164,7 @@ export function ReceiptCard({ data, qrUrl }: { data: ReceiptData; qrUrl?: string
 export function MenuCard({ translation, qrUrl }: { translation: string; qrUrl?: string | null }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [explain, setExplain] = useMenuExplain();
   return (
     <div className="rounded-2xl border-2 border-[#0d1a2d]/10 bg-background">
       <button
@@ -159,7 +183,12 @@ export function MenuCard({ translation, qrUrl }: { translation: string; qrUrl?: 
         </div>
       ) : null}
       {open && (
-        <div className="whitespace-pre-wrap border-t px-4 py-3 text-base leading-relaxed">{translation}</div>
+        <div className="space-y-3 border-t px-4 py-3">
+          <MenuExplainToggle value={explain} onChange={setExplain} />
+          <div className={cn("whitespace-pre-wrap leading-relaxed", explain ? "text-base" : "text-lg")}>
+            {explain ? translation : withoutExplanations(translation)}
+          </div>
+        </div>
       )}
     </div>
   );

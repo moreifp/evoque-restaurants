@@ -446,6 +446,54 @@ export type Database = {
         }
         Relationships: []
       }
+      nfce_send_keys: {
+        Row: {
+          created_at: string
+          key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pending_receipts: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          source_url: string | null
+          status: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          id?: string
+          source_url?: string | null
+          status?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          source_url?: string | null
+          status?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       receipt_items: {
         Row: {
           created_at: string | null

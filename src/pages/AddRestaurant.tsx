@@ -27,7 +27,10 @@ import { useUploadWithRetry } from "@/hooks/useUploadWithRetry";
 import { VoiceNoteButton } from "@/components/VoiceNoteButton";
 import { QuickCamera } from "@/components/camera/QuickCamera";
 import { RestaurantPicker, type PickedRestaurant } from "@/components/add/RestaurantPicker";
-import { AiStatusLine, MenuCard, ReceiptCard, WineCard } from "@/components/add/AiCards";
+import { AiStatusLine, MenuCard, NfceHint, ReceiptCard, WineCard } from "@/components/add/AiCards";
+import { usePendingNota } from "@/hooks/usePendingNota";
+import { markNotaUsed, renderNotaImage } from "@/lib/nfceSend";
+import { isNfceUrl } from "@/lib/qrLink";
 import { AI_CATEGORIES, CATEGORIES, categoryFromPhotoType } from "@/components/add/categories";
 import { SaveOriginalsBar } from "@/components/photos/SaveOriginalsBar";
 import { compressImage } from "@/lib/imageVariants";
@@ -516,12 +519,18 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     category,
     source,
     name,
+    preset,
+    quiet,
   }: {
     blob: Blob;
     thumb: Blob | null;
     category: PhotoCategory;
     source: "camera" | "gallery";
     name?: string;
+    /** Campos já prontos (ex.: nota fiscal recebida, com itens e IA concluída). */
+    preset?: Partial<DraftPhoto>;
+    /** Sem o aviso "recibo substituído". */
+    quiet?: boolean;
   }): Promise<string | null> => {
     if (!draftRef.current) return null;
     const id = newId();
@@ -557,7 +566,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       const old = draftRef.current.photos.filter((p) => p.category === "receipt");
       if (old.length) {
         for (const o of old) await discardPhoto(o.id);
-        toast({ title: t("quickAdd.receiptReplaced") });
+        if (!quiet) toast({ title: t("quickAdd.receiptReplaced") });
       }
     }
 
@@ -570,12 +579,33 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       hasOriginal: true,
       hasThumb: thumbStored,
       ai: AI_CATEGORIES.includes(category) ? { status: "queued" } : undefined,
+      ...preset,
     };
     update((d) => ({ ...d, photos: [...d.photos, photo] }));
     await persistNow();
-    if (photo.ai) void runAi(id); // IA na hora (sem internet: fica na fila)
+    if (photo.ai && photo.ai.status !== "done") void runAi(id); // IA na hora (sem internet: fica na fila)
     return id;
   };
+
+  // Nota fiscal mandada pelo favorito "Enviar ao Evoque": vira o Recibo deste rascunho
+  usePendingNota(!!draft && !draft.saved && !noUser, async (n) => {
+    const d = draftRef.current;
+    if (!d || d.saved) return false;
+    const blob = await renderNotaImage(n.data, t("nota.receivedTitle"));
+    const id = await handleCapture({
+      blob,
+      thumb: null,
+      category: "receipt",
+      source: "gallery",
+      name: "nota-fiscal.jpg",
+      quiet: true,
+      preset: { receipt: n.data, viaQr: true, qrUrl: n.source_url ?? "", ai: { status: "done" } },
+    });
+    if (!id) return false;
+    await markNotaUsed(n.id);
+    toast({ title: t("nota.received") });
+    return true;
+  });
 
   const openCamera = (category: PhotoCategory) => setCamera({ open: true, category });
 
@@ -929,6 +959,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
                             void runAi(p.id);
                           }}
                         />
+                        {c.key === "receipt" && p.qrUrl && !p.viaQr && isNfceUrl(p.qrUrl) && <NfceHint url={p.qrUrl} />}
                         {c.key === "receipt" && p.receipt && <ReceiptCard data={p.receipt} qrUrl={p.viaQr ? p.qrUrl : null} />}
                         {c.key === "menu" && p.menuTranslation && <MenuCard translation={p.menuTranslation} qrUrl={p.viaQr ? p.qrUrl : null} />}
                         {c.key === "wine" && p.wineInfo && <WineCard info={p.wineInfo} />}

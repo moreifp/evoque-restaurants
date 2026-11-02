@@ -33,6 +33,7 @@ const Account = lazy(() => import("./pages/Account"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Embed = lazy(() => import("./pages/Embed"));
+const NotaRecebida = lazy(() => import("./pages/NotaRecebida"));
 
 const isEmbedded = typeof window !== "undefined" && window.self !== window.top;
 
@@ -96,6 +97,8 @@ function AppRoutes() {
           <Route path="/s/:token" element={<SharedByToken />} />
           <Route path="/token" element={<TokenInput />} />
           <Route path="/embed" element={<Embed />} />
+          {/* Nota fiscal mandada pelo favorito "Enviar ao Evoque" (sem login: a chave identifica) */}
+          <Route path="/nota" element={<NotaRecebida />} />
 
           {/* Redirects for old routes */}
           <Route

@@ -52,3 +52,6 @@ verify_jwt = false
 
 [functions.read-qr-link]
 verify_jwt = true
+
+[functions.receive-nfce]
+verify_jwt = false

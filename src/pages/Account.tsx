@@ -17,6 +17,7 @@ import { useI18n } from "@/i18n/i18n";
 import { useDespia } from "@/contexts/DespiaContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { useNativeNotifications } from "@/hooks/useNativeNotifications";
+import { NotaFavoritoCard } from "@/components/NotaFavoritoCard";
 export default function Account() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -384,6 +385,9 @@ export default function Account() {
               </CardContent>
           </Card>
           )}
+
+          {/* Nota fiscal pelo QR: favorito "Enviar ao Evoque" */}
+          <NotaFavoritoCard />
 
           {/* Preferences Section - Language */}
           <Card>
