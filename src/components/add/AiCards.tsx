@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Loader2, RotateCw, WifiOff, Wine, Receipt, BookOpen } from "lucide-react";
+import { ChevronDown, Loader2, RotateCw, WifiOff, Wine, Receipt, BookOpen, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/i18n";
 import type { DraftPhoto, ReceiptData } from "@/lib/draftStore";
@@ -14,6 +14,22 @@ function money(v: number | null | undefined, currency?: string | null): string {
     /* moeda desconhecida */
   }
   return `${currency ? `${currency} ` : ""}${v.toFixed(2)}`;
+}
+
+/** Selo "Lido pelo QR code" (com link para abrir o original). */
+export function QrBadge({ url }: { url?: string | null }) {
+  const { t } = useI18n();
+  return (
+    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <QrCode className="h-4 w-4 shrink-0" />
+      <span>{t("qr.readFromQr")}</span>
+      {url ? (
+        <a href={url.replace(/\|/g, "%7C")} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">
+          {t("qr.openOriginal")}
+        </a>
+      ) : null}
+    </p>
+  );
 }
 
 /** Linha de estado da IA (lendo / sem internet / erro). */
@@ -57,7 +73,7 @@ export function AiStatusLine({
   );
 }
 
-export function ReceiptCard({ data }: { data: ReceiptData }) {
+export function ReceiptCard({ data, qrUrl }: { data: ReceiptData; qrUrl?: string | null }) {
   const { t } = useI18n();
   const cur = data.currency ?? null;
   const items = Array.isArray(data.items) ? data.items : [];
@@ -66,6 +82,7 @@ export function ReceiptCard({ data }: { data: ReceiptData }) {
       <p className="flex items-center gap-2 text-lg font-bold text-[#0d1a2d]">
         <Receipt className="h-6 w-6" /> {t("quickAdd.receiptTitle")}
       </p>
+      {qrUrl ? <QrBadge url={qrUrl} /> : null}
       <ul className="divide-y">
         {items.map((it, i) => {
           const pt = (it.name_pt || "").trim();
@@ -117,7 +134,7 @@ export function ReceiptCard({ data }: { data: ReceiptData }) {
   );
 }
 
-export function MenuCard({ translation }: { translation: string }) {
+export function MenuCard({ translation, qrUrl }: { translation: string; qrUrl?: string | null }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
@@ -132,6 +149,11 @@ export function MenuCard({ translation }: { translation: string }) {
         <span className="flex-1">{t("quickAdd.menuTitle")}</span>
         <ChevronDown className={cn("h-6 w-6 shrink-0 transition-transform", open && "rotate-180")} />
       </button>
+      {qrUrl ? (
+        <div className="px-4 pb-3">
+          <QrBadge url={qrUrl} />
+        </div>
+      ) : null}
       {open && (
         <div className="whitespace-pre-wrap border-t px-4 py-3 text-base leading-relaxed">{translation}</div>
       )}

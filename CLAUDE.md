@@ -8,7 +8,7 @@
 
 ## Onde roda
 - **App:** https://restaurantes.evoque.global — é o único endereço do app. O GitHub Pages (`moreifp.github.io/evoque-restaurants`) e o link antigo do Lovable **não** são o app.
-- **Front:** Cloudflare Workers, SPA estática de `dist/` (`wrangler.jsonc`). O Workers Builds está ligado ao GitHub: **todo merge na `main` publica sozinho** (~2 min). Para forçar um build, basta um commit novo na `main`.
+- **Front:** Cloudflare Workers: SPA estática de `dist/` + `worker/index.ts` (só a rota `/api/nfce`) — `wrangler.jsonc`. O Workers Builds está ligado ao GitHub: **todo merge na `main` publica sozinho** (~2 min). Para forçar um build, basta um commit novo na `main`.
 - **Variáveis de build no Cloudflare** (Settings → Builds → Variables and secrets): `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`. Sem elas o app abre o logo e fica em tela branca.
 - **Banco, auth, storage e edge functions:** Supabase próprio do Fausto, projeto `evoque-restaurants` (`qmbmifmqnkkiwlshcjzm`), pasta `supabase/`.
 - **Edge functions** (`supabase/functions/`): IA (Anthropic) para nota do restaurante, rótulo de vinho, recibo e cardápio; áudio (ElevenLabs); mapas (Google Places); backup no Google Drive; compartilhamento por token; integração com o Evoque Viagens (`embed-exchange`, `my-trips`).
@@ -26,6 +26,13 @@
 - **WhatsApp no computador:** a folha do Mac não lista o WhatsApp para arquivos. Então gera o PDF, sobe para `restaurant-photos/<uid>/compartilhados/<aleatório>/` e abre `whatsapp://send` com o texto e **um link só** (cai no WhatsApp Web se o app não abrir). Um link por foto não serve: o WhatsApp só mostra a prévia do primeiro.
 - **PDF:** A4 com cabeçalho, fotos por seção (duas por linha) e, se o Cardápio estiver marcado e houver tradução, um **anexo no fim** com a tradução formatada, link "Ver tradução do cardápio »" na seção e índice lateral. Gerado no aparelho com `jspdf`.
 - As fontes padrão do PDF só têm o alfabeto latino: `pdfSafe` tira emojis; a nota sai como "4/5" (a estrela não existe na fonte).
+
+## QR code no cardápio e no recibo (`src/lib/qrLink.ts`, função `read-qr-link`, `worker/index.ts`)
+- Não há botão novo: a foto de **Cardápio** ou **Recibo** é examinada com `jsqr` (tamanhos 1000/800/1400/600 px, `inversionAttempts: "attemptBoth"` — há QR claro sobre fundo escuro). Achou link web → lê o link; senão, ou se o link falhar, lê a foto como antes.
+- Pontos que usam: `draftEngine.runAi` (cadastro), `UnifiedMediaUpload` (edição: recibo e "Traduzir") e `RestaurantDetail.handleTranslateMenu`. Sempre por `translateMenuSmart` / `processReceiptSmart`.
+- **Cardápio:** `read-qr-link` abre página web (texto + segue até 2 links de PDF/Drive), PDF, imagem, arquivo ou **pasta pública do Google Drive** (`embeddedfolderview`) e Google Docs; traduz com o mesmo formato do `translate-menu`. O link fica na legenda (`caption`) da foto e aparece o selo "Lido pelo QR code · Abrir original". Cardápios que só montam com JavaScript (apps de cardápio digital) não abrem → cai na foto.
+- **Recibo (NFC-e):** a Sefaz-SP **bloqueia IPs de nuvem da Amazon** (funções e banco do Supabase) e exige `|` codificado como `%7C` e User-Agent de navegador. Por isso a página da nota é buscada pelo Worker do app (`/api/nfce`, só domínios de Sefaz), convertida em texto no aparelho, **sem CPF/nome do consumidor**, e só o texto vai para `read-qr-link`. Linhas SERVIÇO/TAXA viram `service_fee`.
+- Segurança do `read-qr-link`: exige login, recusa endereços internos/privados, confere cada redirecionamento, limite de 20 MB e 20 s.
 
 ## Lições aprendidas
 - **Safari e cache:** foto que a tela já mostrou em tamanho cheio (via `srcSet`, sem CORS) faz o `fetch` com CORS da mesma URL falhar no iPhone. `fetchAsFile` (`src/lib/saveToPhotos.ts`) baixa com parâmetro extra na URL e `cache: "no-store"`. Não remover.

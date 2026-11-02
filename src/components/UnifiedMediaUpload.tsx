@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { processReceiptSmart, translateMenuSmart } from "@/lib/qrLink";
 import { Landmark, UtensilsCrossed, Wine, Users, Receipt, X, Sparkles, Star, Plus, Utensils, Loader2, Camera, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -526,29 +527,8 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
         .from("restaurant-photos")
         .getPublicUrl(fileName);
 
-      const { data: resp, error: functionError } = await supabase.functions.invoke(
-        "process-receipt",
-        {
-          body: { imageUrl: publicUrl },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      // Check for errors in response body (edge function may return error in data)
-      if (functionError) {
-        console.error('Receipt function error:', functionError);
-        throw new Error(functionError.message || 'Failed to process receipt');
-      }
-      
-      // Check if response contains an error field
-      if (resp?.error) {
-        console.error('Receipt processing error:', resp.error);
-        throw new Error(resp.error);
-      }
-
-      const extracted = resp?.data ?? resp; // normalize shape from edge function
+      // Com QR code na foto (NFC-e ou link), lê a nota pelo link; senão, a foto
+      const { value: extracted } = await processReceiptSmart({ imageUrl: publicUrl, localBlob: fileData.file });
 
       // Resolve effective entryId (creates draft if needed for new-restaurant flow)
       const effectiveEntryId = await resolveEntryId();
@@ -882,35 +862,14 @@ export function UnifiedMediaUpload({ entryId, onRequestEntryId, initialUploadDat
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) throw new Error("Not authenticated");
 
-      const { data: resp, error: functionError } = await supabase.functions.invoke(
-        "translate-menu",
-        {
-          body: { 
-            imageUrl: file.url, 
-            targetLanguage,
-            // Com o id a tradução fica salva na foto (antes se perdia)
-            photoId: file.photoId ?? (entryId ? await findPhotoId(entryId, file.url) : undefined),
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (functionError) {
-        console.error('Menu translation error:', functionError);
-        throw new Error(functionError.message || 'Failed to translate menu');
-      }
-
-      if (resp?.error) {
-        console.error('Translation error:', resp.error);
-        throw new Error(resp.error);
-      }
-
-      const translation = resp?.translation;
-      if (!translation) {
-        throw new Error('No translation returned');
-      }
+      // Com QR code na foto, traduz o cardápio do link; senão, a foto
+      const { value: translation } = await translateMenuSmart({
+        imageUrl: file.url,
+        targetLanguage,
+        // Com o id a tradução fica salva na foto (antes se perdia)
+        photoId: file.photoId ?? (entryId ? await findPhotoId(entryId, file.url) : undefined),
+        localBlob: file.file,
+      });
 
       // Update file with translation in local state
       setFiles(prev => {

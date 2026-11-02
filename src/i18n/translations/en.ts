@@ -438,6 +438,10 @@ export const en = {
     noCredits: "AI credits exhausted. Add credits to your workspace.",
   },
   
+  qr: {
+    readFromQr: "Read from the QR code",
+    openOriginal: "Open original",
+  },
   share: {
     button: "Share",
     title: "Share",
