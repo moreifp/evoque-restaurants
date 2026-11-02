@@ -33,6 +33,11 @@ import { useAIConsent } from "@/hooks/useAIConsent";
 import { getShareUrl } from "@/lib/shareUrl";
 import { ShareSheet } from "@/components/share/ShareSheet";
 import { translateMenuSmart } from "@/lib/qrLink";
+import { usePendingNota } from "@/hooks/usePendingNota";
+import { MenuExplainToggle } from "@/components/MenuExplainToggle";
+import { useMenuExplain } from "@/hooks/useMenuExplain";
+import { withoutExplanations } from "@/lib/menuText";
+import { markNotaUsed, saveNotaToEntry } from "@/lib/nfceSend";
 import { QrBadge } from "@/components/add/AiCards";
 
 export default function RestaurantDetail() {
@@ -66,6 +71,8 @@ export default function RestaurantDetail() {
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   // Seções recolhíveis (fechadas ao abrir o restaurante) e traduções de cardápio abertas
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  // Tradução do cardápio: só os pratos (padrão) ou com explicação
+  const [menuExplain, setMenuExplain] = useMenuExplain();
   const toggleSection = (key: string) => setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const languageOptions = [
@@ -117,6 +124,30 @@ export default function RestaurantDetail() {
       fetchSocialLinks();
     }
   }, [id]);
+
+  // Nota fiscal mandada pelo favorito "Enviar ao Evoque": grava no Recibo deste
+  // restaurante — só se a visita é de hoje ou ontem (nunca num restaurante antigo).
+  const visitaRecente = (() => {
+    if (!entry?.visit_date) return false;
+    const dias = (Date.now() - new Date(`${entry.visit_date}T12:00:00`).getTime()) / 86_400_000;
+    return dias > -2 && dias < 2;
+  })();
+  usePendingNota(!!(id && entry?.user_id && visitaRecente), async (n) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    if (!uid || !id || entry?.user_id !== uid) return false;
+    try {
+      await saveNotaToEntry(id, uid, n, t("nota.receivedTitle"));
+      await markNotaUsed(n.id);
+      await fetchReceipt();
+      setOpenSections((prev) => ({ ...prev, receipt: true }));
+      toast({ title: t("nota.received") });
+      return true;
+    } catch (e) {
+      console.error("[RestaurantDetail] nota", e);
+      return false;
+    }
+  });
 
   const fetchTags = async () => {
     const { data } = await supabase
@@ -1311,8 +1342,11 @@ export default function RestaurantDetail() {
                                           <h4 className="font-semibold mb-3 flex items-center gap-2">
                                             📋 {t("restaurantDetail.menuTranslation")}
                                           </h4>
-                                          <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                                            {photo.menu_translation}
+                                          <div className="mb-3">
+                                            <MenuExplainToggle value={menuExplain} onChange={setMenuExplain} />
+                                          </div>
+                                          <div className={cn("whitespace-pre-wrap leading-relaxed", menuExplain ? "text-sm" : "text-base")}>
+                                            {menuExplain ? photo.menu_translation : withoutExplanations(photo.menu_translation)}
                                           </div>
                                         </div>
                                       )}
@@ -1444,8 +1478,11 @@ export default function RestaurantDetail() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                                        {photo.menu_translation}
+                                      <div className="space-y-3">
+                                        <MenuExplainToggle value={menuExplain} onChange={setMenuExplain} />
+                                        <div className={cn("whitespace-pre-wrap leading-relaxed", menuExplain ? "text-sm" : "text-base")}>
+                                          {menuExplain ? photo.menu_translation : withoutExplanations(photo.menu_translation || "")}
+                                        </div>
                                       </div>
                                     )}
                                   </CardContent>

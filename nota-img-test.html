@@ -1,0 +1,8 @@
+<!doctype html><html><body style="margin:0;background:#ddd"><script type="module">
+import { renderNotaImage } from "/src/lib/nfceSend.ts";
+const data = {"restaurant":"SAINT PATRICK BARRESTAURANTE EIRELI","currency":"BRL","subtotal":711,"service_fee":92.43,"total":803.43,"items":[
+["Pastel Misto",65],["Meio Croquete de Carne",37],["Risotto Camarão e Rúcula",156],["Negroni Tanqueray",60],["Água Prata com Gás",13],["Água Prata sem Gás",13],["Coca Cola Zero",15],["Taça Yellow Tail Chardonnay",59],["Coca Cola Zero",15],["Negroni Tanqueray",60],["Água Prata com Gás",13],["Café",13],["Arroz de Polvo",192]].map(([n,v])=>({item_type:"dish",name:n,name_pt:n,quantity:1,unit_price:v,line_total:v}))};
+const b = await renderNotaImage(data, "Nota fiscal");
+const img = new Image(); img.src = URL.createObjectURL(b); img.style.width="450px"; document.body.appendChild(img);
+await img.decode(); window.__ok = true;
+</script></body></html>

@@ -34,6 +34,16 @@
 - **Recibo (NFC-e):** a Sefaz-SP **bloqueia servidores de nuvem** — testado em 02/11/2026: Amazon (funções e banco do Supabase) **e também o Cloudflare** (`/api/nfce` recebe a página "Request Rejected"). Só abre no aparelho da pessoa (exige `|` como `%7C` e User-Agent de navegador). Hoje, com NFC-e, o recibo cai na leitura da foto. `/api/nfce` (Worker, só domínios de Sefaz) ficou no app: pode servir para outros estados. Ideia em aberto: favorito do Safari "Enviar ao Evoque" que manda o texto da nota do próprio celular. CPF/nome do consumidor sempre retirados antes da IA.
 - Segurança do `read-qr-link`: exige login, recusa endereços internos/privados, confere cada redirecionamento, limite de 20 MB e 20 s.
 
+## Nota fiscal pelo favorito "Enviar ao Evoque" (`src/lib/nfceSend.ts`, `NotaRecebida.tsx`, função `receive-nfce`)
+- Como a Sefaz só abre a nota no celular da pessoa, quem lê a página é um **favorito do Safari** (bookmarklet com a chave pessoal): tira linhas de CPF e abre `/nota#k=<chave>&u=<link>&t=<texto>`.
+- `/nota` (rota pública, sem login) apaga o `#` da barra, manda para `receive-nfce` (sem JWT; a chave identifica a pessoa; 20 notas/hora), que lê os itens com Haiku e grava em `pending_receipts`.
+- O app pega a nota com `usePendingNota` (ao abrir a tela, ao voltar ao app e a cada 8 s): no **cadastro**, vira o Recibo do rascunho (imagem "recibo digital" gerada em canvas + itens, sem IA de novo); no **restaurante salvo**, só se a visita é de hoje/ontem, substitui o recibo. Notas valem 3 h. Depois de usada: `status = 'used'`.
+- Tabelas: `nfce_send_keys` (uma chave por pessoa; trocar a chave em Conta invalida o favorito antigo) e `pending_receipts`.
+- Configuração: Conta → "Nota fiscal pelo QR" (`NotaFavoritoCard`): copiar código + 3 passos. No cadastro, recibo com QR de NFC-e não lido mostra "Abrir nota" (`NfceHint`).
+
+## Tradução do cardápio: "Só os pratos" | "Com explicação"
+- `withoutExplanations` (`src/lib/menuText.ts`) tira as linhas "(...)" de explicação (inclusive em mais de uma linha) e notas `>`. Padrão: só os pratos, com fonte maior. Preferência no aparelho (`useMenuExplain`, localStorage). Vale no cadastro, no restaurante e na foto ampliada. O PDF do Compartilhar leva a tradução completa.
+
 ## Lições aprendidas
 - **Safari e cache:** foto que a tela já mostrou em tamanho cheio (via `srcSet`, sem CORS) faz o `fetch` com CORS da mesma URL falhar no iPhone. `fetchAsFile` (`src/lib/saveToPhotos.ts`) baixa com parâmetro extra na URL e `cache: "no-store"`. Não remover.
 - O iPhone exige o gesto do usuário para `navigator.share`: as fotos são pré-baixadas enquanto se escolhem as bolinhas.
