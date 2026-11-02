@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshRestaurantLists } from "@/lib/entryCache";
-import { ArrowLeft, Check, ChevronRight, Images, Loader2, Save, Star, Trash2, UtensilsCrossed, Wifi, X } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronRight, Images, Loader2, QrCode, Receipt, Save, Star, Trash2, UtensilsCrossed, Wifi, X } from "lucide-react";
 import { z } from "zod";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,8 @@ import { RestaurantPicker, type PickedRestaurant } from "@/components/add/Restau
 import { AiStatusLine, MenuCard, NfceHint, ReceiptCard, WineCard } from "@/components/add/AiCards";
 import { usePendingNota } from "@/hooks/usePendingNota";
 import { markNotaUsed, renderNotaImage } from "@/lib/nfceSend";
-import { isNfceUrl } from "@/lib/qrLink";
+import { asWebLink, isNfceUrl } from "@/lib/qrLink";
+import { QrScanner } from "@/components/camera/QrScanner";
 import { AI_CATEGORIES, CATEGORIES, categoryFromPhotoType } from "@/components/add/categories";
 import { SaveOriginalsBar } from "@/components/photos/SaveOriginalsBar";
 import { compressImage } from "@/lib/imageVariants";
@@ -609,6 +610,35 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
 
   const openCamera = (category: PhotoCategory) => setCamera({ open: true, category });
 
+  // Cardápio e Recibo: "Foto" (câmera de sempre) ou "QR code" (leitor ao vivo)
+  const [chooser, setChooser] = useState<"menu" | "receipt" | null>(null);
+  const [scanFor, setScanFor] = useState<"menu" | "receipt" | null>(null);
+  const [notaLink, setNotaLink] = useState<string | null>(null);
+  const onTile = (category: PhotoCategory) =>
+    category === "menu" || category === "receipt" ? setChooser(category) : openCamera(category);
+  const onQrRead = async (text: string, frame: Blob | null) => {
+    const kind = scanFor;
+    setScanFor(null);
+    const url = asWebLink(text);
+    if (!kind) return;
+    if (!url) {
+      toast({ title: t("qrScan.noLink"), variant: "destructive" });
+      return;
+    }
+    // Nota fiscal: a Sefaz só abre no Safari do celular → abrir e tocar no favorito
+    if (kind === "receipt" && isNfceUrl(url)) {
+      setNotaLink(url);
+      return;
+    }
+    if (!frame) {
+      toast({ title: t("qrScan.noLink"), variant: "destructive" });
+      return;
+    }
+    // Cardápio (ou recibo com link comum): o quadro vira a foto e o app lê o link
+    await handleCapture({ blob: frame, thumb: null, category: kind, source: "camera", preset: { qrUrl: url } });
+    setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
   // "Escolher da galeria" na tela: abre as fotos do iPhone e depois pergunta a categoria.
   // Mesmo caminho das fotos da câmera (handleCapture): original no IndexedDB,
   // display + miniatura ao salvar, original ao Drive do dono com nome e metadados.
@@ -806,7 +836,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
           <button
             key={c.key}
             type="button"
-            onClick={() => openCamera(c.key)}
+            onClick={() => onTile(c.key)}
             className="relative flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background shadow-sm transition-transform active:scale-95"
             aria-label={t(c.labelKey)}
           >
@@ -1160,6 +1190,57 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
               </button>
             );
           })}
+        </div>
+      </BottomSheet>
+
+      {/* Cardápio / Recibo: Foto ou QR code */}
+      <BottomSheet
+        open={!!chooser}
+        title={chooser === "receipt" ? t("restaurantDetail.receipt") : t("restaurantDetail.menu")}
+        onClose={() => setChooser(null)}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              const c = chooser;
+              setChooser(null);
+              if (c) openCamera(c);
+            }}
+            className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background active:scale-95"
+          >
+            <Camera className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
+            <span className="text-lg font-semibold text-[#0d1a2d]">{t("qrScan.photo")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setScanFor(chooser);
+              setChooser(null);
+            }}
+            className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background active:scale-95"
+          >
+            <QrCode className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
+            <span className="text-lg font-semibold text-[#0d1a2d]">{t("qrScan.qr")}</span>
+          </button>
+        </div>
+      </BottomSheet>
+
+      <QrScanner open={!!scanFor} onClose={() => setScanFor(null)} onResult={(text, frame) => void onQrRead(text, frame)} />
+
+      {/* Nota fiscal lida: abrir no Safari e tocar no favorito */}
+      <BottomSheet open={!!notaLink} title={t("qrScan.notaFound")} onClose={() => setNotaLink(null)}>
+        <div className="space-y-4">
+          <a
+            href={(notaLink ?? "").replace(/\|/g, "%7C")}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setTimeout(() => setNotaLink(null), 500)}
+            className="flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-primary text-xl font-semibold text-primary-foreground"
+          >
+            <Receipt className="h-7 w-7" /> {t("qrScan.openSafari")}
+          </a>
+          <p className="text-center text-base text-muted-foreground">{t("qrScan.thenBookmark")}</p>
         </div>
       </BottomSheet>
 

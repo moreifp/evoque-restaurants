@@ -46,6 +46,30 @@ function loadZXing(): Promise<ZXingRead | null> {
   return zxingPromise;
 }
 
+/**
+ * Lê um QR num quadro (ex.: vídeo da câmera ao vivo). Rápido: ZXing sem as
+ * tentativas pesadas; jsQR de reserva. Devolve o texto ou null.
+ */
+export async function readQrFromImageData(img: ImageData): Promise<string | null> {
+  const zxing = await loadZXing();
+  if (zxing) {
+    try {
+      const r = await zxing(img, { formats: ["QRCode"], tryHarder: true, tryInvert: true, maxNumberOfSymbols: 1 });
+      const hit = r.find((x) => x.isValid && x.text);
+      if (hit) return hit.text.trim();
+    } catch {
+      /* cai no jsQR */
+    }
+  }
+  const r = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+  return r?.data ? r.data.trim() : null;
+}
+
+/** Pré-carrega o leitor (abre a câmera sem atraso). */
+export function warmUpQrReader(): void {
+  void loadZXing();
+}
+
 async function decodeBitmap(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === "function") {
     try {

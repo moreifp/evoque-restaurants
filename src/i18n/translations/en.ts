@@ -442,6 +442,17 @@ export const en = {
     dishesOnly: "Dishes only",
     withExplanation: "With explanations",
   },
+  qrScan: {
+    title: "Point at the QR code",
+    hint: "Point the camera at the QR code. It is read automatically.",
+    noCamera: "No camera access. Allow the camera for Evoque in Settings.",
+    noLink: "This QR code has no link.",
+    photo: "Photo",
+    qr: "QR code",
+    notaFound: "Tax receipt found",
+    openSafari: "Open receipt in Safari",
+    thenBookmark: "On the receipt, tap the Send to Evoque bookmark. The items go into the Receipt by themselves.",
+  },
   nota: {
     setupTitle: "Receipt via QR code",
     setupWhat: "The tax site only opens the receipt on your phone. A Safari bookmark sends it to Evoque with one tap.",

@@ -442,6 +442,17 @@ export const pt = {
     dishesOnly: "Só os pratos",
     withExplanation: "Com explicação",
   },
+  qrScan: {
+    title: "Aponte para o QR code",
+    hint: "Aponte a câmera para o QR code. Ele é lido sozinho.",
+    noCamera: "Sem acesso à câmera. Libere a câmera para o Evoque nos Ajustes.",
+    noLink: "Este QR code não tem um link.",
+    photo: "Foto",
+    qr: "QR code",
+    notaFound: "Nota fiscal encontrada",
+    openSafari: "Abrir nota no Safari",
+    thenBookmark: "Na nota, toque no favorito Enviar ao Evoque. Os itens entram sozinhos no Recibo.",
+  },
   nota: {
     setupTitle: "Nota fiscal pelo QR",
     setupWhat: "A Sefaz só abre a nota no seu celular. Um favorito do Safari manda a nota para o Evoque com um toque.",
