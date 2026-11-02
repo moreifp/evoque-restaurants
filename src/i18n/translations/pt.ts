@@ -440,6 +440,8 @@ export const pt = {
   
   qr: {
     readFromQr: "Lido pelo QR code",
+    readingMenu: "QR code encontrado · lendo o cardápio do link (até 1 min)",
+    readingReceipt: "QR code da nota encontrado · lendo a nota",
     openOriginal: "Abrir original",
   },
   share: {

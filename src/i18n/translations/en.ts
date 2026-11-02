@@ -440,6 +440,8 @@ export const en = {
   
   qr: {
     readFromQr: "Read from the QR code",
+    readingMenu: "QR code found · reading the menu from the link (up to 1 min)",
+    readingReceipt: "Receipt QR code found · reading the receipt",
     openOriginal: "Open original",
   },
   share: {

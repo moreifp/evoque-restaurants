@@ -1,0 +1,12 @@
+<!doctype html><html><body><script type="module">
+import { findQrInImage } from "/src/lib/qrLink.ts";
+const nomes = ["original","longe","torta","girada","borrada","escura"].flatMap(k => ["menu","recibo"].map(f => `${f}_${k}`));
+const out = [];
+for (const n of nomes) {
+  const b = await (await fetch(`/__qrtest/${n}.jpg`)).blob();
+  const t0 = performance.now();
+  const r = await findQrInImage(b);
+  out.push(`${n}: ${r ? r.slice(0, 45) : "FALHA"} (${Math.round(performance.now() - t0)} ms)`);
+}
+window.__resultado = out;
+</script></body></html>
