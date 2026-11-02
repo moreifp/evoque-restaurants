@@ -49,3 +49,6 @@ verify_jwt = false
 # sweep vem do pg_cron sem JWT de usuário: a função valida o JWT (status/backup)
 # ou o header x-cron-secret (sweep) por conta própria.
 verify_jwt = false
+
+[functions.read-qr-link]
+verify_jwt = true

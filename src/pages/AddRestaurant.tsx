@@ -929,8 +929,8 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
                             void runAi(p.id);
                           }}
                         />
-                        {c.key === "receipt" && p.receipt && <ReceiptCard data={p.receipt} />}
-                        {c.key === "menu" && p.menuTranslation && <MenuCard translation={p.menuTranslation} />}
+                        {c.key === "receipt" && p.receipt && <ReceiptCard data={p.receipt} qrUrl={p.viaQr ? p.qrUrl : null} />}
+                        {c.key === "menu" && p.menuTranslation && <MenuCard translation={p.menuTranslation} qrUrl={p.viaQr ? p.qrUrl : null} />}
                         {c.key === "wine" && p.wineInfo && <WineCard info={p.wineInfo} />}
                       </div>
                     ))}

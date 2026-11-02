@@ -16,8 +16,9 @@ import {
   uploadPhotoVariants,
   type Uploader,
 } from "@/lib/photoStorage";
-import { idbGet, origKey, type AddDraft, type DraftPhoto, type ReceiptData } from "@/lib/draftStore";
+import { idbGet, origKey, type AddDraft, type DraftPhoto } from "@/lib/draftStore";
 import { AI_CATEGORIES, CATEGORY_BY_KEY } from "@/components/add/categories";
+import { findQrInImage, processReceiptSmart, translateMenuSmart } from "@/lib/qrLink";
 
 export interface DraftCtx {
   userId: string;
@@ -136,22 +137,32 @@ export function runAi(ctx: DraftCtx, id: string): Promise<void> {
       const imageUrl = await ensureUploaded(ctx, id);
       const cur = photoOf(ctx, id);
       if (!cur) return;
-      if (cur.category === "receipt") {
-        const { data, error } = await supabase.functions.invoke("process-receipt", { body: { imageUrl } });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        patch(ctx, id, { receipt: (data?.data ?? data) as ReceiptData, ai: { status: "done" } });
-      } else if (cur.category === "menu") {
-        const { data, error } = await supabase.functions.invoke("translate-menu", {
-          body: {
+      if (cur.category === "receipt" || cur.category === "menu") {
+        // QR code na foto: procura uma vez (no original do aparelho) e guarda ("" = não tem)
+        let qr = cur.qrUrl;
+        if (qr === undefined) {
+          const local = await getOriginal(ctx, id);
+          qr = (local ? await findQrInImage(local).catch(() => null) : null) ?? "";
+          patch(ctx, id, { qrUrl: qr });
+        }
+        if (cur.category === "receipt") {
+          const r = await processReceiptSmart({ imageUrl, knownQr: qr || undefined });
+          patch(ctx, id, { receipt: r.value, viaQr: r.viaQr, qrUrl: r.qrUrl ?? qr, ai: { status: "done" } });
+        } else {
+          const r = await translateMenuSmart({
             imageUrl,
             targetLanguage: ctx.language === "en" ? "English" : "Portuguese",
-            ...(cur.rowId ? { photoId: cur.rowId } : {}),
-          },
-        });
-        if (error) throw error;
-        if (!data?.translation) throw new Error(data?.error || "No translation");
-        patch(ctx, id, { menuTranslation: data.translation as string, ai: { status: "done" } });
+            photoId: cur.rowId,
+            knownQr: qr || undefined,
+          });
+          patch(ctx, id, {
+            menuTranslation: r.value,
+            viaQr: r.viaQr,
+            qrUrl: r.qrUrl ?? qr,
+            ...(r.viaQr && r.qrUrl ? { caption: r.qrUrl } : {}),
+            ai: { status: "done" },
+          });
+        }
       } else {
         const { data, error } = await supabase.functions.invoke("analyze-wine-label", { body: { imageUrl } });
         if (error) throw error;

@@ -1,8 +1,14 @@
-// Evoque Restaurants no Cloudflare Workers: só arquivos estáticos (SPA), sem servidor.
+// Evoque Restaurants no Cloudflare Workers: SPA estática (dist/) + /api/nfce (worker/index.ts).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "evoque-restaurants",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./dist", "not_found_handling": "single-page-application" },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
   "observability": { "enabled": true }
 }

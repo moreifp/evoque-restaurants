@@ -32,6 +32,8 @@ import { enUS, ptBR } from "date-fns/locale";
 import { useAIConsent } from "@/hooks/useAIConsent";
 import { getShareUrl } from "@/lib/shareUrl";
 import { ShareSheet } from "@/components/share/ShareSheet";
+import { translateMenuSmart } from "@/lib/qrLink";
+import { QrBadge } from "@/components/add/AiCards";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -635,31 +637,16 @@ export default function RestaurantDetail() {
 
       const targetLanguage = targetLang || (language === "pt" ? "Portuguese" : "English");
 
-      const { data, error } = await supabase.functions.invoke("translate-menu", {
-        body: {
-          imageUrl: photoUrl,
-          targetLanguage,
-          photoId,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) {
-        console.error("Menu translation error:", error);
-        throw new Error(error.message || "Failed to translate menu");
-      }
-
-      if (data?.error) {
-        console.error("AI error:", data.error);
-        throw new Error(data.error);
-      }
+      // Com QR code na foto, traduz o cardápio do link; senão, a foto
+      const r = await translateMenuSmart({ imageUrl: photoUrl, targetLanguage, photoId });
+      const data = { translation: r.value };
 
       if (data?.translation) {
         setPhotos((prev) =>
           prev.map((p) =>
-            p.id === photoId ? { ...p, menu_translation: data.translation } : p
+            p.id === photoId
+              ? { ...p, menu_translation: data.translation, ...(r.viaQr && r.qrUrl ? { caption: r.qrUrl } : {}) }
+              : p
           )
         );
         toast({
@@ -1424,6 +1411,11 @@ export default function RestaurantDetail() {
                                       )}
                                     </div>
                                   </CardHeader>
+                                  {/^https?:\/\//i.test(photo.caption || "") && (
+                                    <div className="px-6 pb-2">
+                                      <QrBadge url={photo.caption} />
+                                    </div>
+                                  )}
                                   {(openSections[`tr-${photo.id}`] || editingTranslationId === photo.id) && (
                                   <CardContent>
                                     {editingTranslationId === photo.id ? (

@@ -120,6 +120,10 @@ export interface DraftPhoto {
   menuTranslation?: string;
   wineInfo?: Record<string, unknown> | null;
   caption?: string;
+  /** Link do QR code achado na foto (cardápio/recibo); "" = procurado e não tem. */
+  qrUrl?: string;
+  /** A leitura veio do link do QR (não da imagem). */
+  viaQr?: boolean;
 }
 
 export interface AddDraftForm {

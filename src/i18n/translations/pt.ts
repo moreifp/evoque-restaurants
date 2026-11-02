@@ -438,6 +438,10 @@ export const pt = {
     noCredits: "Créditos de IA esgotados. Adicione créditos ao seu workspace.",
   },
   
+  qr: {
+    readFromQr: "Lido pelo QR code",
+    openOriginal: "Abrir original",
+  },
   share: {
     button: "Compartilhar",
     title: "Compartilhar",
