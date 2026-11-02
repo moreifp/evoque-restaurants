@@ -41,6 +41,11 @@
 - Tabelas: `nfce_send_keys` (uma chave por pessoa; trocar a chave em Conta invalida o favorito antigo) e `pending_receipts`.
 - Configuração: Conta → "Nota fiscal pelo QR" (`NotaFavoritoCard`): copiar código + 3 passos. No cadastro, recibo com QR de NFC-e não lido mostra "Abrir nota" (`NfceHint`).
 
+## Cardápio e Recibo: "Foto" ou "QR code" (cadastro)
+- No cadastro (`AddRestaurant`), tocar em **Cardápio** ou **Recibo** abre a escolha **Foto** (câmera de sempre) | **QR code** (`QrScanner`: câmera ao vivo, lê sozinho com `readQrFromImageData` — ZXing + jsQR — e fecha).
+- **Cardápio por QR:** o quadro da câmera vira a foto (com `qrUrl` já preenchido) e o app traduz pelo link.
+- **Recibo por QR de NFC-e:** abre a folha "Nota fiscal encontrada" com o botão **Abrir nota no Safari** (o iPhone exige o toque; `window.open` depois de leitura assíncrona é bloqueado). Na nota, o favorito "Enviar ao Evoque" faz o resto. QR de recibo com link comum: igual ao cardápio.
+
 ## Tradução do cardápio: "Só os pratos" | "Com explicação"
 - `withoutExplanations` (`src/lib/menuText.ts`) tira as linhas "(...)" de explicação (inclusive em mais de uma linha) e notas `>`. Padrão: só os pratos, com fonte maior. Preferência no aparelho (`useMenuExplain`, localStorage). Vale no cadastro, no restaurante e na foto ampliada. O PDF do Compartilhar leva a tradução completa.
 
