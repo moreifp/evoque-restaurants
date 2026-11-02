@@ -210,3 +210,14 @@ export async function saveNotaToEntry(entryId: string, userId: string, nota: Pen
     }
   }
 }
+
+/**
+ * Link que abre no Safari de verdade (com os favoritos). No iPhone, o app
+ * instalado na tela de início abre sites numa janela interna sem favoritos;
+ * o endereço x-safari-https:// força o Safari (iOS 17+).
+ */
+export function safariLink(url: string): string {
+  const u = url.replace(/\|/g, "%7C");
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return ios && /^https?:\/\//i.test(u) ? `x-safari-${u}` : u;
+}
