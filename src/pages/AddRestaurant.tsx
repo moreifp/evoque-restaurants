@@ -29,7 +29,7 @@ import { QuickCamera } from "@/components/camera/QuickCamera";
 import { RestaurantPicker, type PickedRestaurant } from "@/components/add/RestaurantPicker";
 import { AiStatusLine, MenuCard, NfceHint, ReceiptCard, WineCard } from "@/components/add/AiCards";
 import { usePendingNota } from "@/hooks/usePendingNota";
-import { markNotaUsed, renderNotaImage } from "@/lib/nfceSend";
+import { markNotaUsed, renderNotaImage, safariLink } from "@/lib/nfceSend";
 import { asWebLink, isNfceUrl } from "@/lib/qrLink";
 import { QrScanner } from "@/components/camera/QrScanner";
 import { AI_CATEGORIES, CATEGORIES, categoryFromPhotoType } from "@/components/add/categories";
@@ -1232,8 +1232,8 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       <BottomSheet open={!!notaLink} title={t("qrScan.notaFound")} onClose={() => setNotaLink(null)}>
         <div className="space-y-4">
           <a
-            href={(notaLink ?? "").replace(/\|/g, "%7C")}
-            target="_blank"
+            href={safariLink(notaLink ?? "")}
+            target={safariLink(notaLink ?? "").startsWith("x-safari-") ? undefined : "_blank"}
             rel="noopener noreferrer"
             onClick={() => setTimeout(() => setNotaLink(null), 500)}
             className="flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-primary text-xl font-semibold text-primary-foreground"

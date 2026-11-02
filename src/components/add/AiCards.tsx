@@ -6,6 +6,7 @@ import type { DraftPhoto, ReceiptData } from "@/lib/draftStore";
 import { MenuExplainToggle } from "@/components/MenuExplainToggle";
 import { useMenuExplain } from "@/hooks/useMenuExplain";
 import { withoutExplanations } from "@/lib/menuText";
+import { safariLink } from "@/lib/nfceSend";
 
 function money(v: number | null | undefined, currency?: string | null): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "";
@@ -44,8 +45,8 @@ export function NfceHint({ url }: { url: string }) {
         <QrCode className="h-6 w-6 shrink-0" /> {t("nota.nfceHint")}
       </p>
       <a
-        href={url.replace(/\|/g, "%7C")}
-        target="_blank"
+        href={safariLink(url)}
+        target={safariLink(url).startsWith("x-safari-") ? undefined : "_blank"}
         rel="noopener noreferrer"
         className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-lg font-semibold text-primary-foreground"
       >
