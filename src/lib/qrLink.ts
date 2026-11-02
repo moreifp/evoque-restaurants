@@ -15,9 +15,36 @@ import { fetchAsFile } from "@/lib/saveToPhotos";
 import type { ReceiptData } from "@/lib/draftStore";
 
 // ───────────────────────── leitura do QR na imagem ─────────────────────────
+// Dois leitores: ZXing (WebAssembly, mais forte com foto torta, borrada ou de
+// longe) e, de reserva, jsQR. O arquivo .wasm é servido pelo próprio app.
 
-/** Tamanhos testados com fotos reais do iPhone (o QR invertido do Santo Colomba pede ≤1280). */
-const SIDES = [1000, 800, 1400, 600];
+/** Tamanhos testados com fotos reais do iPhone (o QR invertido do Santo Colomba pede ≤1280 no jsQR). */
+const SIDES_JSQR = [1000, 800, 1400, 600];
+const SIDES_ZXING = [1600, 1000];
+
+type ZXingRead = typeof import("zxing-wasm/reader").readBarcodes;
+let zxingPromise: Promise<ZXingRead | null> | null = null;
+
+/** Carrega o ZXing só na primeira foto de cardápio/recibo. */
+function loadZXing(): Promise<ZXingRead | null> {
+  zxingPromise ??= (async () => {
+    try {
+      const [mod, wasm] = await Promise.all([
+        import("zxing-wasm/reader"),
+        import("zxing-wasm/reader/zxing_reader.wasm?url"),
+      ]);
+      mod.prepareZXingModule({
+        overrides: { locateFile: (path: string, prefix: string) => (path.endsWith(".wasm") ? wasm.default : prefix + path) },
+        fireImmediately: true,
+      });
+      return mod.readBarcodes;
+    } catch (e) {
+      console.warn("[qr] ZXing indisponível", e);
+      return null;
+    }
+  })();
+  return zxingPromise;
+}
 
 async function decodeBitmap(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === "function") {
@@ -44,7 +71,8 @@ export async function findQrInImage(blob: Blob): Promise<string | null> {
   let src: ImageBitmap | HTMLImageElement;
   try {
     src = await decodeBitmap(blob);
-  } catch {
+  } catch (e) {
+    console.warn("[qr] não abriu a imagem", e);
     return null;
   }
   const w0 = "naturalWidth" in src ? src.naturalWidth : src.width;
@@ -53,19 +81,42 @@ export async function findQrInImage(blob: Blob): Promise<string | null> {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
+  const frame = (side: number): ImageData => {
+    const scale = Math.min(1, side / Math.max(w0, h0));
+    const w = Math.round(w0 * scale);
+    const h = Math.round(h0 * scale);
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(src, 0, 0, w, h);
+    return ctx.getImageData(0, 0, w, h);
+  };
   try {
-    for (const side of SIDES) {
-      const scale = Math.min(1, side / Math.max(w0, h0));
-      const w = Math.round(w0 * scale);
-      const h = Math.round(h0 * scale);
-      canvas.width = w;
-      canvas.height = h;
-      ctx.drawImage(src, 0, 0, w, h);
-      const { data } = ctx.getImageData(0, 0, w, h);
+    const zxing = await loadZXing();
+    if (zxing) {
+      for (const side of SIDES_ZXING) {
+        try {
+          const r = await zxing(frame(side), {
+            formats: ["QRCode"],
+            tryHarder: true,
+            tryInvert: true,
+            tryRotate: true,
+            tryDownscale: true,
+            maxNumberOfSymbols: 1,
+          });
+          const hit = r.find((x) => x.isValid && x.text);
+          if (hit) return hit.text.trim();
+        } catch (e) {
+          console.warn("[qr] ZXing falhou", e);
+          break;
+        }
+      }
+    }
+    for (const side of SIDES_JSQR) {
+      const img = frame(side);
       // attemptBoth: QR claro sobre fundo escuro (comum em cardápios)
-      const r = jsQR(data, w, h, { inversionAttempts: "attemptBoth" });
+      const r = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
       if (r?.data) return r.data.trim();
-      if (scale === 1) break;
+      if (img.width === w0) break;
     }
   } finally {
     if ("close" in src && typeof src.close === "function") src.close();

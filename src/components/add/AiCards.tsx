@@ -46,9 +46,13 @@ export function AiStatusLine({
   const st = photo.ai?.status;
   if (!st || st === "done") return null;
   if (st === "running") {
+    // QR achado na foto: avisa que está lendo pelo link (cardápio em PDF pode levar ~1 min)
+    const viaQr = !!photo.qrUrl && (photo.category === "menu" || photo.category === "receipt");
     return (
       <p className="flex items-center gap-2 text-base text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> {t(readingKey)}
+        {viaQr ? <QrCode className="h-5 w-5 shrink-0" /> : null}
+        <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+        {viaQr ? t(photo.category === "menu" ? "qr.readingMenu" : "qr.readingReceipt") : t(readingKey)}
       </p>
     );
   }
