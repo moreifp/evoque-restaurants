@@ -219,6 +219,9 @@ async function loadLegacyDbDraft(userId: string, exclude: string[]): Promise<Add
   };
 }
 
+/** Abre o app Atalhos e roda o atalho "Enviar ao Evoque" (nome exato). */
+const SHORTCUT_URL = `shortcuts://run-shortcut?name=${encodeURIComponent("Enviar ao Evoque")}`;
+
 export default function AddRestaurant({ home = false }: { home?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -609,6 +612,9 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
   });
 
   const openCamera = (category: PhotoCategory) => setCamera({ open: true, category });
+
+  // Recibo no iPhone: botão "Nota fiscal" roda o atalho do app Atalhos
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   // Cardápio e Recibo: "Foto" (câmera de sempre) ou "QR code" (leitor ao vivo)
   const [chooser, setChooser] = useState<"menu" | "receipt" | null>(null);
@@ -1212,17 +1218,30 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
             <Camera className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
             <span className="text-lg font-semibold text-[#0d1a2d]">{t("qrScan.photo")}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setScanFor(chooser);
-              setChooser(null);
-            }}
-            className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background active:scale-95"
-          >
-            <QrCode className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
-            <span className="text-lg font-semibold text-[#0d1a2d]">{t("qrScan.qr")}</span>
-          </button>
+          {chooser === "receipt" && isIOS ? (
+            // iPhone: roda o atalho "Enviar ao Evoque" (lê o QR, busca a nota no celular e manda);
+            // a nota entra sozinha no Recibo ao voltar ao app (usePendingNota)
+            <a
+              href={SHORTCUT_URL}
+              onClick={() => setTimeout(() => setChooser(null), 300)}
+              className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background active:scale-95"
+            >
+              <QrCode className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
+              <span className="text-lg font-semibold text-[#0d1a2d]">{t("qrScan.nota")}</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setScanFor(chooser);
+                setChooser(null);
+              }}
+              className="flex h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#0d1a2d]/10 bg-background active:scale-95"
+            >
+              <QrCode className="h-10 w-10 text-[#0d1a2d]" strokeWidth={1.8} />
+              <span className="text-lg font-semibold text-[#0d1a2d]">{t("qrScan.qr")}</span>
+            </button>
+          )}
         </div>
       </BottomSheet>
 

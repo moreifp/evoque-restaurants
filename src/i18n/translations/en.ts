@@ -449,6 +449,7 @@ export const en = {
     noLink: "This QR code has no link.",
     photo: "Photo",
     qr: "QR code",
+    nota: "Tax receipt",
     notaFound: "Tax receipt found",
     openSafari: "Open receipt in Safari",
     thenBookmark: "On the receipt, tap the Send to Evoque bookmark. The items go into the Receipt by themselves.",

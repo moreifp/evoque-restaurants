@@ -449,6 +449,7 @@ export const pt = {
     noLink: "Este QR code não tem um link.",
     photo: "Foto",
     qr: "QR code",
+    nota: "Nota fiscal",
     notaFound: "Nota fiscal encontrada",
     openSafari: "Abrir nota no Safari",
     thenBookmark: "Na nota, toque no favorito Enviar ao Evoque. Os itens entram sozinhos no Recibo.",

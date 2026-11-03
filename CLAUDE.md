@@ -46,6 +46,11 @@
 - **Cardápio por QR:** o quadro da câmera vira a foto (com `qrUrl` já preenchido) e o app traduz pelo link.
 - **Recibo por QR de NFC-e:** abre a folha "Nota fiscal encontrada" com o botão **Abrir nota no Safari** (o iPhone exige o toque; `window.open` depois de leitura assíncrona é bloqueado). Na nota, o favorito "Enviar ao Evoque" faz o resto. QR de recibo com link comum: igual ao cardápio.
 
+## Nota fiscal pelo atalho do iPhone (caminho principal desde 02/11/2026)
+- O favorito do Safari não funciona bem no app instalado na tela de início: o iPhone abre a nota numa janela interna sem favoritos (`x-safari-https://` não resolveu).
+- Solução em uso: atalho **"Enviar ao Evoque"** no app Atalhos do Fausto: escaneia o QR → "Obter conteúdo do URL" (GET, `User-Agent` de Safari do iPhone; a Sefaz aceita porque sai do celular) → rich text a partir do HTML → texto → POST JSON `{k, u, t}` para `…/functions/v1/receive-nfce` → notificação. Testado: notas chegam e entram no Recibo em ~20 s.
+- No cadastro, **Recibo** no iPhone mostra **Foto** | **Nota fiscal**; "Nota fiscal" abre `shortcuts://run-shortcut?name=Enviar%20ao%20Evoque` (o nome do atalho precisa ser exatamente esse). Fora do iPhone continua o leitor de QR.
+
 ## Tradução do cardápio: "Só os pratos" | "Com explicação"
 - `withoutExplanations` (`src/lib/menuText.ts`) tira as linhas "(...)" de explicação (inclusive em mais de uma linha) e notas `>`. Padrão: só os pratos, com fonte maior. Preferência no aparelho (`useMenuExplain`, localStorage). Vale no cadastro, no restaurante e na foto ampliada. O PDF do Compartilhar leva a tradução completa.
 
