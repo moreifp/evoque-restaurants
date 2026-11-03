@@ -15,6 +15,9 @@
 - **Admin:** função `admin-dashboard`, liberada por lista de e-mails dentro da própria função.
 - **Secrets das functions:** `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ELEVENLABS_API_KEY`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_DRIVE_*`, `RESEND_API_KEY`, `EVOQUE_VIAGENS_*`, `CRON_SECRET`.
 
+## Lista de restaurantes (`RestaurantGrid`)
+- Em "Culinary Experience" e na aba Restaurantes cada restaurante tem uma **lixeira** (`canDelete`) com confirmação "Apagar {nome}?". Apaga como a tela do restaurante: limpa o inbox de originais, apaga a entrada e tira da lista na hora.
+
 ## Tela do restaurante (`src/pages/RestaurantDetail.tsx`)
 - Seções **Lugar, Comida, Cardápio, Vinho, Amigos, Vídeos e Recibo** são recolhíveis (setinha), começam fechadas e mostram a quantidade de fotos. Estado em `openSections`.
 - A **tradução do cardápio** de cada foto também é recolhível (abre sozinha ao editar).
@@ -55,6 +58,7 @@
 - `withoutExplanations` (`src/lib/menuText.ts`) tira as linhas "(...)" de explicação (inclusive em mais de uma linha) e notas `>`. Padrão: só os pratos, com fonte maior. Preferência no aparelho (`useMenuExplain`, localStorage). Vale no cadastro, no restaurante e na foto ampliada. O PDF do Compartilhar leva a tradução completa.
 
 ## Lições aprendidas
+- **Fotos vazias (Ristorantino, 28/10/2026):** tiradas no módulo de restaurantes dentro do Evoque Viagens (iframe, `upload_origin = viagens`); Lugar/Comida só subiam ao salvar (2h20 depois) e o iPhone já tinha apagado o arquivo temporário → 3 arquivos de 0 byte no Storage e no Drive. Agora `handleCapture` copia os bytes na hora (`arrayBuffer`), dentro do Viagens a foto sobe na hora, e `ensureUploaded` recusa original vazio (`EMPTY_ORIGINAL`): o salvar continua sem ela e avisa quantas se perderam.
 - **Safari e cache:** foto que a tela já mostrou em tamanho cheio (via `srcSet`, sem CORS) faz o `fetch` com CORS da mesma URL falhar no iPhone. `fetchAsFile` (`src/lib/saveToPhotos.ts`) baixa com parâmetro extra na URL e `cache: "no-store"`. Não remover.
 - O iPhone exige o gesto do usuário para `navigator.share`: as fotos são pré-baixadas enquanto se escolhem as bolinhas.
 - Falha ao baixar foto não pode ser silenciosa: o compartilhar avisa quantas ficaram de fora.

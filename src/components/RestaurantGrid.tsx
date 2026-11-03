@@ -1,11 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Star, UtensilsCrossed } from "lucide-react";
+import { Loader2, Star, Trash2, UtensilsCrossed } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n } from "@/i18n/i18n";
 import { cn } from "@/lib/utils";
 import type { RestaurantEntry } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+import { removeEntryFromCache } from "@/lib/entryCache";
+import { cleanupInboxForEntry } from "@/lib/photoStorage";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PAGE = 20;
 /** Preferência da foto de capa: lugar, comida, amigos; depois qualquer uma. */
@@ -79,11 +92,15 @@ function EntryCard({
   entry,
   cover,
   onOpen,
+  onDelete,
+  deleteLabel,
   locale,
 }: {
   entry: RestaurantEntry;
   cover?: string;
   onOpen: () => void;
+  onDelete?: () => void;
+  deleteLabel?: string;
   locale: string;
 }) {
   const date = entry.visit_date
@@ -91,6 +108,7 @@ function EntryCard({
     : "";
   const city = cityFromAddress(entry.location_address);
   return (
+    <div className="relative">
     <button
       type="button"
       onClick={onOpen}
@@ -109,12 +127,23 @@ function EntryCard({
           </div>
         )}
       </div>
-      <div className="min-w-0 flex-1 space-y-0.5 py-2 pr-3 md:px-3">
+      <div className="min-w-0 flex-1 space-y-0.5 py-2 pr-14 md:px-3 md:pr-3">
         <p className="truncate text-lg font-semibold leading-tight text-[#0d1a2d]">{entry.restaurant_name}</p>
         <p className="truncate text-sm text-muted-foreground">{[city, date].filter(Boolean).join(" · ")}</p>
         <Stars value={entry.rating} />
       </div>
     </button>
+    {onDelete && (
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={deleteLabel}
+        className="absolute right-1 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground active:bg-red-50 active:text-red-600 md:top-2 md:translate-y-0 md:bg-background/90"
+      >
+        <Trash2 className="h-6 w-6" />
+      </button>
+    )}
+    </div>
   );
 }
 
@@ -123,9 +152,33 @@ function EntryCard({
  * rola com a página. ≥768 px: 3 colunas (≥1024 px: 4) numa caixa com duas
  * fileiras à vista, que rola por dentro. Carrega de 20 em 20.
  */
-export function RestaurantGrid({ entries }: { entries: RestaurantEntry[] }) {
+export function RestaurantGrid({ entries, canDelete = false }: { entries: RestaurantEntry[]; canDelete?: boolean }) {
   const navigate = useNavigate();
-  const { language } = useI18n();
+  const { language, t } = useI18n();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [apagar, setApagar] = useState<RestaurantEntry | null>(null);
+  const [apagando, setApagando] = useState(false);
+
+  const confirmarApagar = async () => {
+    const e = apagar;
+    if (!e) return;
+    setApagando(true);
+    try {
+      // Originais ainda não copiados ao Drive saem do inbox privado
+      await cleanupInboxForEntry(e.id);
+      const { error } = await supabase.from("restaurant_entries").delete().eq("id", e.id);
+      if (error) throw error;
+      removeEntryFromCache(qc, e.id);
+      toast({ title: t("restaurantDetail.deleteSuccess") });
+    } catch (err) {
+      console.error("[RestaurantGrid] apagar", err);
+      toast({ title: t("restaurantDetail.deleteFailed"), variant: "destructive" });
+    } finally {
+      setApagando(false);
+      setApagar(null);
+    }
+  };
   const [count, setCount] = useState(PAGE);
   const visible = entries.slice(0, count);
   const covers = useCovers(visible.map((e) => e.id));
@@ -168,10 +221,39 @@ export function RestaurantGrid({ entries }: { entries: RestaurantEntry[] }) {
             cover={covers[e.id]}
             locale={locale}
             onOpen={() => navigate(`/dining/${e.id}`)}
+            onDelete={canDelete ? () => setApagar(e) : undefined}
+            deleteLabel={t("restaurantDetail.delete")}
           />
         ))}
       </div>
       {count < entries.length && <div ref={sentinel} className="h-8" />}
+
+      <AlertDialog open={!!apagar} onOpenChange={(o) => !o && !apagando && setApagar(null)}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl">
+              {t("grid.deleteQuestion").replace("{name}", apagar?.restaurant_name ?? "")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base">{t("grid.deleteWarning")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={(ev) => {
+                ev.preventDefault();
+                void confirmarApagar();
+              }}
+              disabled={apagando}
+              className="h-14 w-full rounded-2xl bg-red-600 text-lg font-semibold text-white hover:bg-red-700"
+            >
+              {apagando ? <Loader2 className="h-6 w-6 animate-spin" /> : <Trash2 className="mr-2 h-6 w-6" />}
+              {t("restaurantDetail.delete")}
+            </AlertDialogAction>
+            <AlertDialogCancel disabled={apagando} className="h-14 w-full rounded-2xl text-lg">
+              {t("common.cancel")}
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

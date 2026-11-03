@@ -183,7 +183,7 @@ export default function Dining() {
             {entries.length === 0 ? t("home.emptyList") : t("dining.noMatches")}
           </p>
         ) : (
-          <RestaurantGrid entries={filtered} />
+          <RestaurantGrid entries={filtered} canDelete />
         )}
       </main>
 
