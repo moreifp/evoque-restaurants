@@ -20,7 +20,7 @@ export function CulinaryExperience() {
           <p className="text-base text-muted-foreground">{t("home.emptyList")}</p>
         </div>
       ) : (
-        <RestaurantGrid entries={entries} />
+        <RestaurantGrid entries={entries} canDelete />
       )}
     </section>
   );

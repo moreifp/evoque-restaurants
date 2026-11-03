@@ -34,6 +34,8 @@ export interface DraftCtx {
   /** originais guardados só em memória (IndexedDB indisponível) */
   memBlob?: (photoId: string) => Blob | undefined;
   onProgress?: (label: string, pct: number) => void;
+  /** Fotos que se perderam no aparelho (arquivo vazio) e ficaram de fora. */
+  onLostPhotos?: (n: number) => void;
 }
 
 export function stampName(): string {
@@ -74,6 +76,9 @@ export async function getOriginal(ctx: DraftCtx, id: string): Promise<Blob | nul
 const uploadJobs = new Map<string, Promise<string>>();
 const aiJobs = new Map<string, Promise<void>>();
 
+/** Original da foto vazio no aparelho (arquivo temporário apagado pelo iPhone). */
+export const EMPTY_ORIGINAL = "original vazio";
+
 export function ensureUploaded(ctx: DraftCtx, id: string): Promise<string> {
   const p = photoOf(ctx, id);
   if (!p) return Promise.reject(new Error("photo gone"));
@@ -83,6 +88,9 @@ export function ensureUploaded(ctx: DraftCtx, id: string): Promise<string> {
   const job = (async () => {
     const blob = await getOriginal(ctx, id);
     if (!blob) throw new Error("original missing");
+    // O iPhone pode apagar o arquivo temporário da foto (sobretudo dentro do
+    // Evoque Viagens): nunca gravar arquivo vazio.
+    if (blob.size === 0) throw new Error(EMPTY_ORIGINAL);
     const file = asFile(blob, p.fileName);
     let url: string;
     if (p.category === "receipt") {
@@ -247,6 +255,7 @@ export async function saveEntry(ctx: DraftCtx): Promise<string> {
   }
 
   // 3) Fotos
+  let lostPhotos = 0;
   const pending = ctx.get().photos.filter((p) => !p.rowId);
   const n = pending.length;
   let i = 0;
@@ -259,7 +268,18 @@ export async function saveEntry(ctx: DraftCtx): Promise<string> {
         : t("quickAdd.savingPhotos").replace("{n}", "1"),
       12 + (68 * i) / Math.max(1, n),
     );
-    const url = await ensureUploaded(ctx, p0.id);
+    let url: string;
+    try {
+      url = await ensureUploaded(ctx, p0.id);
+    } catch (e) {
+      // Foto perdida no aparelho: salva o resto e conta quantas ficaram de fora
+      if ((e as Error)?.message === EMPTY_ORIGINAL) {
+        lostPhotos++;
+        ctx.set((x) => ({ ...x, photos: x.photos.filter((ph) => ph.id !== p0.id) }));
+        continue;
+      }
+      throw e;
+    }
     const p = photoOf(ctx, p0.id)!;
     if (p.category === "receipt") {
       const r = p.receipt;
@@ -323,6 +343,7 @@ export async function saveEntry(ctx: DraftCtx): Promise<string> {
   if (finErr) throw finErr;
   ctx.set((x) => ({ ...x, saved: true }));
   await ctx.persist();
+  if (lostPhotos > 0) ctx.onLostPhotos?.(lostPhotos);
   return entryId;
 }
 

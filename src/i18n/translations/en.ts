@@ -438,6 +438,10 @@ export const en = {
     noCredits: "AI credits exhausted. Add credits to your workspace.",
   },
   
+  grid: {
+    deleteQuestion: "Delete {name}?",
+    deleteWarning: "It goes away with all photos, menu and receipt. This cannot be undone.",
+  },
   menuView: {
     dishesOnly: "Dishes only",
     withExplanation: "With explanations",
@@ -854,6 +858,8 @@ export const en = {
     uploadingWait: "Wait for the upload to finish",
   },
   quickAdd: {
+    photosLost: "{n} photo(s) were lost on the phone and left out. Take them again from the restaurant edit screen.",
+    photoEmpty: "The photo did not load. Take it again.",
     galleryPick: "Choose from gallery",
     galleryWhich: "{n} gallery photo(s): which kind?",
     hereRadius: "You are here · 400 m radius",

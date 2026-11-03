@@ -35,7 +35,7 @@ import { QrScanner } from "@/components/camera/QrScanner";
 import { AI_CATEGORIES, CATEGORIES, categoryFromPhotoType } from "@/components/add/categories";
 import { SaveOriginalsBar } from "@/components/photos/SaveOriginalsBar";
 import { compressImage } from "@/lib/imageVariants";
-import { cleanupInboxForEntry, removeInboxObjects, removePhotoObjects } from "@/lib/photoStorage";
+import { cleanupInboxForEntry, removeInboxObjects, removePhotoObjects, uploadOrigin } from "@/lib/photoStorage";
 import {
   deleteDraft,
   forgetDraft,
@@ -60,6 +60,7 @@ import {
   finishOriginals,
   isNetworkError,
   runAi as engineRunAi,
+  ensureUploaded as engineEnsureUploaded,
   runQueuedAi as engineRunQueuedAi,
   saveEntry,
   stampName,
@@ -315,6 +316,8 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     persist: persistNow,
     memBlob: (id) => memBlobs.current.get(id),
     onProgress: (label, pct) => setSaving({ label, pct }),
+    onLostPhotos: (n) =>
+      toast({ title: t("quickAdd.photosLost").replace("{n}", String(n)), variant: "destructive", duration: 12000 }),
   });
   const runAi = (id: string) => engineRunAi(ctx(), id);
   const runQueuedAi = () => {
@@ -539,6 +542,17 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     if (!draftRef.current) return null;
     const id = newId();
     const fileName = name || stampName();
+    // Copia os bytes da foto agora: o iPhone guarda só uma referência ao arquivo
+    // temporário e pode apagá-lo antes de salvar (aconteceu no Ristorantino, dentro do Viagens).
+    try {
+      const bytes = await blob.arrayBuffer();
+      if (bytes.byteLength === 0) throw new Error("vazio");
+      blob = new Blob([bytes], { type: blob.type || "image/jpeg" });
+    } catch (e) {
+      console.warn("[AddRestaurant] foto vazia na captura", e);
+      toast({ title: t("quickAdd.photoEmpty"), variant: "destructive" });
+      return null;
+    }
     try {
       await idbSet(origKey(id), blob);
     } catch (e) {
@@ -588,6 +602,10 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     update((d) => ({ ...d, photos: [...d.photos, photo] }));
     await persistNow();
     if (photo.ai && photo.ai.status !== "done") void runAi(id); // IA na hora (sem internet: fica na fila)
+    // Dentro do Evoque Viagens o armazenamento do iPhone é mais frágil: sobe a foto já
+    else if (uploadOrigin() === "viagens" && navigator.onLine !== false) {
+      void engineEnsureUploaded(ctx(), id).catch((e) => console.warn("[AddRestaurant] envio antecipado", e));
+    }
     return id;
   };
 

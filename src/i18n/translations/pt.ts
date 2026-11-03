@@ -438,6 +438,10 @@ export const pt = {
     noCredits: "Créditos de IA esgotados. Adicione créditos ao seu workspace.",
   },
   
+  grid: {
+    deleteQuestion: "Apagar {name}?",
+    deleteWarning: "Some com todas as fotos, cardápio e recibo. Não dá para desfazer.",
+  },
   menuView: {
     dishesOnly: "Só os pratos",
     withExplanation: "Com explicação",
@@ -854,6 +858,8 @@ export const pt = {
     uploadingWait: "Aguarde o envio terminar",
   },
   quickAdd: {
+    photosLost: "{n} foto(s) se perderam no celular e ficaram de fora. Tire de novo pela edição do restaurante.",
+    photoEmpty: "A foto não carregou. Tire de novo.",
     galleryPick: "Escolher da galeria",
     galleryWhich: "{n} foto(s) da galeria: qual é?",
     hereRadius: "Você está aqui · raio de 400 m",
