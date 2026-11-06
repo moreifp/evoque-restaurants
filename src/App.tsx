@@ -119,6 +119,7 @@ function AppRoutes() {
             <Route path="/dining" element={<Dining />} />
             <Route path="/dining/:id" element={<RestaurantDetail />} />
             <Route path="/dining/add" element={<AddRestaurant />} />
+            <Route path="/dining/:id/edit" element={<AddRestaurant />} />
             <Route path="/albums/map" element={<AlbumsMap />} />
             <Route path="/albums/create" element={<CreateAlbum />} />
             <Route path="/albums/:id" element={<AlbumDetail />} />

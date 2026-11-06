@@ -19,6 +19,8 @@
 - Em "Culinary Experience" e na aba Restaurantes cada restaurante tem uma **lixeira** (`canDelete`) com confirmação "Apagar {nome}?". Apaga como a tela do restaurante: limpa o inbox de originais, apaga a entrada e tira da lista na hora.
 
 ## Tela do restaurante (`src/pages/RestaurantDetail.tsx`)
+- **Editar** abre `/dining/:id/edit` = `AddRestaurant` (o mesmo formulário do cadastro) carregado com o restaurante (`loadEntryForEdit`, flag `editing` no rascunho: não grava no aparelho nem vai para a fila). Salvar grava no mesmo registro e volta para a ficha.
+- O formulário de edição antigo (Lovable: Companhia, Tags, Links de redes sociais) foi tirado em 06/11/2026 e está guardado em `arquivo/RestaurantDetail-edicao-antiga.tsx.txt` (fora do build), caso volte a ser útil.
 - Seções **Lugar, Comida, Cardápio, Vinho, Amigos, Vídeos e Recibo** são recolhíveis (setinha), começam fechadas e mostram a quantidade de fotos. Estado em `openSections`.
 - A **tradução do cardápio** de cada foto também é recolhível (abre sozinha ao editar).
 - No fim da tela, botão grande **Compartilhar** → folha `src/components/share/ShareSheet.tsx`.
@@ -64,8 +66,8 @@
 - Falha ao baixar foto não pode ser silenciosa: o compartilhar avisa quantas ficaram de fora.
 
 ## Pontos de atenção
-- `src/pages/RestaurantDetail.tsx` (~2.000 linhas) e `AddRestaurant.tsx` (~1.150) concentram quase tudo — mexer com cuidado e testar no iPhone.
-- O lint tem ~18 avisos antigos (`any` sem tipo) herdados do Lovable em `RestaurantDetail.tsx`; não afetam o app. Mudanças novas não devem criar avisos novos.
+- `src/pages/RestaurantDetail.tsx` (~1.600 linhas) e `AddRestaurant.tsx` (~1.350) concentram quase tudo — mexer com cuidado e testar no iPhone.
+- O lint tem ~12 avisos antigos (`any` sem tipo) herdados do Lovable em `RestaurantDetail.tsx`; não afetam o app. Mudanças novas não devem criar avisos novos.
 - Não há testes automatizados ainda; `src/lib` e `src/utils` são os primeiros candidatos (`pdfText.ts` é puro e fácil de testar).
 - Clone raso: se o `git` não enxergar a branch remota, `git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*" && git fetch`.
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { refreshRestaurantLists } from "@/lib/entryCache";
 import { ArrowLeft, Camera, Check, ChevronRight, Images, Loader2, QrCode, Receipt, Save, Star, Trash2, UtensilsCrossed, Wifi, X } from "lucide-react";
@@ -139,7 +139,37 @@ async function loadLegacyDbDraft(userId: string, exclude: string[]): Promise<Add
   // Rascunhos que já estão no aparelho (salvamento interrompido) não entram de novo
   const entry = (rows ?? []).find((r) => !exclude.includes(r.id));
   if (!entry) return null;
+  return draftFromEntry(userId, entry);
+}
 
+/** Editar: um restaurante já salvo (do próprio usuário) vira rascunho no formulário. */
+async function loadEntryForEdit(userId: string, entryId: string): Promise<AddDraft | null> {
+  const { data: entry } = await supabase
+    .from("restaurant_entries")
+    .select("*")
+    .eq("id", entryId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!entry) return null;
+  const d = await draftFromEntry(userId, entry);
+  return { ...d, editing: true };
+}
+
+type EntryRow = { [k: string]: unknown } & {
+  id: string;
+  restaurant_name: string | null;
+  visit_date: string | null;
+  location_address: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
+  google_place_id: string | null;
+  rating: number | null;
+  notes: string | null;
+  origin_scheduled_visit_id?: string | null;
+};
+
+/** Monta o rascunho (texto + fotos já no banco) a partir de uma linha de restaurant_entries. */
+async function draftFromEntry(userId: string, entry: EntryRow): Promise<AddDraft> {
   const [{ data: photos }, { data: receipts }] = await Promise.all([
     supabase
       .from("restaurant_photos")
@@ -226,6 +256,8 @@ const SHORTCUT_URL = `shortcuts://run-shortcut?name=${encodeURIComponent("Enviar
 export default function AddRestaurant({ home = false }: { home?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  /** /dining/:id/edit — editar um restaurante já salvo com este mesmo formulário. */
+  const { id: editId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, language } = useI18n();
@@ -257,6 +289,8 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     clearTimeout(persistTimer.current);
     const d = draftRef.current;
     if (!d || finishedRef.current) return;
+    // Edição: o restaurante já está no banco; não entra no rascunho "Novo restaurante" nem na fila
+    if (d.editing) return;
     try {
       if (isMeaningful(d)) await putDraft(d);
       else await forgetDraft(d);
@@ -374,6 +408,25 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
         return;
       }
       userIdRef.current = uid;
+
+      // Editar um restaurante salvo: carrega do banco e abre direto no formulário
+      if (editId) {
+        let ed: AddDraft | null = null;
+        try {
+          ed = await loadEntryForEdit(uid, editId);
+        } catch (e) {
+          console.warn("[AddRestaurant] edit load failed", e);
+        }
+        if (cancelled) return;
+        if (!ed) {
+          toast({ title: t("restaurantDetail.loadFailed"), variant: "destructive" });
+          navigate("/dining", { replace: true });
+          return;
+        }
+        await showDraft(ed);
+        runQueuedAi();
+        return;
+      }
 
       const draftParam = searchParams.get("draft");
       const pre = {
@@ -774,7 +827,9 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       return;
     }
     if (navigator.onLine === false) {
-      await moveToQueue("offline");
+      // Edição não vai para a fila: o restaurante já existe no banco
+      if (d.editing) toast({ title: t("quickAdd.editOffline"), variant: "destructive" });
+      else await moveToQueue("offline");
       return;
     }
 
@@ -787,7 +842,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     } catch (e) {
       console.error("[AddRestaurant] save failed", e);
       setSaving(null);
-      if (isNetworkError(e)) {
+      if (isNetworkError(e) && !d.editing) {
         await moveToQueue("offline");
       } else {
         toast({
@@ -900,9 +955,9 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
               </Button>
             )}
             <h1 className="flex-1 text-3xl font-bold text-[#0d1a2d]">
-              {t("quickAdd.title")}
+              {draft.editing ? t("quickAdd.editTitle") : t("quickAdd.title")}
             </h1>
-            {isMeaningful(draft) && !draft.saved && (
+            {isMeaningful(draft) && !draft.saved && !draft.editing && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -1092,7 +1147,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
               {saving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
               {t("quickAdd.save")}
             </Button>
-            {!draft.saved && (
+            {!draft.saved && !draft.editing && (
               <Button
                 type="button"
                 variant="outline"

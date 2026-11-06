@@ -151,6 +151,8 @@ export interface AddDraft {
   saved?: boolean;
   /** Na fila "para enviar" (Salvar depois no Wi-Fi / sem internet). */
   queued?: boolean;
+  /** Edição de um restaurante já salvo (não é guardado no aparelho nem na fila). */
+  editing?: boolean;
   originScheduledVisitId: string | null;
   updatedAt: number;
 }

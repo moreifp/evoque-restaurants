@@ -879,6 +879,8 @@ export const en = {
     typedOnly: "Not found on Google — the typed name will be used",
     restaurant: "Restaurant",
     title: "New restaurant",
+    editTitle: "Edit restaurant",
+    editOffline: "No internet: try saving again when you are connected.",
     nearTitle: "Near you",
     locating: "Looking for restaurants nearby…",
     noneNearby: "No restaurants within 400 m",
