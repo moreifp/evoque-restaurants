@@ -821,7 +821,7 @@ export default function RestaurantDetail() {
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => setEditMode(true)}
+                    onClick={() => navigate(`/dining/${id}/edit`)}
                   >
                     <Edit className="h-5 w-5 mr-2" />
                     {t("restaurantDetail.edit")}
