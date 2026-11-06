@@ -1,0 +1,530 @@
+// Formulário de edição ANTIGO da tela do restaurante (herdado do Lovable).
+// Tirado de src/pages/RestaurantDetail.tsx em 06/11/2026, quando o Editar passou a abrir
+// o formulário novo (AddRestaurant em /dining/:id/edit). Guardado só para consulta:
+// não faz parte do build. Tinha campos que o novo não tem: Companhia, Tags e Links de redes sociais.
+//
+// Componentes que ele usava: TagInput, UnifiedMediaUpload, SocialLinksInput, RestaurantPicker (collapsible).
+
+// ---- estado ----
+  const [formData, setFormData] = useState({
+    restaurant_name: "",
+    visit_date: "",
+    location_address: "",
+    location_lat: null as number | null,
+    location_lng: null as number | null,
+    google_place_id: "" as string | null,
+    rating: 0,
+    companions: "",
+    notes: "",
+  });
+
+  const [uploadData, setUploadData] = useState<{
+    place: string[];
+    food: string[];
+    friends: string[];
+    wine: Array<{ url: string; caption: string; rating?: number; wineInfo?: any }>;
+    menu: Array<{ url: string; translation?: string }>;
+    receipt: any | null;
+  }>({
+    place: [],
+    food: [],
+    friends: [],
+    wine: [],
+    menu: [],
+    receipt: null,
+  });
+
+// ---- preencher o formulário (dentro de fetchEntry) ----
+    setFormData({
+      restaurant_name: data.restaurant_name,
+      visit_date: data.visit_date,
+      location_address: data.location_address || "",
+      location_lat: data.location_lat,
+      location_lng: data.location_lng,
+      google_place_id: data.google_place_id || null,
+      rating: data.rating || 0,
+      companions: data.companions || "",
+      notes: data.notes || "",
+    });
+
+// ---- salvar ----
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    try {
+      // Update restaurant entry
+      const { error: entryError } = await supabase
+        .from("restaurant_entries")
+        .update({
+          restaurant_name: formData.restaurant_name,
+          visit_date: formData.visit_date,
+          location_address: formData.location_address,
+          location_lat: formData.location_lat,
+          location_lng: formData.location_lng,
+          google_place_id: formData.google_place_id,
+          rating: formData.rating || null,
+          companions: formData.companions,
+          notes: formData.notes,
+        })
+        .eq("id", id);
+
+      if (entryError) throw entryError;
+
+      // Photos and receipts are now saved progressively by UnifiedMediaUpload
+      // when entryId is provided, so no batch saving needed here
+
+      // Update tags
+      await supabase.from("entry_tags").delete().eq("entry_id", id);
+
+      for (const tagLabel of tags) {
+        let { data: existingTag } = await supabase
+          .from("tags")
+          .select("id")
+          .eq("label", tagLabel)
+          .single();
+
+        let tagId: string;
+
+        if (!existingTag) {
+          const { data: newTag, error: tagError } = await supabase
+            .from("tags")
+            .insert({ label: tagLabel })
+            .select("id")
+            .single();
+
+          if (tagError) throw tagError;
+          tagId = newTag.id;
+        } else {
+          tagId = existingTag.id;
+        }
+
+        await supabase
+          .from("entry_tags")
+          .insert({
+            entry_id: id,
+            tag_id: tagId,
+          });
+      }
+
+      // Update social links
+      await supabase.from("restaurant_social_links").delete().eq("entry_id", id);
+
+      if (socialLinks.length > 0) {
+        const linksToInsert = socialLinks.map(link => ({
+          entry_id: id,
+          platform: link.platform,
+          url: link.url,
+          title: link.title || null,
+        }));
+
+        const { error: linksError } = await supabase
+          .from("restaurant_social_links")
+          .insert(linksToInsert);
+
+        if (linksError) throw linksError;
+      }
+
+      // Listas (início, Restaurantes, chips) com os dados novos
+      refreshRestaurantLists(queryClient);
+      
+      toast({
+        title: t("restaurantDetail.success"),
+        description: t("restaurantDetail.restaurantUpdated"),
+      });
+
+      setEditMode(false);
+      fetchEntry();
+      fetchPhotos();
+      fetchReceipt();
+      fetchTags();
+      fetchSocialLinks();
+      
+      setUploadData({
+        place: [],
+        food: [],
+        friends: [],
+        wine: [],
+        menu: [],
+        receipt: null,
+      });
+    } catch (error: any) {
+      toast({
+        title: t("restaurantDetail.error"),
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+// ---- nota ----
+  const setRating = (rating: number) => {
+    setFormData((prev) => ({ ...prev, rating }));
+  };
+
+  const handleGenerateNote = async () => {
+    const allowed = await ensureAIConsent("recommendations");
+    if (!allowed) return;
+    setGeneratingNote(true);
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("generate-restaurant-note", {
+        body: {
+          restaurantName: formData.restaurant_name,
+          location: formData.location_address,
+          rating: formData.rating,
+          companions: formData.companions,
+          visitDate: formData.visit_date,
+          language,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Note generation error:', error);
+        throw new Error(error.message || 'Failed to generate note');
+      }
+      
+      // Check if response contains an error field
+      if (data?.error) {
+        console.error('AI error:', data.error);
+        throw new Error(data.error);
+      }
+
+      if (data?.note) {
+        setFormData((prev) => ({ ...prev, notes: data.note }));
+        toast({
+          title: t("restaurantDetail.noteGenerated"),
+          description: t("restaurantDetail.noteGeneratedDesc"),
+        });
+      } else {
+        throw new Error('No note returned');
+      }
+    } catch (error: any) {
+      toast({
+        title: t("restaurantDetail.error"),
+        description: error.message || t("restaurantDetail.noteFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingNote(false);
+    }
+  };
+
+// ---- legenda das fotos de comida (dentro da lista de fotos) ----
+                              {editMode ? (
+                                <Input
+                                  placeholder={t("restaurantDetail.addDishName")}
+                                  value={photo.caption || ""}
+                                  onChange={async (e) => {
+                                    const newCaption = e.target.value;
+                                    setPhotos(prev => prev.map(p => 
+                                      p.id === photo.id ? { ...p, caption: newCaption } : p
+                                    ));
+                                    await supabase
+                                      .from("restaurant_photos")
+                                      .update({ caption: newCaption })
+                                      .eq("id", photo.id);
+                                  }}
+                                  className="text-sm"
+                                />
+                              ) : photo.caption ? (
+                                <p className="text-sm text-muted-foreground text-center">{photo.caption}</p>
+                              ) : null}
+
+// ---- recibo ausente ----
+              ) : editMode && (
+                <Card className="border-2 border-dashed border-muted">
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                    <ReceiptIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>{t("receiptSection.notAvailable")}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+// ---- JSX do formulário ----
+          ) : (
+            // EDIT MODE
+            <Card>
+              <CardHeader>
+                <CardTitle>Edit Restaurant Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Restaurante: escrever o nome ou buscar (Places API New no servidor) */}
+                  <div className="space-y-2">
+                    <Label className="text-lg">{t("restaurantDetail.restaurantName")} *</Label>
+                    <RestaurantPicker
+                      showNearby={false}
+                      collapsible
+                      autoSelectNearest={false}
+                      selected={
+                        formData.restaurant_name
+                          ? {
+                              name: formData.restaurant_name,
+                              address: formData.location_address || "",
+                              lat: formData.location_lat ?? null,
+                              lng: formData.location_lng ?? null,
+                              placeId: formData.google_place_id ?? null,
+                            }
+                          : null
+                      }
+                      onSelect={(r) =>
+                        setFormData((prev) =>
+                          r.placeId
+                            ? {
+                                ...prev,
+                                restaurant_name: r.name,
+                                location_address: r.address,
+                                location_lat: r.lat,
+                                location_lng: r.lng,
+                                google_place_id: r.placeId,
+                              }
+                            : // Nome escrito à mão: corrige só o nome, mantém o lugar
+                              { ...prev, restaurant_name: r.name }
+                        )
+                      }
+                    />
+                  </div>
+
+                  {/* Visit Date */}
+                  <div className="space-y-2">
+                    <Label htmlFor="visit_date" className="text-lg">Visit Date *</Label>
+                    <Input
+                      id="visit_date"
+                      type="date"
+                      value={formData.visit_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, visit_date: e.target.value })
+                      }
+                      className="text-lg h-12"
+                      required
+                    />
+                  </div>
+
+                  {/* Unified Media Upload */}
+                  <UnifiedMediaUpload
+                    entryId={id}
+                    initialUploadData={{
+                      place: photos.filter(p => p.type === 'restaurant_photo' || p.type === 'place' || !p.type).map(p => p.photo_url),
+                      food: photos.filter(p => p.type === 'food').map(p => p.photo_url),
+                      friends: photos.filter(p => p.type === 'friends').map(p => p.photo_url),
+                      wine: photos.filter(p => p.type === 'wine').map(p => ({
+                        url: p.photo_url,
+                        caption: p.caption || '',
+                        rating: p.rating,
+                        wineInfo: null,
+                      })),
+                      menu: photos.filter(p => p.type === 'menu').map(p => p.photo_url),
+                      receipt: receipt ? {
+                        photo_url: receipt.photo_url,
+                        subtotal: receipt.subtotal,
+                        tax: receipt.tax,
+                        service_fee: receipt.service_fee,
+                        total: receipt.total,
+                        currency: receipt.currency,
+                        items: receiptItems,
+                      } : null,
+                    }}
+                    onUploadsChange={setUploadData}
+                    onLocationExtracted={(location) => {
+                      setFormData({
+                        ...formData,
+                        location_address: location.address,
+                        location_lat: location.lat,
+                        location_lng: location.lng,
+                      });
+                    }}
+                    onPhotoSaved={(photoData) => {
+                      // Reload photos to show immediately in the interface
+                      fetchPhotos();
+                      if (photoData.type === 'receipt') {
+                        fetchReceipt();
+                      }
+                    }}
+                  />
+
+                  {/* Menu Photos with Translate Option in Edit Mode */}
+                  {photos.filter(p => p.type === 'menu').length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <UtensilsCrossed className="h-5 w-5" />
+                        {t("restaurantDetail.translateMenu")}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        {photos.filter(p => p.type === 'menu').map((photo) => (
+                          <div key={photo.id} className="relative rounded-lg overflow-hidden border bg-muted">
+                            <PhotoThumb
+                              photo={photo}
+                              alt={t("common.menu")}
+                              className="w-full h-32 object-cover"
+                            />
+                            <div className="absolute bottom-2 right-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant={photo.menu_translation ? "secondary" : "default"}
+                                    size="sm"
+                                    disabled={translatingMenuId === photo.id}
+                                    className="shadow-lg"
+                                  >
+                                    <Sparkles className="h-4 w-4 mr-1" />
+                                    {translatingMenuId === photo.id
+                                      ? t("restaurantDetail.translating")
+                                      : photo.menu_translation
+                                        ? t("restaurantDetail.retranslate")
+                                        : t("restaurantDetail.translateMenu")}
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="bg-background border shadow-lg z-50">
+                                  {languageOptions.map((lang) => (
+                                    <DropdownMenuItem
+                                      key={lang.code}
+                                      onClick={() => handleTranslateMenu(photo.id, photo.photo_url, lang.code)}
+                                      className="cursor-pointer"
+                                    >
+                                      {lang.flag} {lang.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {photo.menu_translation && (
+                              <div className="absolute top-2 left-2">
+                                <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  {t("restaurantDetail.translated")}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  <TagInput
+                    selectedTags={tags}
+                    onTagsChange={setTags}
+                  />
+
+                  {/* Rating */}
+                  <div className="space-y-2">
+                    <Label className="text-lg">{t("restaurantDetail.rating")}</Label>
+                    <div className="flex items-center space-x-3">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setRating(star)}
+                          className="transition-transform hover:scale-110"
+                        >
+                          <Star
+                            className={cn(
+                              "h-10 w-10 transition-colors",
+                              star <= formData.rating
+                                ? "text-accent fill-accent"
+                                : "text-muted-foreground"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Companions */}
+                  <div className="space-y-2">
+                    <Label htmlFor="companions" className="text-lg">{t("restaurantDetail.companions")}</Label>
+                    <Input
+                      id="companions"
+                      type="text"
+                      placeholder={t("restaurantDetail.companionsPlaceholder")}
+                      value={formData.companions}
+                      onChange={(e) =>
+                        setFormData({ ...formData, companions: e.target.value })
+                      }
+                      className="text-lg h-12"
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="notes" className="text-lg">{t("restaurantDetail.notes")}</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateNote}
+                        disabled={generatingNote || !formData.restaurant_name}
+                      >
+                        {generatingNote ? t("restaurantDetail.generating") : t("restaurantDetail.generateNote")}
+                      </Button>
+                    </div>
+                    <Textarea
+                      id="notes"
+                      placeholder={t("restaurantDetail.notesPlaceholder")}
+                      rows={5}
+                      value={formData.notes}
+                      onChange={(e) =>
+                        setFormData({ ...formData, notes: e.target.value })
+                      }
+                      className="text-lg min-h-[120px]"
+                    />
+                  </div>
+
+                  {/* Social Links */}
+                  <SocialLinksInput
+                    links={socialLinks}
+                    onChange={setSocialLinks}
+                  />
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      onClick={handleSaveChanges}
+                      disabled={saving}
+                      className="flex-1 h-12 text-lg"
+                    >
+                      <Save className="h-5 w-5 mr-2" />
+                      {saving ? t("restaurantDetail.saving") : t("restaurantDetail.save")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditMode(false);
+                        setFormData({
+                          restaurant_name: entry.restaurant_name,
+                          visit_date: entry.visit_date,
+                          location_address: entry.location_address || "",
+                          location_lat: entry.location_lat,
+                          location_lng: entry.location_lng,
+                          google_place_id: entry.google_place_id || null,
+                          rating: entry.rating || 0,
+                          companions: entry.companions || "",
+                          notes: entry.notes || "",
+                        });
+                        setUploadData({
+                          place: [],
+                          food: [],
+                          friends: [],
+                          wine: [],
+                          menu: [],
+                          receipt: null,
+                        });
+                      }}
+                      className="h-12 text-lg"
+                    >
+                      {t("restaurantDetail.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
