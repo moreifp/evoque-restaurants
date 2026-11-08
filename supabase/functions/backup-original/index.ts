@@ -8,7 +8,7 @@
 // Fluxo: o app envia o original para o bucket privado `originals-inbox`
 // (`${userId}/${photoId}.${ext}`) e grava restaurant_photos.original_path.
 // Aqui baixamos com a service role, subimos para
-// "Restaurants/<restaurante>/" ou "<viagem>/Restaurants/<restaurante>/" (upload resumable) e, com
+// "Restaurants/<restaurante>/" ou "Viagens/<viagem>/Restaurants/<restaurante>/" (upload resumable) e, com
 // sucesso, gravamos drive_file_id + original_saved_at, limpamos original_path
 // e apagamos o objeto do inbox.
 //
@@ -254,9 +254,10 @@ async function pastaDestino(token: string, origem: string | null, restaurante: s
       const j = r.ok ? await r.json() : null;
       const pasta = typeof j?.pasta === "string" && j.pasta.trim() ? j.pasta.trim() : null;
       if (pasta) {
-        // Mesma busca do Viagens (pasta com o nome da viagem; cria na raiz se não existir).
+        // Mesma busca do Viagens: pasta com o nome da viagem em qualquer lugar do Drive;
+        // se não existir, cria dentro de "Viagens/" (estrutura Viagens/<viagem>/… desde 08/11/2026).
         const viagemId = (await driveFindOne(token, `name='${driveQ(pasta)}' and mimeType='${FOLDER_MIME}' and trashed=false`)) ??
-          (await findOrCreateFolder(token, pasta, "root"));
+          (await findOrCreateFolder(token, pasta, await findOrCreateFolder(token, "Viagens", "root")));
         const sub = await findOrCreateFolder(token, TRIP_SUBFOLDER, viagemId);
         return await findOrCreateFolder(token, restaurante, sub);
       }
