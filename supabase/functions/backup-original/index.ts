@@ -8,7 +8,7 @@
 // Fluxo: o app envia o original para o bucket privado `originals-inbox`
 // (`${userId}/${photoId}.${ext}`) e grava restaurant_photos.original_path.
 // Aqui baixamos com a service role, subimos para
-// "Restaurants/<restaurante>/" ou "<viagem>/Restaurants/<restaurante>/" (upload resumable) e, com
+// "Restaurants/<restaurante>/" ou "Viagens/<viagem>/Restaurants/<restaurante>/" (upload resumable) e, com
 // sucesso, gravamos drive_file_id + original_saved_at, limpamos original_path
 // e apagamos o objeto do inbox.
 //
@@ -239,24 +239,28 @@ function folderNameFor(entry: EntryRow): string | null {
 
 /**
  * Pasta do original no Drive, conforme por onde a foto foi enviada:
- *  - "viagens" (Restaurants aberto dentro do Evoque Viagens) e a data cai numa viagem que o dono organiza
- *      → "<pasta da viagem>/Restaurants/<restaurante>/"
+ *  - "viagens:<id>" (Restaurants aberto dentro de uma viagem do Evoque Viagens) → a pasta dessa viagem;
+ *    "viagens" (embutido sem viagem) e a data cai numa viagem que o dono organiza
+ *      → "Viagens/<viagem>/Restaurants/<restaurante>/"
  *  - senão → "Restaurants/<restaurante>/"
  */
 async function pastaDestino(token: string, origem: string | null, restaurante: string, data: string): Promise<string> {
-  if (origem === "viagens" && VIAGENS_SECRET) {
+  if (origem?.startsWith("viagens") && VIAGENS_SECRET) {
     try {
+      // "viagens:<id>": a viagem em que o Restaurants estava aberto manda, seja qual for a data.
+      const tripId = origem.startsWith("viagens:") ? origem.slice("viagens:".length) : null;
       const r = await fetch(`${VIAGENS_URL}/api/public/hooks/viagem-da-foto`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-evoque-secret": VIAGENS_SECRET },
-        body: JSON.stringify({ email: DRIVE_OWNER_EMAIL, data }),
+        body: JSON.stringify({ email: DRIVE_OWNER_EMAIL, data, ...(tripId ? { trip_id: tripId } : {}) }),
       });
       const j = r.ok ? await r.json() : null;
       const pasta = typeof j?.pasta === "string" && j.pasta.trim() ? j.pasta.trim() : null;
       if (pasta) {
-        // Mesma busca do Viagens (pasta com o nome da viagem; cria na raiz se não existir).
+        // Mesma busca do Viagens: pasta com o nome da viagem em qualquer lugar do Drive;
+        // se não existir, cria dentro de "Viagens/" (estrutura Viagens/<viagem>/… desde 08/11/2026).
         const viagemId = (await driveFindOne(token, `name='${driveQ(pasta)}' and mimeType='${FOLDER_MIME}' and trashed=false`)) ??
-          (await findOrCreateFolder(token, pasta, "root"));
+          (await findOrCreateFolder(token, pasta, await findOrCreateFolder(token, "Viagens", "root")));
         const sub = await findOrCreateFolder(token, TRIP_SUBFOLDER, viagemId);
         return await findOrCreateFolder(token, restaurante, sub);
       }
