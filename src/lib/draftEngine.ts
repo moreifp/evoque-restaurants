@@ -16,7 +16,7 @@ import {
   uploadPhotoVariants,
   type Uploader,
 } from "@/lib/photoStorage";
-import { idbGet, origKey, type AddDraft, type DraftPhoto } from "@/lib/draftStore";
+import { idbGet, idbGetBlob, origKey, type AddDraft, type DraftPhoto } from "@/lib/draftStore";
 import { AI_CATEGORIES, CATEGORY_BY_KEY } from "@/components/add/categories";
 import { findQrInImage, processReceiptSmart, translateMenuSmart } from "@/lib/qrLink";
 
@@ -64,9 +64,9 @@ const patch = (ctx: DraftCtx, id: string, p: Partial<DraftPhoto>) =>
 
 export async function getOriginal(ctx: DraftCtx, id: string): Promise<Blob | null> {
   const mem = ctx.memBlob?.(id);
-  if (mem) return mem;
+  if (mem && mem.size > 0) return mem;
   try {
-    return (await idbGet<Blob>(origKey(id))) ?? null;
+    return await idbGetBlob(origKey(id));
   } catch {
     return null;
   }
@@ -360,6 +360,7 @@ export async function finishOriginals(ctx: DraftCtx): Promise<File[]> {
   if (drive) {
     const todo = candidates.filter((p) => !p.originalStashed);
     let i = 0;
+    let perdidas = 0;
     for (const p of todo) {
       i++;
       ctx.onProgress?.(
@@ -367,12 +368,18 @@ export async function finishOriginals(ctx: DraftCtx): Promise<File[]> {
         80 + (20 * i) / Math.max(1, todo.length),
       );
       const blob = await getOriginal(ctx, p.id);
-      if (!blob) continue;
+      // Original sumiu ou está vazio: a versão de tela já está salva; não manda nada ao Drive.
+      if (!blob || blob.size === 0) {
+        console.warn("[finishOriginals] original vazio, não vai ao Drive", p.id);
+        perdidas++;
+        continue;
+      }
       await uploadOriginalToInbox({ userId: ctx.userId, photoId: p.rowId!, file: asFile(blob, p.fileName) });
       patch(ctx, p.id, { originalStashed: true });
       await ctx.persist();
     }
     kickDriveBackup(ctx.userId);
+    if (perdidas > 0) ctx.onLostPhotos?.(perdidas);
     return [];
   }
   const files: File[] = [];

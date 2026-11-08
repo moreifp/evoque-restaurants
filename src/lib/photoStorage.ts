@@ -167,6 +167,7 @@ export async function uploadOriginalToInbox(params: {
   file: File;
 }): Promise<string> {
   const { userId, photoId, file } = params;
+  if (file.size === 0) throw new Error("original vazio");
   const path = `${userId}/${photoId}.${originalExtension(file)}`;
   const { error: upErr } = await supabase.storage.from(INBOX_BUCKET).upload(path, file, {
     cacheControl: "3600",

@@ -307,6 +307,14 @@ async function backupPhoto(
     if (dlError || !blob) {
       return { status: "error", error: `inbox download failed: ${dlError?.message ?? "empty"}` };
     }
+    // Original vazio (o iPhone apagou o arquivo temporário antes do envio): nunca gravar
+    // 0 bytes no Drive. Tira do inbox e deixa a foto sem original; a versão de tela fica no app.
+    if (blob.size === 0) {
+      await admin.storage.from(INBOX_BUCKET).remove([photo.original_path]);
+      await admin.from("restaurant_photos").update({ original_path: null }).eq("id", photo.id);
+      console.error("backup-original: original vazio, descartado", photo.id);
+      return { status: "error", error: "original vazio" };
+    }
 
     const ext = (photo.original_path.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
     const mime = blob.type && blob.type !== "application/octet-stream" ? blob.type : (MIME_BY_EXT[ext] ?? "application/octet-stream");

@@ -64,6 +64,27 @@ export function idbSet(key: string, value: unknown): Promise<void> {
   return run<void>("readwrite", (s) => s.put(value, key));
 }
 
+/**
+ * Guarda uma imagem como bytes (ArrayBuffer) + tipo, não como Blob: no Safari
+ * do iPhone um Blob gravado no IndexedDB pode voltar vazio (0 bytes) depois
+ * que o app sai de primeiro plano — foi assim que fotos do Morton's (07/11)
+ * chegaram vazias ao Drive. Bytes copiados não dependem do arquivo temporário.
+ */
+export async function idbSetBlob(key: string, blob: Blob): Promise<void> {
+  const data = await blob.arrayBuffer();
+  if (data.byteLength === 0) throw new Error("blob vazio");
+  await idbSet(key, { tipo: blob.type || "image/jpeg", data });
+}
+
+/** Lê o que idbSetBlob gravou (ou um Blob antigo, de versões anteriores). Vazio → null. */
+export async function idbGetBlob(key: string): Promise<Blob | null> {
+  const v = await idbGet<Blob | { tipo: string; data: ArrayBuffer }>(key);
+  if (!v) return null;
+  if (v instanceof Blob) return v.size > 0 ? v : null;
+  if (!v.data || v.data.byteLength === 0) return null;
+  return new Blob([v.data], { type: v.tipo || "image/jpeg" });
+}
+
 export function idbDel(keys: string | string[]): Promise<void> {
   const list = Array.isArray(keys) ? keys : [keys];
   return run<void>("readwrite", (s) => {
