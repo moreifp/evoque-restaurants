@@ -42,8 +42,8 @@ import {
   getCurrentDraft,
   getDraft,
   idbDel,
-  idbGet,
-  idbSet,
+  idbGetBlob,
+  idbSetBlob,
   listQueuedDrafts,
   newDraftId,
   notifyQueueChanged,
@@ -378,7 +378,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     for (const p of d0.photos) {
       if (!p.hasThumb && !p.hasOriginal) continue;
       try {
-        const b = (await idbGet<Blob>(p.hasThumb ? thumbKey(p.id) : origKey(p.id))) ?? null;
+        const b = await idbGetBlob(p.hasThumb ? thumbKey(p.id) : origKey(p.id));
         if (b) urls[p.id] = URL.createObjectURL(b);
       } catch {
         /* sem miniatura */
@@ -607,7 +607,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       return null;
     }
     try {
-      await idbSet(origKey(id), blob);
+      await idbSetBlob(origKey(id), blob);
     } catch (e) {
       console.warn("[AddRestaurant] IndexedDB write failed, keeping in memory", e);
       memBlobs.current.set(id, blob);
@@ -624,7 +624,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     let thumbStored = false;
     if (small && !memBlobs.current.has(id)) {
       try {
-        await idbSet(thumbKey(id), small);
+        await idbSetBlob(thumbKey(id), small);
         thumbStored = true;
       } catch {
         thumbStored = false;
