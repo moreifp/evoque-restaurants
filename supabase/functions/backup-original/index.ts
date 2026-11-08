@@ -239,17 +239,20 @@ function folderNameFor(entry: EntryRow): string | null {
 
 /**
  * Pasta do original no Drive, conforme por onde a foto foi enviada:
- *  - "viagens" (Restaurants aberto dentro do Evoque Viagens) e a data cai numa viagem que o dono organiza
- *      → "<pasta da viagem>/Restaurants/<restaurante>/"
+ *  - "viagens:<id>" (Restaurants aberto dentro de uma viagem do Evoque Viagens) → a pasta dessa viagem;
+ *    "viagens" (embutido sem viagem) e a data cai numa viagem que o dono organiza
+ *      → "Viagens/<viagem>/Restaurants/<restaurante>/"
  *  - senão → "Restaurants/<restaurante>/"
  */
 async function pastaDestino(token: string, origem: string | null, restaurante: string, data: string): Promise<string> {
-  if (origem === "viagens" && VIAGENS_SECRET) {
+  if (origem?.startsWith("viagens") && VIAGENS_SECRET) {
     try {
+      // "viagens:<id>": a viagem em que o Restaurants estava aberto manda, seja qual for a data.
+      const tripId = origem.startsWith("viagens:") ? origem.slice("viagens:".length) : null;
       const r = await fetch(`${VIAGENS_URL}/api/public/hooks/viagem-da-foto`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-evoque-secret": VIAGENS_SECRET },
-        body: JSON.stringify({ email: DRIVE_OWNER_EMAIL, data }),
+        body: JSON.stringify({ email: DRIVE_OWNER_EMAIL, data, ...(tripId ? { trip_id: tripId } : {}) }),
       });
       const j = r.ok ? await r.json() : null;
       const pasta = typeof j?.pasta === "string" && j.pasta.trim() ? j.pasta.trim() : null;

@@ -656,7 +656,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     await persistNow();
     if (photo.ai && photo.ai.status !== "done") void runAi(id); // IA na hora (sem internet: fica na fila)
     // Dentro do Evoque Viagens o armazenamento do iPhone é mais frágil: sobe a foto já
-    else if (uploadOrigin() === "viagens" && navigator.onLine !== false) {
+    else if (uploadOrigin().startsWith("viagens") && navigator.onLine !== false) {
       void engineEnsureUploaded(ctx(), id).catch((e) => console.warn("[AddRestaurant] envio antecipado", e));
     }
     return id;

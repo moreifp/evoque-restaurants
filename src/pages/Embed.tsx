@@ -26,9 +26,14 @@ const Embed = () => {
     const token = params.get("token") || params.get("pass");
     const clientId = params.get("client_id") || "evoque-viagens";
     const next = params.get("next");
+    // Viagem em que o Viagens abriu o Restaurants (trip=<uuid>): as fotos vão para a pasta dela
+    // no Drive. Sem trip, limpa: vale a viagem da data.
+    const trip = params.get("trip");
     // Remove the pass from the address bar immediately
     window.history.replaceState(null, "", "/embed");
     sessionStorage.setItem("evoque_embedded", "1");
+    if (trip && /^[0-9a-f-]{36}$/i.test(trip)) sessionStorage.setItem("evoque_trip", trip);
+    else sessionStorage.removeItem("evoque_trip");
 
     (async () => {
       if (!token) {

@@ -44,15 +44,33 @@ function uniqueStamp(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** "viagens" quando o app está aberto dentro do Evoque Viagens (login pelo Viagens); senão "direto". */
-export function uploadOrigin(): "viagens" | "direto" {
+/** Está aberto dentro do Evoque Viagens? */
+export function dentroDoViagens(): boolean {
   try {
-    if (typeof window !== "undefined" && window.self !== window.top) return "viagens";
-    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("evoque_embedded") === "1") return "viagens";
+    if (typeof window !== "undefined" && window.self !== window.top) return true;
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("evoque_embedded") === "1") return true;
   } catch {
-    return "viagens"; // acesso ao topo bloqueado = estamos num iframe
+    return true; // acesso ao topo bloqueado = estamos num iframe
   }
-  return "direto";
+  return false;
+}
+
+/**
+ * Origem gravada na foto:
+ *  - "viagens:<id da viagem>" quando o Viagens abriu o Restaurants dentro de uma viagem
+ *    (o original vai para a pasta dessa viagem no Drive, seja qual for a data);
+ *  - "viagens" quando está embutido sem viagem (vale a viagem da data);
+ *  - "direto" fora do Viagens.
+ */
+export function uploadOrigin(): string {
+  if (!dentroDoViagens()) return "direto";
+  try {
+    const trip = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("evoque_trip") : null;
+    if (trip && /^[0-9a-f-]{36}$/i.test(trip)) return `viagens:${trip}`;
+  } catch {
+    /* sem sessionStorage */
+  }
+  return "viagens";
 }
 
 // ---------------------------------------------------------------------------
