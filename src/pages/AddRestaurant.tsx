@@ -1146,14 +1146,22 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
             <Label htmlFor="staff" className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {t("addRestaurant.staff")}
             </Label>
-            <Textarea
-              id="staff"
-              placeholder={t("addRestaurant.staffPlaceholder")}
-              rows={3}
-              value={form.staff ?? ""}
-              onChange={(e) => setForm({ staff: e.target.value })}
-              className="min-h-[90px] rounded-2xl text-lg"
-            />
+            <div className="relative">
+              <Textarea
+                id="staff"
+                placeholder={t("addRestaurant.staffPlaceholder")}
+                rows={3}
+                value={form.staff ?? ""}
+                onChange={(e) => setForm({ staff: e.target.value })}
+                className="min-h-[90px] rounded-2xl pr-12 text-lg"
+              />
+              <VoiceNoteButton
+                onTranscribed={(text) => {
+                  const cur = draftRef.current?.form.staff ?? "";
+                  setForm({ staff: cur ? `${cur}\n${text}` : text });
+                }}
+              />
+            </div>
           </section>
 
           {/* 5. Salvar */}
