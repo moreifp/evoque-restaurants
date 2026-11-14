@@ -78,6 +78,7 @@ const entrySchema = z.object({
   restaurant_name: z.string().trim().min(1).max(200),
   visit_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().max(5000),
+  staff: z.string().max(2000).optional(),
 });
 
 const today = () => new Date().toLocaleDateString("en-CA"); // AAAA-MM-DD no fuso do aparelho
@@ -92,6 +93,7 @@ function emptyForm(): AddDraftForm {
     google_place_id: null,
     rating: 0,
     notes: "",
+    staff: "",
   };
 }
 
@@ -114,6 +116,7 @@ function isMeaningful(d: AddDraft): boolean {
   return (
     d.photos.length > 0 ||
     !!d.form.notes.trim() ||
+    !!(d.form.staff ?? "").trim() ||
     d.form.rating > 0 ||
     !!d.entryId ||
     !!d.saved ||
@@ -165,6 +168,7 @@ type EntryRow = { [k: string]: unknown } & {
   google_place_id: string | null;
   rating: number | null;
   notes: string | null;
+  staff?: string | null;
   origin_scheduled_visit_id?: string | null;
 };
 
@@ -242,6 +246,7 @@ async function draftFromEntry(userId: string, entry: EntryRow): Promise<AddDraft
       google_place_id: entry.google_place_id,
       rating: entry.rating || 0,
       notes: entry.notes || "",
+      staff: entry.staff || "",
     },
     photos: list,
     entryId: entry.id,
@@ -1134,6 +1139,21 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
                 }}
               />
             </div>
+          </section>
+
+          {/* 4b. Equipe do restaurante */}
+          <section className="space-y-2">
+            <Label htmlFor="staff" className="px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("addRestaurant.staff")}
+            </Label>
+            <Textarea
+              id="staff"
+              placeholder={t("addRestaurant.staffPlaceholder")}
+              rows={3}
+              value={form.staff ?? ""}
+              onChange={(e) => setForm({ staff: e.target.value })}
+              className="min-h-[90px] rounded-2xl text-lg"
+            />
           </section>
 
           {/* 5. Salvar */}

@@ -856,6 +856,17 @@ export default function RestaurantDetail() {
                     </div>
                   )}
 
+                  {/* Equipe do restaurante */}
+                  {entry.staff && (
+                    <div>
+                      <Label className="text-lg flex items-center gap-2 mb-2">
+                        <UserCircle2 className="h-5 w-5" />
+                        {t("restaurantDetail.staff")}
+                      </Label>
+                      <p className="text-muted-foreground whitespace-pre-wrap pl-7">{entry.staff}</p>
+                    </div>
+                  )}
+
                   {/* Notes */}
                   {entry.notes && (
                     <div>

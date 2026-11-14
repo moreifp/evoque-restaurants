@@ -156,6 +156,8 @@ export interface AddDraftForm {
   google_place_id: string | null;
   rating: number;
   notes: string;
+  /** Equipe do restaurante (maître, garçons...). Texto livre. */
+  staff?: string;
 }
 
 export interface AddDraft {
