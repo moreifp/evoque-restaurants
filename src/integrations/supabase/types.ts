@@ -601,6 +601,7 @@ export type Database = {
           origin_scheduled_visit_id: string | null
           rating: number | null
           restaurant_name: string
+          staff: string | null
           updated_at: string | null
           user_id: string
           visit_date: string
@@ -622,6 +623,7 @@ export type Database = {
           origin_scheduled_visit_id?: string | null
           rating?: number | null
           restaurant_name: string
+          staff?: string | null
           updated_at?: string | null
           user_id: string
           visit_date: string
@@ -643,6 +645,7 @@ export type Database = {
           origin_scheduled_visit_id?: string | null
           rating?: number | null
           restaurant_name?: string
+          staff?: string | null
           updated_at?: string | null
           user_id?: string
           visit_date?: string

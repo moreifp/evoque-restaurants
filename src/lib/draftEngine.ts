@@ -235,6 +235,7 @@ export async function saveEntry(ctx: DraftCtx): Promise<string> {
     google_place_id: f.google_place_id,
     rating: f.rating || null,
     notes: f.notes.trim() || null,
+    staff: (f.staff ?? "").trim() || null,
   };
   let entryId = ctx.get().entryId;
   if (entryId) {
