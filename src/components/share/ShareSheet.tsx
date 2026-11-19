@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, UtensilsCrossed, FileText, Wine, Users, Receipt, MapPin, Check, Loader2 } from "lucide-react";
+import { Camera, UtensilsCrossed, FileText, Wine, Users, Receipt, MapPin, Check, Loader2, Send } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,13 +13,20 @@ import {
   prefetchFile,
   collectFiles,
   shareText,
-  shareToWhatsApp,
   buildPdf,
-  sharePdf,
   isMobileDevice,
-  openWhatsAppDesktop,
   uploadSharePdf,
+  tryNativeShare,
+  shareInGesture,
+  waLink,
+  tryOpen,
 } from "@/lib/sharePack";
+
+/** Envio já preparado que espera um toque (o iPhone recusou sem toque recente). */
+interface Pronto {
+  tipo: "pdf" | "whatsapp";
+  enviar: () => Promise<unknown> | void;
+}
 
 interface ShareSheetProps {
   open: boolean;
@@ -54,32 +61,40 @@ export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] 
   const { toast } = useToast();
   const [selected, setSelected] = useState<ShareCategory[]>([]);
   const [busy, setBusy] = useState<"pdf" | "whatsapp" | null>(null);
+  const [pronto, setPronto] = useState<Pronto | null>(null);
 
   // Ao abrir, nada marcado: o usuário toca nas bolinhas do que quer mandar.
   useEffect(() => {
-    if (open) setSelected([]);
+    if (open) {
+      setSelected([]);
+      setPronto(null);
+    }
   }, [open]);
 
-  // Baixa as fotos escolhidas enquanto o usuário decide, para o toque ser imediato no iPhone.
-  const selectedKey = selected.join(",");
+  // Nada marcado = vai tudo que tem foto (o botão nunca fica "morto").
+  const comFoto = SHARE_CATEGORIES.filter((c) => photos[c].length > 0);
+  const escolhidas = selected.length > 0 ? selected : comFoto;
+
+  // Baixa as fotos que vão enquanto o usuário decide, para o toque ser imediato no iPhone.
+  const escolhidasKey = escolhidas.join(",");
   useEffect(() => {
     if (!open) return;
-    selected.forEach((c) => photos[c].forEach((url, i) => prefetchFile(url, `${c}-${i + 1}.jpg`).catch(() => {})));
+    escolhidas.forEach((c) => photos[c].forEach((url, i) => prefetchFile(url, `${c}-${i + 1}.jpg`).catch(() => {})));
+    setPronto(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selectedKey]);
+  }, [open, escolhidasKey]);
 
   const toggle = (c: ShareCategory) =>
     setSelected((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
 
   const labels = { visit: t("share.visit"), rating: t("share.rating") };
-  const nothing = selected.length === 0;
 
   /** Monta o PDF com as fotos escolhidas (e a tradução do cardápio, se houver). */
   const makePdf = async (): Promise<File> => {
     const sections = [];
     let failed = 0;
     for (const c of SHARE_CATEGORIES) {
-      if (!selected.includes(c)) continue;
+      if (!escolhidas.includes(c)) continue;
       const got = await collectFiles(photos, [c]);
       failed += got.failed;
       sections.push({
@@ -97,18 +112,24 @@ export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] 
 
   const onWhatsApp = async () => {
     setBusy("whatsapp");
+    setPronto(null);
     try {
       if (isMobileDevice()) {
-        // Celular: folha nativa com as fotos
-        const { files, failed } = await collectFiles(photos, selected);
+        // Celular: folha nativa com as fotos e o texto
+        const { files, failed } = await collectFiles(photos, escolhidas);
         if (failed > 0) toast({ title: t("share.someFailed").replace("{n}", String(failed)), variant: "destructive" });
-        const r = await shareToWhatsApp(shareText(info, labels), files);
+        const texto = shareText(info, labels);
+        const dados: ShareData = files.length > 0 ? { files, text: texto } : { text: texto };
+        const r = await tryNativeShare(dados);
         if (r === "shared") onClose();
+        else if (r === "needsTap")
+          setPronto({ tipo: "whatsapp", enviar: () => shareInGesture(dados, waLink(texto)) });
       } else {
         // Computador: um link só, para o PDF com tudo que foi escolhido
         const pdf = await makePdf();
         const url = await uploadSharePdf(pdf);
-        openWhatsAppDesktop(`${shareText(info, labels)}\n\n${t("share.photosLink")}: ${url}`);
+        const link = waLink(`${shareText(info, labels)}\n\n${t("share.photosLink")}: ${url}`);
+        if (!tryOpen(link)) setPronto({ tipo: "whatsapp", enviar: () => void window.open(link, "_blank", "noopener") });
       }
     } catch (e) {
       console.error("[ShareSheet] whatsapp", e);
@@ -120,15 +141,33 @@ export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] 
 
   const onPdf = async () => {
     setBusy("pdf");
+    setPronto(null);
     try {
-      const r = await sharePdf(await makePdf());
+      const file = await makePdf();
+      const dados: ShareData = { files: [file], title: file.name };
+      const r = await tryNativeShare(dados);
       if (r === "shared") onClose();
+      else if (r === "needsTap") {
+        const url = URL.createObjectURL(file);
+        setTimeout(() => URL.revokeObjectURL(url), 10 * 60_000);
+        setPronto({ tipo: "pdf", enviar: () => shareInGesture(dados, url) });
+      }
     } catch (e) {
       console.error("[ShareSheet] pdf", e);
       toast({ title: t("share.error"), variant: "destructive" });
     } finally {
       setBusy(null);
     }
+  };
+
+  /** Toque no "Enviar": chama a folha na hora, dentro do gesto. */
+  const onEnviarPronto = () => {
+    const p = pronto;
+    if (!p) return;
+    setPronto(null);
+    Promise.resolve(p.enviar()).then((r) => {
+      if (r === "shared") onClose();
+    });
   };
 
   return (
@@ -183,29 +222,44 @@ export function ShareSheet({ open, onClose, info, photos, menuTranslations = [] 
           })}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {pronto ? (
           <Button
             type="button"
             size="lg"
-            variant="outline"
-            onClick={onPdf}
-            disabled={nothing || busy !== null}
-            className="h-16 gap-2 rounded-2xl text-lg font-semibold"
+            onClick={onEnviarPronto}
+            className={cn(
+              "h-20 w-full gap-3 rounded-2xl text-xl font-bold",
+              pronto.tipo === "whatsapp" && "bg-[#25D366] text-white hover:bg-[#1fb857]",
+            )}
           >
-            {busy === "pdf" ? <Loader2 className="h-7 w-7 animate-spin" /> : <FileText className="h-7 w-7" />}
-            PDF
+            {pronto.tipo === "whatsapp" ? <WhatsAppIcon className="h-8 w-8" /> : <Send className="h-8 w-8" />}
+            {t("share.tapToSend")}
           </Button>
-          <Button
-            type="button"
-            size="lg"
-            onClick={onWhatsApp}
-            disabled={nothing || busy !== null}
-            className="h-16 gap-2 rounded-2xl bg-[#25D366] text-lg font-semibold text-white hover:bg-[#1fb857]"
-          >
-            {busy === "whatsapp" ? <Loader2 className="h-7 w-7 animate-spin" /> : <WhatsAppIcon className="h-7 w-7" />}
-            WhatsApp
-          </Button>
-        </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              onClick={onPdf}
+              disabled={busy !== null}
+              className="h-16 gap-2 rounded-2xl text-lg font-semibold"
+            >
+              {busy === "pdf" ? <Loader2 className="h-7 w-7 animate-spin" /> : <FileText className="h-7 w-7" />}
+              PDF
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              onClick={onWhatsApp}
+              disabled={busy !== null}
+              className="h-16 gap-2 rounded-2xl bg-[#25D366] text-lg font-semibold text-white hover:bg-[#1fb857]"
+            >
+              {busy === "whatsapp" ? <Loader2 className="h-7 w-7 animate-spin" /> : <WhatsAppIcon className="h-7 w-7" />}
+              WhatsApp
+            </Button>
+          </div>
+        )}
       </div>
     </BottomSheet>
   );

@@ -70,6 +70,87 @@ export function shareText(info: ShareInfo, labels: { visit: string; rating: stri
 
 export type ShareOutcome = "shared" | "fallback" | "cancelled";
 
+/**
+ * Resultado de uma tentativa de enviar logo depois de preparar (PDF ou fotos):
+ * "needsTap" = o iPhone/navegador recusou porque o toque original "esfriou"
+ * (montar o PDF ou baixar fotos leva alguns segundos, e dentro do Viagens o app
+ * roda num iframe). Aí a folha mostra um botão "Enviar" que dispara na hora.
+ */
+export type ShareTry = "shared" | "cancelled" | "needsTap";
+
+function erroNome(e: unknown): string | undefined {
+  return (e as { name?: string } | null)?.name;
+}
+
+/** Tenta a folha nativa sem abrir nada além dela (sem janela de reserva). */
+export async function tryNativeShare(data: ShareData): Promise<ShareTry> {
+  if (typeof navigator === "undefined" || typeof navigator.share !== "function") return "needsTap";
+  if (data.files && data.files.length > 0 && !canShareFiles(data.files)) return "needsTap";
+  try {
+    await navigator.share(data);
+    return "shared";
+  } catch (e) {
+    if (erroNome(e) === "AbortError") return "cancelled";
+    console.warn("[share] folha nativa recusou, vai pedir um toque", e);
+    return "needsTap";
+  }
+}
+
+/**
+ * Envio dentro de um toque novo: chama a folha nativa na hora (sem nenhum await
+ * antes) e, se não houver folha para isso, abre o endereço de reserva.
+ */
+export function shareInGesture(data: ShareData, fallbackUrl: string): Promise<ShareOutcome> {
+  const temFolha =
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    (!data.files || data.files.length === 0 || canShareFiles(data.files));
+  if (temFolha) {
+    return navigator.share(data).then(
+      () => "shared" as const,
+      (e) => {
+        if (erroNome(e) === "AbortError") return "cancelled" as const;
+        console.warn("[share] folha nativa falhou no toque, abrindo reserva", e);
+        window.open(fallbackUrl, "_blank", "noopener");
+        return "fallback" as const;
+      },
+    );
+  }
+  window.open(fallbackUrl, "_blank", "noopener");
+  return Promise.resolve("fallback");
+}
+
+/** Link do WhatsApp que funciona no celular, no Mac (app ou Web) e dentro de iframe. */
+export function waLink(text: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+/** Abre um endereço em aba nova; devolve false se o navegador bloqueou (sem toque recente). */
+export function tryOpen(url: string): boolean {
+  try {
+    // Sem "noopener" aqui: com ele o navegador devolve null mesmo quando abre.
+    const w = window.open(url, "_blank");
+    if (!w) return false;
+    try {
+      w.opener = null;
+    } catch {
+      /* ignora */
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Rodando dentro do Viagens (iframe)? */
+export function isEmbedded(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 /** Celular/tablet (iPad se apresenta como Mac, mas tem toque). */
 export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false;
