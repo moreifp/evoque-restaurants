@@ -510,6 +510,7 @@ export const pt = {
     seeTranslation: "Ver tradução do cardápio »",
     photosLink: "Fotos e cardápio (PDF)",
     someFailed: "{n} foto(s) não carregaram e ficaram de fora.",
+    tapToSend: "Pronto · tocar para enviar",
   },
   receiptSection: {
     title: "Meu Recibo (Privado)",

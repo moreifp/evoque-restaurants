@@ -510,6 +510,7 @@ export const en = {
     seeTranslation: "See menu translation »",
     photosLink: "Photos and menu (PDF)",
     someFailed: "{n} photo(s) could not load and were left out.",
+    tapToSend: "Ready · tap to send",
   },
   receiptSection: {
     title: "My Receipt (Private)",

@@ -26,7 +26,8 @@
 - No fim da tela, botão grande **Compartilhar** → folha `src/components/share/ShareSheet.tsx`.
 
 ## Compartilhar (`ShareSheet.tsx`, `src/lib/sharePack.ts`, `src/lib/pdfText.ts`)
-- Folha com nome e endereço, 6 bolinhas (Lugar, Cardápio, Comida, Vinho, Amigos, Recibo) que **começam desmarcadas**; bolinha sem foto fica apagada. Embaixo, botões **PDF** e **WhatsApp**.
+- Folha com nome e endereço, 6 bolinhas (Lugar, Cardápio, Comida, Vinho, Amigos, Recibo) que **começam desmarcadas**; bolinha sem foto fica apagada. Embaixo, botões **PDF** e **WhatsApp**, sempre ativos: **nada marcado = vai tudo que tem foto** (antes os botões ficavam cinza e "não funcionavam").
+- **Toque esfriado (19/11/2026):** montar o PDF / baixar fotos leva segundos e, dentro do Viagens (iframe), o iPhone recusa `navigator.share` e `window.open` sem toque recente — os botões pareciam mortos. Agora tenta na hora (`tryNativeShare`, `tryOpen`); se recusar, a folha troca os botões por um botão grande **"Pronto · tocar para enviar"**, que chama a folha dentro do novo toque (`shareInGesture`). WhatsApp no computador usa `wa.me` (o `whatsapp://` não sai de dentro do iframe).
 - **WhatsApp no iPhone/Android:** `navigator.share` com as fotos + texto (nome, endereço, data, nota) → folha nativa → WhatsApp → um ou mais contatos.
 - **WhatsApp no computador:** a folha do Mac não lista o WhatsApp para arquivos. Então gera o PDF, sobe para `restaurant-photos/<uid>/compartilhados/<aleatório>/` e abre `whatsapp://send` com o texto e **um link só** (cai no WhatsApp Web se o app não abrir). Um link por foto não serve: o WhatsApp só mostra a prévia do primeiro.
 - **PDF:** A4 com cabeçalho, fotos por seção (duas por linha) e, se o Cardápio estiver marcado e houver tradução, um **anexo no fim** com a tradução formatada, link "Ver tradução do cardápio »" na seção e índice lateral. Gerado no aparelho com `jspdf`.
