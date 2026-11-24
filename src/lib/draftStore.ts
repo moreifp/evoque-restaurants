@@ -176,6 +176,8 @@ export interface AddDraft {
   queued?: boolean;
   /** Edição de um restaurante já salvo (não é guardado no aparelho nem na fila). */
   editing?: boolean;
+  /** Juntando fotos novas a um restaurante já salvo: só grava campos preenchidos e mantém a data dele. */
+  merge?: boolean;
   originScheduledVisitId: string | null;
   updatedAt: number;
 }
