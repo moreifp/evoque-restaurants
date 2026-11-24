@@ -42,7 +42,9 @@ import {
   getCurrentDraft,
   getDraft,
   idbDel,
+  idbGet,
   idbGetBlob,
+  idbSet,
   idbSetBlob,
   listQueuedDrafts,
   newDraftId,
@@ -255,6 +257,34 @@ async function draftFromEntry(userId: string, entry: EntryRow): Promise<AddDraft
   };
 }
 
+/**
+ * Edição em andamento guardada no aparelho. Se o iPhone recarregar a tela (câmera,
+ * app Atalhos, volta ao Viagens), o app volta para a edição do MESMO restaurante
+ * em vez de abrir "Novo restaurante" e salvar uma cópia (Arum e La Petite Colombe, 11/2026).
+ */
+const editKey = (userId: string) => `edit:${userId}`;
+const EDIT_TTL_MS = 12 * 60 * 60 * 1000;
+
+/** Restaurante já salvo com o mesmo lugar (ou nome) em até 3 dias da visita. */
+async function findSameRestaurant(userId: string, form: AddDraftForm) {
+  const name = form.restaurant_name.trim();
+  if (!name) return null;
+  const day = Date.parse(`${form.visit_date}T12:00:00Z`);
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  let q = supabase
+    .from("restaurant_entries")
+    .select("id, restaurant_name, visit_date")
+    .eq("user_id", userId)
+    .eq("is_draft", false)
+    .gte("visit_date", iso(day - 3 * 864e5))
+    .lte("visit_date", iso(day + 3 * 864e5))
+    .order("created_at", { ascending: true })
+    .limit(1);
+  q = form.google_place_id ? q.eq("google_place_id", form.google_place_id) : q.ilike("restaurant_name", name);
+  const { data } = await q;
+  return (data?.[0] as { id: string; restaurant_name: string; visit_date: string } | undefined) ?? null;
+}
+
 /** Abre o app Atalhos e roda o atalho "Enviar ao Evoque" (nome exato). */
 const SHORTCUT_URL = `shortcuts://run-shortcut?name=${encodeURIComponent("Enviar ao Evoque")}`;
 
@@ -277,6 +307,9 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
   const [saving, setSaving] = useState<{ label: string; pct: number } | null>(null);
   const [done, setDone] = useState<{ entryId: string; originals: File[] } | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  /** Já existe este restaurante salvo: juntar a ele ou criar outro. */
+  const [sameAs, setSameAs] = useState<{ id: string; restaurant_name: string; visit_date: string } | null>(null);
+  const skipSameCheck = useRef(false);
 
   const draftRef = useRef<AddDraft | null>(null);
   const userIdRef = useRef<string | null>(null);
@@ -294,8 +327,12 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     clearTimeout(persistTimer.current);
     const d = draftRef.current;
     if (!d || finishedRef.current) return;
-    // Edição: o restaurante já está no banco; não entra no rascunho "Novo restaurante" nem na fila
-    if (d.editing) return;
+    // Edição: o restaurante já está no banco; não entra no rascunho "Novo restaurante" nem na fila,
+    // mas fica guardada à parte para sobreviver a uma recarga da tela.
+    if (d.editing) {
+      await idbSet(editKey(d.userId), d).catch(() => undefined);
+      return;
+    }
     try {
       if (isMeaningful(d)) await putDraft(d);
       else await forgetDraft(d);
@@ -363,6 +400,17 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     if (draftRef.current && userIdRef.current) engineRunQueuedAi(ctx());
   };
 
+  // Saiu da edição navegando (não é recarga): esquece a edição guardada.
+  useEffect(() => {
+    return () => {
+      const d = draftRef.current;
+      if (d?.editing && userIdRef.current) {
+        finishedRef.current = true;
+        void idbDel(editKey(userIdRef.current)).catch(() => undefined);
+      }
+    };
+  }, []);
+
   // Salva ao sair/ir para segundo plano; libera as miniaturas ao fechar a tela.
   useEffect(() => {
     const flush = () => void persistNow();
@@ -418,7 +466,9 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       if (editId) {
         let ed: AddDraft | null = null;
         try {
-          ed = await loadEntryForEdit(uid, editId);
+          const kept = await idbGet<AddDraft>(editKey(uid)).catch(() => undefined);
+          if (kept && kept.editing && kept.entryId === editId && Date.now() - kept.updatedAt < EDIT_TTL_MS) ed = kept;
+          else ed = await loadEntryForEdit(uid, editId);
         } catch (e) {
           console.warn("[AddRestaurant] edit load failed", e);
         }
@@ -434,6 +484,14 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       }
 
       const draftParam = searchParams.get("draft");
+      if (!draftParam) {
+        const kept = await idbGet<AddDraft>(editKey(uid)).catch(() => undefined);
+        if (cancelled) return;
+        if (kept?.editing && kept.entryId && Date.now() - kept.updatedAt < EDIT_TTL_MS) {
+          navigate(`/dining/${kept.entryId}/edit`, { replace: true });
+          return;
+        }
+      }
       const pre = {
         name: searchParams.get("restaurant_name"),
         address: searchParams.get("location_address") || searchParams.get("city"),
@@ -748,6 +806,7 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     finishedRef.current = true;
     clearTimeout(persistTimer.current);
     if (d) await deleteDraft(d).catch(() => undefined);
+    if (d?.editing) await idbDel(editKey(d.userId)).catch(() => undefined);
     memBlobs.current.clear();
     notifyQueueChanged();
   };
@@ -838,6 +897,16 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
       return;
     }
 
+    // Já existe o mesmo restaurante salvo (mesmo lugar, até 3 dias)? Pergunta antes de criar outro.
+    if (!d.editing && !d.entryId && !skipSameCheck.current) {
+      const same = await findSameRestaurant(uid, d.form).catch(() => null);
+      if (same) {
+        setSameAs(same);
+        return;
+      }
+    }
+    skipSameCheck.current = false;
+
     savingRef.current = true;
     try {
       await saveEntry(ctx());
@@ -859,6 +928,20 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
     } finally {
       savingRef.current = false;
     }
+  };
+
+  /** Juntar: as fotos novas entram no restaurante que já existe; nome, data e nota dele ficam. */
+  const joinSame = () => {
+    const s = sameAs;
+    setSameAs(null);
+    if (!s) return;
+    update((x) => ({ ...x, entryId: s.id, editing: true, merge: true }));
+    setTimeout(() => void handleSave(), 0);
+  };
+  const createAnother = () => {
+    setSameAs(null);
+    skipSameCheck.current = true;
+    setTimeout(() => void handleSave(), 0);
   };
 
   const handleDiscardDraft = async () => {
@@ -1355,6 +1438,26 @@ export default function AddRestaurant({ home = false }: { home?: boolean } = {})
           <p className="text-center text-base text-muted-foreground">{t("qrScan.thenBookmark")}</p>
         </div>
       </BottomSheet>
+
+      <AlertDialog open={!!sameAs} onOpenChange={(o) => !o && setSameAs(null)}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl">
+              {t("quickAdd.sameTitle")
+                .replace("{name}", sameAs?.restaurant_name ?? "")
+                .replace("{date}", sameAs ? sameAs.visit_date.split("-").reverse().slice(0, 2).join("/") : "")}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction className="h-14 w-full text-lg" onClick={joinSame}>
+              {t("quickAdd.sameJoin")}
+            </AlertDialogAction>
+            <AlertDialogCancel className="h-14 w-full text-lg" onClick={createAnother}>
+              {t("quickAdd.sameNew")}
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent className="max-w-sm">

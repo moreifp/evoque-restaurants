@@ -238,6 +238,14 @@ export async function saveEntry(ctx: DraftCtx): Promise<string> {
     staff: (f.staff ?? "").trim() || null,
   };
   let entryId = ctx.get().entryId;
+  if (ctx.get().merge) {
+    // Juntando a um restaurante que já existe: não apaga o que ele tem (data, nota, comentário)
+    const keep = Object.fromEntries(
+      Object.entries(fields).filter(([k, v]) => k !== "visit_date" && v !== null && v !== "" && v !== 0),
+    );
+    Object.keys(fields).forEach((k) => delete (fields as Record<string, unknown>)[k]);
+    Object.assign(fields, keep);
+  }
   if (entryId) {
     const { error } = await supabase.from("restaurant_entries").update(fields).eq("id", entryId);
     if (error) throw error;
